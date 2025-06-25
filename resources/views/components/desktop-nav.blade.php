@@ -30,17 +30,17 @@
     <div class="flex-1 flex justify-center items-center">
         <div class="nav-items flex items-center justify-center space-x-6 px-4 py-2">
             @foreach($navItems as $item)
-                <a href="{{ $item['link'] }}" 
+                <a href="{{ $item['link'] }}"
                    class="nav-link px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium rounded-xl transition-all duration-300 relative overflow-hidden group text-base position-relative"
                    onclick="handleAnchorClick(event, '{{ $item['link'] }}')">
                     <span class="relative z-10 transition-all duration-300 group-hover:scale-105">{{ $item['name'] }}</span>
-                    
+
                     <!-- Animated background gradient -->
                     <div class="absolute inset-0 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20 rounded-xl scale-0 group-hover:scale-100 transition-all duration-500 origin-center opacity-0 group-hover:opacity-100"></div>
-                    
+
                     <!-- Shimmer effect -->
                     <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent dark:via-white/10 rounded-xl translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-out"></div>
-                    
+
                     <!-- Bottom border indicator -->
                     <div class="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 group-hover:w-full group-hover:left-0 transition-all duration-400 ease-out rounded-full"></div>
                 </a>
@@ -52,7 +52,7 @@
     <div class="flex items-center justify-end gap-2 w-48 flex-shrink-0">
         <!-- Mode Toggle -->
         @if($showModeToggle)
-            <button id="desktop-mode-toggle" 
+            <button id="desktop-mode-toggle"
                     class="p-2 rounded-lg bg-gray-100/50 dark:bg-gray-800/50 hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-all duration-300 hover:scale-105 group backdrop-blur-sm">
                 <!-- Light Mode Icon -->
                 <svg class="w-4 h-4 text-gray-700 dark:text-gray-300 dark:hidden group-hover:text-blue-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
@@ -68,30 +68,39 @@
         <!-- Login Button with Hover Border Gradient -->
         @if(!empty($dropdownItems))
             <div class="relative">
-                <button id="desktop-dropdown-toggle" 
+                <button id="desktop-dropdown-toggle"
                         class="hover-border-gradient-btn relative z-20 px-4 py-2 rounded-full bg-black/20 dark:bg-white/20 text-white dark:text-black font-medium transition-all duration-500 overflow-hidden group">
                     <span class="relative z-10 flex items-center gap-2 text-sm">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
                         </svg>
-                        Log-in
+                        Get-Start
                     </span>
                 </button>
-                
+
                 <!-- Dropdown Content -->
-                <div id="desktop-dropdown-content" 
+                <div id="desktop-dropdown-content"
                      class="absolute right-0 mt-2 w-52 bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 opacity-0 invisible transform scale-95 transition-all duration-200 origin-top-right backdrop-blur-md">
                     <div class="py-2">
-                        @foreach($dropdownItems as $item)
-                            <a href="{{ $item['href'] }}" 
-                               class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group"
-                               target="{{ $item['target'] ?? '_self' }}">
-                                <div class="w-5 h-5 flex items-center justify-center">
-                                    {!! $item['icon'] !!}
-                                </div>
-                                <span class="group-hover:translate-x-1 transition-transform duration-200">{{ $item['name'] }}</span>
-                            </a>
-                        @endforeach
+                        <a href="{{ route('login') }}"
+                           class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group">
+                            <div class="w-5 h-5 flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+                            </div>
+                            <span class="group-hover:translate-x-1 transition-transform duration-200">Login</span>
+                        </a>
+                        <a href="{{ route('register') }}"
+                           class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group">
+                            <div class="w-5 h-5 flex items-center justify-center">
+                                <!-- User Plus Icon -->
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 8v6m3-3h-6" />
+                                </svg>
+                            </div>
+                            <span class="group-hover:translate-x-1 transition-transform duration-200">Register</span>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -152,7 +161,7 @@
         z-index: -1;
         margin: -1px;
         border-radius: inherit;
-        background: linear-gradient(45deg, 
+        background: linear-gradient(45deg,
             rgba(255, 255, 255, 0.1) 0%,
             rgba(50, 117, 248, 0.3) 25%,
             rgba(255, 255, 255, 0.1) 50%,
@@ -185,7 +194,7 @@
     }
 
     .dark .hover-border-gradient-btn::before {
-        background: linear-gradient(45deg, 
+        background: linear-gradient(45deg,
             rgba(0, 0, 0, 0.1) 0%,
             rgba(50, 117, 248, 0.4) 25%,
             rgba(0, 0, 0, 0.1) 50%,
@@ -225,7 +234,7 @@
         .nav-items {
             space-x-4;
         }
-        
+
         .nav-link {
             px-3 py-2;
             font-size: 0.9rem;
@@ -237,16 +246,16 @@
             width: auto;
             min-width: 120px;
         }
-        
+
         .nav-items {
             space-x-3;
         }
-        
+
         .nav-link {
             px-2.5 py-1.5;
             font-size: 0.85rem;
         }
-        
+
         .w-48 {
             width: auto;
             min-width: 100px;
@@ -257,11 +266,11 @@
         .navbar-logo img {
             max-height: 32px;
         }
-        
+
         .nav-items {
             space-x-2;
         }
-        
+
         .nav-link {
             px-2 py-1.5;
             font-size: 0.8rem;
@@ -272,7 +281,7 @@
         .navbar-logo img {
             max-height: 28px;
         }
-        
+
         .nav-link {
             px-1.5 py-1;
             font-size: 0.75rem;
