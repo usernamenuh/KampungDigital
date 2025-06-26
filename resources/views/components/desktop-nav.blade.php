@@ -188,7 +188,7 @@
         background: linear-gradient(45deg, #ffffff, #f0f0f0);
         color: #000000;
     }
-
+    
     .dark .hover-border-gradient-btn:hover {
         background: linear-gradient(45deg, #f5f5f5, #e0e0e0);
     }
