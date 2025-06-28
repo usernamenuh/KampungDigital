@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "84b21246795e9b7b77a1cf036a2a08ca",
+    "content-hash": "ad56ec293619fd2a4a50cd1a8159b0c1",
     "packages": [
         {
             "name": "brick/math",
@@ -5624,6 +5624,67 @@
                 "source": "https://github.com/tijsverkoyen/CssToInlineStyles/tree/v2.3.0"
             },
             "time": "2024-12-21T16:25:41+00:00"
+        },
+        {
+            "name": "vermaysha/laravel-wilayah-indonesia",
+            "version": "2.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/vermaysha/laravel-wilayah-indonesia.git",
+                "reference": "fafc47b9a6fc493a444073b9d22f9cdaa7d8f81f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vermaysha/laravel-wilayah-indonesia/zipball/fafc47b9a6fc493a444073b9d22f9cdaa7d8f81f",
+                "reference": "fafc47b9a6fc493a444073b9d22f9cdaa7d8f81f",
+                "shasum": ""
+            },
+            "require": {
+                "laravel/framework": "^10.0|^11.0|^12.0",
+                "php": "^8.1|^8.2|^8.3|^8.4"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^8.0|^9.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Territory": "Vermaysha\\Territory\\Facade\\Territory"
+                    },
+                    "providers": [
+                        "Vermaysha\\Territory\\TerritoryServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Vermaysha\\Territory\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ashary Vermaysha",
+                    "email": "asharyver13@gmail.com"
+                }
+            ],
+            "description": "Data Wilayah Administrasi Indonesia yang disusun ulang berdasarkan Provinsi, Kabupaten, Kecamatan dan Desa",
+            "homepage": "https://github.com/vermaysha/laravel-wilayah-indonesia",
+            "keywords": [
+                "laravel",
+                "laravel-wilayah-indonesia",
+                "vermaysha"
+            ],
+            "support": {
+                "issues": "https://github.com/vermaysha/laravel-wilayah-indonesia/issues",
+                "source": "https://github.com/vermaysha/laravel-wilayah-indonesia/tree/v2.2.0"
+            },
+            "time": "2025-04-14T01:09:05+00:00"
         },
         {
             "name": "vlucas/phpdotenv",
