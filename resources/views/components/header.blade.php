@@ -138,10 +138,13 @@
                         Pengaturan
                     </button>
                     <hr class="my-2">
-                    <button @click="logout()" class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900">
-                        <i data-lucide="log-out" class="w-4 h-4 mr-3"></i>
-                        Keluar
-                    </button>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900">
+                            <i data-lucide="log-out" class="w-4 h-4 mr-3"></i>
+                            Keluar
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
