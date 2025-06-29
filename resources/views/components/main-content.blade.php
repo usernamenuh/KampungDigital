@@ -5,7 +5,7 @@
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <button x-show="isMobile" 
-                        @click="toggleMobileMenu()"
+                        @click="toggleMobileMenu && toggleMobileMenu()"
                         class="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                     <i data-lucide="menu" class="w-4 h-4 text-gray-600"></i>
                 </button>
@@ -33,7 +33,7 @@
                 </div>
 
                 <!-- Manual Refresh Button -->
-                <button @click="refreshAll()" 
+                <button @click="refreshAll && refreshAll()" 
                         :disabled="isLoading"
                         class="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50">
                     <i data-lucide="refresh-cw" 
@@ -42,7 +42,7 @@
                 </button>
 
                 <!-- Light/Dark Mode Toggle -->
-                <button @click="toggleDarkMode()" 
+                <button @click="toggleDarkMode && toggleDarkMode()" 
                         class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                     <i :data-lucide="isDarkMode ? 'moon' : 'sun'" class="w-4 h-4 text-gray-600"></i>
                 </button>
@@ -61,7 +61,7 @@
 
                 <!-- User Dropdown -->
                 <div class="relative user-dropdown">
-                    <button @click="toggleUserDropdown()" 
+                    <button @click="toggleUserDropdown && toggleUserDropdown()" 
                             class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200">
                         <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
                             <span class="text-white font-semibold text-xs">{{ substr(auth()->user()->name ?? 'A', 0, 1) }}</span>
@@ -91,7 +91,7 @@
                             <i data-lucide="user" class="w-4 h-4 mr-3 text-gray-400"></i>
                             Profile Saya
                         </a>
-                        <button @click="openSettings()" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                        <button @click="openSettings && openSettings()" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                             <i data-lucide="settings" class="w-4 h-4 mr-3 text-gray-400"></i>
                             Pengaturan
                         </button>
@@ -100,7 +100,7 @@
                             Bantuan
                         </a>
                         <hr class="my-2">
-                        <button @click="logout()" class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                        <button @click="logout && logout()" class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                             <i data-lucide="log-out" class="w-4 h-4 mr-3"></i>
                             Keluar
                         </button>
@@ -113,7 +113,7 @@
     <!-- Dashboard Content -->
     <main class="flex-1 overflow-y-auto p-4">
         <!-- Loading Overlay -->
-        <div x-show="isLoading && dashboardCards.length === 0" 
+        <div x-show="isLoading && (!dashboardCards || dashboardCards.length === 0)" 
              class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-40"
              x-cloak>
             <div class="text-center">
@@ -124,52 +124,52 @@
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-    <template x-for="(card, index) in dashboardCards" :key="index">
-        <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer border border-gray-200">
-            <!-- Card Header -->
-            <div class="p-4 border-b border-gray-100">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="p-2 bg-gray-50 rounded-lg">
-                        <i :data-lucide="card.icon" :class="card.iconColor" class="w-5 h-5"></i>
-                    </div>
-                    <div class="text-right">
-                        <span :class="{
-                                'text-green-600 bg-green-50': card.changeType === 'positive',
-                                'text-gray-600 bg-gray-50': card.changeType === 'stable',
-                                'text-red-600 bg-red-50': card.changeType === 'negative'
-                              }"
-                              class="text-xs font-semibold px-2 py-1 rounded-full"
-                              x-text="card.change">
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Title and Value -->
-                <div>
-                    <h3 class="text-xs font-medium text-gray-600 mb-1" x-text="card.title"></h3>
-                    <p class="text-xl font-bold text-gray-800 group-hover:scale-105 transition-transform duration-200" 
-                       x-text="card.value">
-                    </p>
-                </div>
-            </div>
-
-            <!-- Card Body -->
-            <div class="p-4">
-                <p class="text-xs text-gray-500 mb-3" x-text="card.description"></p>
-                
-                <!-- Sub Cards -->
-                <div x-show="card.subCards" class="space-y-2">
-                    <template x-for="subCard in card.subCards" :key="subCard.label">
-                        <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded-lg">
-                            <span class="text-gray-600" x-text="subCard.label"></span>
-                            <span class="font-semibold text-gray-800" x-text="subCard.value"></span>
+            <template x-for="(card, index) in (dashboardCards || [])" :key="index">
+                <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer border border-gray-200">
+                    <!-- Card Header -->
+                    <div class="p-4 border-b border-gray-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="p-2 bg-gray-50 rounded-lg">
+                                <i :data-lucide="card.icon" :class="card.iconColor" class="w-5 h-5"></i>
+                            </div>
+                            <div class="text-right">
+                                <span :class="{
+                                        'text-green-600 bg-green-50': card.changeType === 'positive',
+                                        'text-gray-600 bg-gray-50': card.changeType === 'stable',
+                                        'text-red-600 bg-red-50': card.changeType === 'negative'
+                                      }"
+                                      class="text-xs font-semibold px-2 py-1 rounded-full"
+                                      x-text="card.change">
+                                </span>
+                            </div>
                         </div>
-                    </template>
+
+                        <!-- Title and Value -->
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-600 mb-1" x-text="card.title"></h3>
+                            <p class="text-xl font-bold text-gray-800 group-hover:scale-105 transition-transform duration-200" 
+                               x-text="card.value">
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="p-4">
+                        <p class="text-xs text-gray-500 mb-3" x-text="card.description"></p>
+                        
+                        <!-- Sub Cards -->
+                        <div x-show="card.subCards" class="space-y-2">
+                            <template x-for="subCard in (card.subCards || [])" :key="subCard.label">
+                                <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded-lg">
+                                    <span class="text-gray-600" x-text="subCard.label"></span>
+                                    <span class="font-semibold text-gray-800" x-text="subCard.value"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </template>
         </div>
-    </template>
-</div>
 
         <!-- Charts Section Row 1 -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -181,7 +181,7 @@
                         <p class="text-sm text-gray-500">Tren data bulanan komprehensif</p>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <button @click="loadChartData('monthly')" 
+                        <button @click="loadChartData && loadChartData('monthly')" 
                                 class="p-1 rounded hover:bg-gray-100 transition-colors">
                             <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
                         </button>
@@ -204,7 +204,7 @@
                         <h3 class="text-lg font-semibold text-gray-800">Distribusi Gender</h3>
                         <p class="text-sm text-gray-500">Perbandingan jumlah penduduk</p>
                     </div>
-                    <button @click="loadGenderData()" 
+                    <button @click="loadGenderData && loadGenderData()" 
                             class="p-1 rounded hover:bg-gray-100 transition-colors">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
                     </button>
@@ -215,7 +215,7 @@
                         <canvas id="genderChart"></canvas>
                         <div class="absolute inset-0 flex items-center justify-center">
                             <div class="text-center">
-                                <p class="text-2xl font-bold text-gray-800" x-text="genderData.total"></p>
+                                <p class="text-2xl font-bold text-gray-800" x-text="(genderData && genderData.total) || 0"></p>
                                 <p class="text-xs text-gray-500">Total</p>
                             </div>
                         </div>
@@ -228,14 +228,14 @@
                                 <div class="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
                                 <span class="text-sm font-medium text-gray-700">Laki-laki</span>
                             </div>
-                            <span class="text-lg font-bold text-blue-600" x-text="genderData.male"></span>
+                            <span class="text-lg font-bold text-blue-600" x-text="(genderData && genderData.male) || 0"></span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-pink-50 rounded-lg">
                             <div class="flex items-center">
                                 <div class="w-3 h-3 bg-pink-500 rounded-full mr-3"></div>
                                 <span class="text-sm font-medium text-gray-700">Perempuan</span>
                             </div>
-                            <span class="text-lg font-bold text-pink-600" x-text="genderData.female"></span>
+                            <span class="text-lg font-bold text-pink-600" x-text="(genderData && genderData.female) || 0"></span>
                         </div>
                     </div>
                 </div>
@@ -251,7 +251,7 @@
                         <h3 class="text-lg font-semibold text-gray-800">Pendapatan Bulanan</h3>
                         <p class="text-sm text-gray-500">Grafik batang pendapatan desa</p>
                     </div>
-                    <button @click="loadChartData('revenue')" 
+                    <button @click="loadChartData && loadChartData('revenue')" 
                             class="p-1 rounded hover:bg-gray-100 transition-colors">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
                     </button>
@@ -268,7 +268,7 @@
                         <h3 class="text-lg font-semibold text-gray-800">Kategori UMKM</h3>
                         <p class="text-sm text-gray-500">Distribusi jenis usaha</p>
                     </div>
-                    <button @click="loadChartData('category')" 
+                    <button @click="loadChartData && loadChartData('category')" 
                             class="p-1 rounded hover:bg-gray-100 transition-colors">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
                     </button>
@@ -288,7 +288,7 @@
                         <h3 class="text-lg font-semibold text-gray-800">Tren Populasi</h3>
                         <p class="text-sm text-gray-500">Pertumbuhan penduduk 6 tahun</p>
                     </div>
-                    <button @click="loadChartData('population')" 
+                    <button @click="loadChartData && loadChartData('population')" 
                             class="p-1 rounded hover:bg-gray-100 transition-colors">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
                     </button>
@@ -305,7 +305,7 @@
                         <h3 class="text-lg font-semibold text-gray-800">Distribusi Usia</h3>
                         <p class="text-sm text-gray-500">Kelompok usia berdasarkan gender</p>
                     </div>
-                    <button @click="loadChartData('age')" 
+                    <button @click="loadChartData && loadChartData('age')" 
                             class="p-1 rounded hover:bg-gray-100 transition-colors">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
                     </button>
@@ -322,7 +322,7 @@
                         <h3 class="text-lg font-semibold text-gray-800">Ranking Desa</h3>
                         <p class="text-sm text-gray-500">Skor pembangunan desa</p>
                     </div>
-                    <button @click="loadChartData('village')" 
+                    <button @click="loadChartData && loadChartData('village')" 
                             class="p-1 rounded hover:bg-gray-100 transition-colors">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
                     </button>
@@ -340,13 +340,13 @@
                     <h3 class="text-lg font-semibold text-gray-800">Aktivitas Terbaru</h3>
                     <p class="text-sm text-gray-500">Log aktivitas sistem terkini</p>
                 </div>
-                <button @click="loadActivities()" 
+                <button @click="loadActivities && loadActivities()" 
                         class="p-1 rounded hover:bg-gray-100 transition-colors">
                     <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
                 </button>
             </div>
             <div class="space-y-3">
-                <template x-for="(activity, index) in activities" :key="index">
+                <template x-for="(activity, index) in (activities || [])" :key="index">
                     <div class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
                         <div class="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0"></div>
                         <div class="flex-1 min-w-0">
@@ -357,7 +357,7 @@
                 </template>
                 
                 <!-- Empty State -->
-                <div x-show="activities.length === 0" class="text-center py-8">
+                <div x-show="!activities || activities.length === 0" class="text-center py-8">
                     <i data-lucide="activity" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
                     <p class="text-gray-500">Tidak ada aktivitas terbaru</p>
                 </div>
