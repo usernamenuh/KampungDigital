@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DesaController;
+use App\Http\Controllers\HomeController;
+use PhpParser\Node\Stmt\HaltCompiler;
 
 // Landing page route
 Route::get('/', function () {
@@ -39,12 +41,13 @@ Route::get('/pesan', function () { return view('pesan.index'); })->name('pesan.i
 
 Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
-
-// Dashboard route - redirect to home for now
-Route::get('/dashboard', function () {
-    return redirect('/home');
-})->name('dashboard');
+Route::middleware(['auth'])->group(function () {
+    // Dashboard/Home Routes
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard', function () {
+        return redirect('/home');
+    })->name('dashboard');
+});
 
 Route::resource('desas', DesaController::class);
 

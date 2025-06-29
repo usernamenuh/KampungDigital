@@ -5,332 +5,476 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Desa;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
+use Exception;
 
 class DashboardApiController extends Controller
 {
-    public function test()
-    {
-        return response()->json([
-            'success' => true,
-            'message' => 'API is working perfectly!',
-            'timestamp' => now(),
-            'server_time' => date('Y-m-d H:i:s'),
-            'environment' => app()->environment()
-        ]);
-    }
-
-    public function stats()
+    /**
+     * Get dashboard statistics
+     */
+    public function getStats(): JsonResponse
     {
         try {
-            Log::info('Dashboard stats requested');
-        
-            $totalDesa = Desa::count();
-            $currentDate = Carbon::now()->locale('id');
-            
-            $stats = [
-                [
-                    'title' => 'Total Desa',
-                    'value' => (string)max($totalDesa, 12),
-                    'change' => '+2.5%',
-                    'changeType' => 'positive',
-                    'icon' => 'building-2',
-                    'iconColor' => 'text-blue-600',
-                    'description' => 'Desa terdaftar',
-                    'subCards' => [
-                        ['label' => 'Aktif', 'value' => (string)max($totalDesa, 12)],
-                        ['label' => 'Tidak Aktif', 'value' => '0']
-                    ]
-                ],
-                [
-                    'title' => 'Total Penduduk',
-                    'value' => '2,437',
-                    'change' => '+1.2%',
-                    'changeType' => 'positive',
-                    'icon' => 'users',
-                    'iconColor' => 'text-green-600',
-                    'description' => 'Jiwa terdaftar',
-                    'subCards' => [
-                        ['label' => 'Laki-laki', 'value' => '1,256'],
-                        ['label' => 'Perempuan', 'value' => '1,181']
-                    ]
-                ],
-                [
-                    'title' => 'UMKM Aktif',
-                    'value' => '44',
-                    'change' => '+5.1%',
-                    'changeType' => 'positive',
-                    'icon' => 'store',
-                    'iconColor' => 'text-purple-600',
-                    'description' => 'Usaha terdaftar',
-                    'subCards' => [
-                        ['label' => 'Kuliner', 'value' => '18'],
-                        ['label' => 'Kerajinan', 'value' => '26']
-                    ]
-                ],
-                [
-                    'title' => 'Saldo Kas',
-                    'value' => 'Rp 125.750.000',
-                    'change' => '+8.3%',
-                    'changeType' => 'positive',
-                    'icon' => 'banknote',
-                    'iconColor' => 'text-emerald-600',
-                    'description' => 'Dana tersedia',
-                    'subCards' => [
-                        ['label' => 'Pemasukan', 'value' => 'Rp 45.2M'],
-                        ['label' => 'Pengeluaran', 'value' => 'Rp 32.8M']
-                    ]
-                ],
-                [
-                    'title' => 'Program Aktif',
-                    'value' => '13',
-                    'change' => '0%',
-                    'changeType' => 'stable',
-                    'icon' => 'calendar',
-                    'iconColor' => 'text-orange-600',
-                    'description' => 'Program berjalan',
-                    'subCards' => [
-                        ['label' => 'Pembangunan', 'value' => '8'],
-                        ['label' => 'Sosial', 'value' => '5']
-                    ]
-                ],
-                [
-                    'title' => 'Berita',
-                    'value' => '28',
-                    'change' => '+8.1%',
-                    'changeType' => 'positive',
-                    'icon' => 'newspaper',
-                    'iconColor' => 'text-indigo-600',
-                    'description' => 'Berita terpublikasi',
-                    'subCards' => [
-                        ['label' => 'Bulan ini', 'value' => '12'],
-                        ['label' => 'Minggu ini', 'value' => '4']
-                    ]
-                ],
-                [
-                    'title' => 'Wisata',
-                    'value' => '8',
-                    'change' => '+12.5%',
-                    'changeType' => 'positive',
-                    'icon' => 'camera',
-                    'iconColor' => 'text-pink-600',
-                    'description' => 'Destinasi wisata',
-                    'subCards' => [
-                        ['label' => 'Alam', 'value' => '5'],
-                        ['label' => 'Budaya', 'value' => '3']
-                    ]
-                ],
-                [
-                    'title' => 'Dokumen',
-                    'value' => '156',
-                    'change' => '+3.2%',
-                    'changeType' => 'positive',
-                    'icon' => 'file-text',
-                    'iconColor' => 'text-cyan-600',
-                    'description' => 'Dokumen tersimpan',
-                    'subCards' => [
-                        ['label' => 'Surat', 'value' => '89'],
-                        ['label' => 'Laporan', 'value' => '67']
-                    ]
-                ],
-                [
-                    'title' => 'Pesan',
-                    'value' => '24',
-                    'change' => '+15.2%',
-                    'changeType' => 'positive',
-                    'icon' => 'message-circle',
-                    'iconColor' => 'text-yellow-600',
-                    'description' => 'Pesan masuk',
-                    'subCards' => [
-                        ['label' => 'Belum dibaca', 'value' => '8'],
-                        ['label' => 'Sudah dibaca', 'value' => '16']
-                    ]
-                ]
-            ];
-
-            Log::info('Stats prepared: ' . count($stats) . ' items');
+            $stats = Cache::remember('dashboard_stats', 300, function () {
+                $totalDesa = Desa::count();
+                $desaAktif = Desa::where('status', 'aktif')->count();
+                $desaTidakAktif = $totalDesa - $desaAktif;
+                
+                // Mock data for other statistics
+                $totalPenduduk = 2437;
+                $lakiLaki = 1256;
+                $perempuan = 1181;
+                $aktivitasHariIni = rand(8, 15);
+                
+                return [
+                    'totalDesa' => $totalDesa,
+                    'desaAktif' => $desaAktif,
+                    'desaTidakAktif' => $desaTidakAktif,
+                    'totalPenduduk' => $totalPenduduk,
+                    'lakiLaki' => $lakiLaki,
+                    'perempuan' => $perempuan,
+                    'aktivitasHariIni' => $aktivitasHariIni
+                ];
+            });
 
             return response()->json([
                 'success' => true,
                 'data' => $stats,
-                'timestamp' => now()->toISOString(),
-                'current_date' => $currentDate->isoFormat('dddd, D MMMM YYYY'),
-                'current_time' => $currentDate->format('H:i:s'),
-                'total_items' => count($stats)
-            ], 200, [
-                'Content-Type' => 'application/json',
-                'Access-Control-Allow-Origin' => '*'
+                'timestamp' => now()->toISOString()
             ]);
-        } catch (\Exception $e) {
-            Log::error('Error in stats API: ' . $e->getMessage());
+
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error loading stats: ' . $e->getMessage()
+                'message' => 'Failed to fetch dashboard stats',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    public function genderData()
+    /**
+     * Get monthly data for charts
+     */
+    public function getMonthlyData(): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'male' => 1256,
-                'female' => 1181,
-                'total' => 2437
-            ],
-            'timestamp' => now()->toISOString()
-        ]);
+        try {
+            $monthlyData = Cache::remember('monthly_data', 300, function () {
+                return [
+                    'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                    'datasets' => [
+                        [
+                            'label' => 'Pendapatan',
+                            'data' => [15, 18, 22, 25, 28, 32],
+                            'backgroundColor' => '#8B5CF6'
+                        ]
+                    ]
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $monthlyData
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch monthly data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function activities()
+    /**
+     * Get gender distribution data
+     */
+    public function getGenderData(): JsonResponse
     {
-        $activities = [
-            ['action' => 'Data desa baru ditambahkan', 'time' => '2 menit yang lalu'],
-            ['action' => 'Saldo kas diperbarui', 'time' => '10 menit yang lalu'],
-            ['action' => 'Laporan bulanan diperbarui', 'time' => '15 menit yang lalu'],
-            ['action' => 'UMKM baru terdaftar', 'time' => '1 jam yang lalu'],
-            ['action' => 'Program pembangunan dimulai', 'time' => '2 jam yang lalu'],
-            ['action' => 'Berita baru dipublikasi', 'time' => '3 jam yang lalu'],
-            ['action' => 'Dokumen surat masuk', 'time' => '4 jam yang lalu'],
-            ['action' => 'Pesan dari warga diterima', 'time' => '5 jam yang lalu']
-        ];
+        try {
+            $genderData = Cache::remember('gender_data', 300, function () {
+                return [
+                    'male' => 1256,
+                    'female' => 1181,
+                    'total' => 2437
+                ];
+            });
 
-        return response()->json([
-            'success' => true,
-            'data' => $activities
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $genderData
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch gender data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function monthlyData()
+    /**
+     * Get revenue data for charts
+     */
+    public function getRevenueData(): JsonResponse
     {
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-        $data = [
-            'labels' => $months,
-            'datasets' => [
-                [
-                    'label' => 'Penduduk',
-                    'data' => [400, 420, 435, 450, 465, 480],
-                    'borderColor' => '#3B82F6',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                    'fill' => true,
-                    'tension' => 0.4
-                ],
-                [
-                    'label' => 'UMKM',
-                    'data' => [35, 38, 40, 42, 43, 44],
-                    'borderColor' => '#10B981',
-                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
-                    'fill' => true,
-                    'tension' => 0.4
-                ]
-            ]
-        ];
+        try {
+            $revenueData = Cache::remember('revenue_data', 300, function () {
+                return [
+                    'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                    'datasets' => [
+                        [
+                            'label' => 'Revenue Trend',
+                            'data' => [50, 45, 60, 55, 70, 65],
+                            'borderColor' => '#8B5CF6',
+                            'backgroundColor' => 'rgba(139, 92, 246, 0.1)'
+                        ]
+                    ]
+                ];
+            });
 
-        return response()->json(['success' => true, 'data' => $data]);
+            return response()->json([
+                'success' => true,
+                'data' => $revenueData
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch revenue data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function revenueData()
+    /**
+     * Get category distribution data
+     */
+    public function getCategoryData(): JsonResponse
     {
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-        $data = [
-            'labels' => $months,
-            'datasets' => [
-                [
-                    'label' => 'Pendapatan (Juta Rupiah)',
-                    'data' => [15, 18, 22, 25, 28, 32],
-                    'backgroundColor' => [
-                        '#8B5CF6', '#A855F7', '#C084FC', 
-                        '#D8B4FE', '#E9D5FF', '#F3E8FF'
+        try {
+            $categoryData = Cache::remember('category_data', 300, function () {
+                return [
+                    'labels' => ['Kuliner', 'Kerajinan', 'Pertanian', 'Jasa', 'Lainnya'],
+                    'data' => [35, 25, 20, 15, 5],
+                    'backgroundColor' => ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444']
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $categoryData
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch category data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get recent activities
+     */
+    public function getActivities(): JsonResponse
+    {
+        try {
+            $activities = Cache::remember('recent_activities', 60, function () {
+                return [
+                    [
+                        'id' => 1,
+                        'title' => 'Desa Baru Ditambahkan',
+                        'description' => 'Desa Sukamaju berhasil didaftarkan ke sistem',
+                        'type' => 'success',
+                        'icon' => 'plus-circle',
+                        'timestamp' => now()->subMinutes(2)->toISOString(),
+                        'user' => 'Admin'
                     ],
-                    'borderColor' => '#8B5CF6',
-                    'borderWidth' => 1
-                ]
-            ]
-        ];
-
-        return response()->json(['success' => true, 'data' => $data]);
-    }
-
-    public function categoryData()
-    {
-        $data = [
-            'labels' => ['Kuliner', 'Kerajinan', 'Pertanian', 'Jasa', 'Lainnya'],
-            'datasets' => [
-                [
-                    'data' => [30, 25, 20, 15, 10],
-                    'backgroundColor' => [
-                        '#3B82F6', '#10B981', '#F59E0B', 
-                        '#EF4444', '#8B5CF6'
+                    [
+                        'id' => 2,
+                        'title' => 'Data Penduduk Diperbarui',
+                        'description' => 'Update data penduduk Desa Makmur',
+                        'type' => 'info',
+                        'icon' => 'users',
+                        'timestamp' => now()->subMinutes(5)->toISOString(),
+                        'user' => 'Admin'
                     ],
-                    'borderWidth' => 0
-                ]
-            ]
-        ];
-
-        return response()->json(['success' => true, 'data' => $data]);
-    }
-
-    public function populationTrend()
-    {
-        $years = ['2019', '2020', '2021', '2022', '2023', '2024'];
-        $data = [
-            'labels' => $years,
-            'datasets' => [
-                [
-                    'label' => 'Populasi',
-                    'data' => [2100, 2250, 2400, 2600, 2800, 3000],
-                    'borderColor' => '#10B981',
-                    'backgroundColor' => 'rgba(16, 185, 129, 0.2)',
-                    'fill' => true,
-                    'tension' => 0.4
-                ]
-            ]
-        ];
-
-        return response()->json(['success' => true, 'data' => $data]);
-    }
-
-    public function ageDistribution()
-    {
-        $data = [
-            'labels' => ['0-17', '18-30', '31-45', '46-60', '60+'],
-            'datasets' => [
-                [
-                    'label' => 'Laki-laki',
-                    'data' => [300, 450, 400, 250, 150],
-                    'backgroundColor' => '#3B82F6'
-                ],
-                [
-                    'label' => 'Perempuan',
-                    'data' => [280, 420, 380, 230, 140],
-                    'backgroundColor' => '#EC4899'
-                ]
-            ]
-        ];
-
-        return response()->json(['success' => true, 'data' => $data]);
-    }
-
-    public function villageRanking()
-    {
-        $data = [
-            'labels' => ['Desa Sukamaju', 'Desa Makmur', 'Desa Sejahtera', 'Desa Merdeka', 'Desa Harmoni'],
-            'datasets' => [
-                [
-                    'label' => 'Skor Pembangunan',
-                    'data' => [85, 78, 72, 68, 65],
-                    'backgroundColor' => [
-                        '#10B981', '#3B82F6', '#F59E0B', 
-                        '#EF4444', '#8B5CF6'
+                    [
+                        'id' => 3,
+                        'title' => 'Backup Data Berhasil',
+                        'description' => 'Backup otomatis database telah selesai',
+                        'type' => 'success',
+                        'icon' => 'database',
+                        'timestamp' => now()->subMinutes(10)->toISOString(),
+                        'user' => 'System'
                     ],
-                    'borderWidth' => 0
-                ]
-            ]
-        ];
+                    [
+                        'id' => 4,
+                        'title' => 'Peringatan Sistem',
+                        'description' => 'Penggunaan storage mencapai 80%',
+                        'type' => 'warning',
+                        'icon' => 'alert-triangle',
+                        'timestamp' => now()->subMinutes(15)->toISOString(),
+                        'user' => 'System'
+                    ]
+                ];
+            });
 
-        return response()->json(['success' => true, 'data' => $data]);
+            return response()->json([
+                'success' => true,
+                'data' => $activities
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch activities',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Test connection endpoint
+     */
+    public function testConnection(): JsonResponse
+    {
+        try {
+            // Test database connection
+            DB::connection()->getPdo();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Connection successful',
+                'timestamp' => now()->toISOString(),
+                'server_time' => now()->format('H:i:s'),
+                'status' => 'online'
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Connection failed',
+                'error' => $e->getMessage(),
+                'status' => 'offline'
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear dashboard cache
+     */
+    public function clearCache(): JsonResponse
+    {
+        try {
+            Cache::forget('dashboard_stats');
+            Cache::forget('monthly_data');
+            Cache::forget('gender_data');
+            Cache::forget('revenue_data');
+            Cache::forget('category_data');
+            Cache::forget('recent_activities');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cache cleared successfully'
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to clear cache',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get system status
+     */
+    public function getSystemStatus(): JsonResponse
+    {
+        try {
+            $status = [
+                'database' => $this->checkDatabaseConnection(),
+                'cache' => $this->checkCacheConnection(),
+                'storage' => $this->checkStorageSpace(),
+                'memory' => $this->getMemoryUsage(),
+                'uptime' => $this->getSystemUptime()
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $status,
+                'overall_status' => $this->getOverallStatus($status)
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get system status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Check database connection
+     */
+    private function checkDatabaseConnection(): array
+    {
+        try {
+            $start = microtime(true);
+            DB::connection()->getPdo();
+            $responseTime = round((microtime(true) - $start) * 1000, 2);
+
+            return [
+                'status' => 'online',
+                'response_time' => $responseTime . 'ms',
+                'message' => 'Database connection successful'
+            ];
+        } catch (Exception $e) {
+            return [
+                'status' => 'offline',
+                'response_time' => null,
+                'message' => 'Database connection failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Check cache connection
+     */
+    private function checkCacheConnection(): array
+    {
+        try {
+            $testKey = 'cache_test_' . time();
+            Cache::put($testKey, 'test', 10);
+            $value = Cache::get($testKey);
+            Cache::forget($testKey);
+
+            return [
+                'status' => $value === 'test' ? 'online' : 'offline',
+                'message' => $value === 'test' ? 'Cache working properly' : 'Cache not working'
+            ];
+        } catch (Exception $e) {
+            return [
+                'status' => 'offline',
+                'message' => 'Cache connection failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Check storage space
+     */
+    private function checkStorageSpace(): array
+    {
+        try {
+            $bytes = disk_free_space(storage_path());
+            $totalBytes = disk_total_space(storage_path());
+            $usedBytes = $totalBytes - $bytes;
+            $usedPercentage = round(($usedBytes / $totalBytes) * 100, 2);
+
+            return [
+                'free_space' => $this->formatBytes($bytes),
+                'total_space' => $this->formatBytes($totalBytes),
+                'used_space' => $this->formatBytes($usedBytes),
+                'used_percentage' => $usedPercentage,
+                'status' => $usedPercentage > 90 ? 'critical' : ($usedPercentage > 80 ? 'warning' : 'good')
+            ];
+        } catch (Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Unable to check storage space: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get memory usage
+     */
+    private function getMemoryUsage(): array
+    {
+        $memoryUsage = memory_get_usage(true);
+        $memoryPeak = memory_get_peak_usage(true);
+        $memoryLimit = ini_get('memory_limit');
+
+        return [
+            'current_usage' => $this->formatBytes($memoryUsage),
+            'peak_usage' => $this->formatBytes($memoryPeak),
+            'memory_limit' => $memoryLimit,
+            'usage_percentage' => round(($memoryUsage / $this->parseBytes($memoryLimit)) * 100, 2)
+        ];
+    }
+
+    /**
+     * Get system uptime (mock)
+     */
+    private function getSystemUptime(): array
+    {
+        return [
+            'uptime' => '2 days, 14 hours, 32 minutes',
+            'started_at' => now()->subDays(2)->subHours(14)->subMinutes(32)->toISOString()
+        ];
+    }
+
+    /**
+     * Get overall system status
+     */
+    private function getOverallStatus(array $status): string
+    {
+        if ($status['database']['status'] === 'offline') {
+            return 'critical';
+        }
+
+        if (isset($status['storage']['status']) && $status['storage']['status'] === 'critical') {
+            return 'critical';
+        }
+
+        if (isset($status['storage']['status']) && $status['storage']['status'] === 'warning') {
+            return 'warning';
+        }
+
+        return 'good';
+    }
+
+    /**
+     * Format bytes to human readable format
+     */
+    private function formatBytes(int $bytes, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+
+        return round($bytes, $precision) . ' ' . $units[$i];
+    }
+
+    /**
+     * Parse bytes from string (like "128M")
+     */
+    private function parseBytes(string $value): int
+    {
+        $value = trim($value);
+        $last = strtolower($value[strlen($value) - 1]);
+        $value = (int) $value;
+
+        switch ($last) {
+            case 'g':
+                $value *= 1024;
+            case 'm':
+                $value *= 1024;
+            case 'k':
+                $value *= 1024;
+        }
+
+        return $value;
     }
 }

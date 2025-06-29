@@ -86,6 +86,48 @@
             50% { opacity: 0.5; }
         }
 
+        /* Card Styles */
+        .card-default {
+            background: white;
+        }
+        
+        .dark .card-default {
+            background: #1f2937;
+        }
+        
+        .card-blur {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .card-blur {
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid rgba(75, 85, 99, 0.2);
+        }
+        
+        .card-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .card-gradient .text-gray-800 {
+            color: white !important;
+        }
+        
+        .card-gradient .text-gray-600 {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+        
+        .card-gradient .text-gray-500 {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        
+        .card-colored {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: #1f2937;
+        }
+
         /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
@@ -120,6 +162,12 @@
         * {
             transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
+
+        /* Notification dropdown */
+        .notification-dropdown {
+            max-height: 400px;
+            overflow-y: auto;
+        }
     </style>
     
     @stack('styles')
@@ -137,6 +185,23 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div x-data="settingsModalData()" x-init="
+        // Listen for settings open event
+        window.addEventListener('openSettings', () => openSettings());
+        
+        // Listen for color changes from navigation
+        window.addEventListener('activeColorChanged', (e) => {
+            activeColor = e.detail;
+        });
+        
+        window.addEventListener('hoverColorChanged', (e) => {
+            hoverColor = e.detail;
+        });
+    ">
+        @include('components.settings-modal')
+    </div>
+
     <!-- Notification Container -->
     <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
@@ -148,6 +213,7 @@
                 isMobileMenuOpen: false,
                 isMobile: window.innerWidth < 768,
                 showUserDropdown: false,
+                showNotificationDropdown: false,
                 isOnline: navigator.onLine,
                 connectionStatus: 'loading',
                 
@@ -155,7 +221,9 @@
                 activeColor: localStorage.getItem('activeColor') || '#8B5CF6',
                 hoverColor: localStorage.getItem('hoverColor') || 'rgba(139, 92, 246, 0.1)',
                 chartTheme: localStorage.getItem('chartTheme') || 'default',
+                cardStyle: localStorage.getItem('cardStyle') || 'default',
                 darkMode: localStorage.getItem('darkMode') === 'true',
+                showIcons: localStorage.getItem('showIcons') !== 'false',
                 
                 // Time and date
                 currentTime: '',
@@ -165,9 +233,11 @@
                 refreshInterval: null,
                 timeInterval: null,
                 lastRefresh: null,
+                isLoading: false,
                 
                 // Notification system
                 notifications: [],
+                unreadCount: 0,
                 
                 // Initialize app
                 async initApp() {
@@ -176,11 +246,15 @@
                     this.startTimeUpdate();
                     this.startAutoRefresh();
                     this.checkConnectionStatus();
+                    this.loadNotifications();
                     
                     // Initialize icons after DOM is ready
                     setTimeout(() => {
                         this.initializeIcons();
                     }, 100);
+                    
+                    // Make showNotification globally available
+                    window.showNotification = this.showNotification.bind(this);
                 },
                 
                 // Time management
@@ -209,6 +283,15 @@
                 
                 toggleUserDropdown() {
                     this.showUserDropdown = !this.showUserDropdown;
+                    this.showNotificationDropdown = false;
+                },
+                
+                toggleNotificationDropdown() {
+                    this.showNotificationDropdown = !this.showNotificationDropdown;
+                    this.showUserDropdown = false;
+                    if (this.showNotificationDropdown) {
+                        this.markNotificationsAsRead();
+                    }
                 },
                 
                 // Dark mode
@@ -227,7 +310,7 @@
                 // Connection status
                 async checkConnectionStatus() {
                     try {
-                        const response = await axios.get('/api/debug', { timeout: 5000 });
+                        const response = await axios.get('/api/dashboard/test', { timeout: 5000 });
                         this.connectionStatus = response.data.success ? 'online' : 'offline';
                         this.isOnline = response.data.success;
                     } catch (error) {
@@ -241,28 +324,6 @@
                     document.documentElement.style.setProperty('--color-primary', this.activeColor);
                     document.documentElement.style.setProperty('--color-hover', this.hoverColor);
                     document.documentElement.classList.toggle('dark', this.darkMode);
-                },
-                
-                updateActiveColor(color) {
-                    this.activeColor = color;
-                    localStorage.setItem('activeColor', color);
-                    this.applyTheme();
-                    this.showNotification('Warna aktif berhasil diubah', 'success');
-                },
-                
-                updateHoverColor(color) {
-                    this.hoverColor = color;
-                    localStorage.setItem('hoverColor', color);
-                    this.applyTheme();
-                    this.showNotification('Warna hover berhasil diubah', 'success');
-                },
-                
-                updateChartTheme(theme) {
-                    this.chartTheme = theme;
-                    localStorage.setItem('chartTheme', theme);
-                    this.showNotification('Tema chart berhasil diubah', 'success');
-                    // Trigger chart update event
-                    window.dispatchEvent(new CustomEvent('chartThemeChanged', { detail: theme }));
                 },
                 
                 // Auto refresh functionality
@@ -282,6 +343,18 @@
                         this.lastRefresh = this.currentTime;
                     } catch (error) {
                         console.error('Error refreshing data:', error);
+                    }
+                },
+                
+                async refreshAll() {
+                    this.isLoading = true;
+                    try {
+                        await this.refreshData();
+                        this.showNotification('Data berhasil diperbarui', 'success');
+                    } catch (error) {
+                        this.showNotification('Gagal memperbarui data', 'error');
+                    } finally {
+                        this.isLoading = false;
                     }
                 },
                 
@@ -322,10 +395,71 @@
                         if (!e.target.closest('.user-dropdown')) {
                             this.showUserDropdown = false;
                         }
+                        if (!e.target.closest('.notification-dropdown')) {
+                            this.showNotificationDropdown = false;
+                        }
                     });
                 },
                 
+                // Settings
+                openSettings() {
+                    window.dispatchEvent(new CustomEvent('openSettings'));
+                },
+                
+                logout() {
+                    if (confirm('Apakah Anda yakin ingin keluar?')) {
+                        window.location.href = '/logout';
+                    }
+                },
+                
                 // Notification system
+                loadNotifications() {
+                    // Load from localStorage or API
+                    const stored = localStorage.getItem('notifications');
+                    if (stored) {
+                        this.notifications = JSON.parse(stored);
+                        this.updateUnreadCount();
+                    }
+                },
+                
+                addNotification(title, message, type = 'info') {
+                    const notification = {
+                        id: Date.now(),
+                        title,
+                        message,
+                        type,
+                        timestamp: new Date(),
+                        read: false
+                    };
+                    
+                    this.notifications.unshift(notification);
+                    this.updateUnreadCount();
+                    this.saveNotifications();
+                    
+                    // Show toast
+                    this.showNotification(message, type);
+                },
+                
+                markNotificationsAsRead() {
+                    this.notifications.forEach(n => n.read = true);
+                    this.updateUnreadCount();
+                    this.saveNotifications();
+                },
+                
+                updateUnreadCount() {
+                    this.unreadCount = this.notifications.filter(n => !n.read).length;
+                },
+                
+                saveNotifications() {
+                    localStorage.setItem('notifications', JSON.stringify(this.notifications));
+                },
+                
+                clearNotifications() {
+                    this.notifications = [];
+                    this.unreadCount = 0;
+                    this.saveNotifications();
+                },
+                
                 showNotification(message, type = 'info', duration = 5000) {
                     const id = Date.now();
                     const notification = {
@@ -335,7 +469,6 @@
                         timestamp: new Date()
                     };
                     
-                    this.notifications.push(notification);
                     this.renderNotification(notification);
                     
                     setTimeout(() => {
@@ -383,7 +516,6 @@
                             notificationEl.remove();
                         }, 300);
                     }
-                    this.notifications = this.notifications.filter(n => n.id !== id);
                 },
                 
                 // Icon initialization
