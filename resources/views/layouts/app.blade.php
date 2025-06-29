@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" :class="{ 'dark': darkMode }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,6 +8,25 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     
     <!-- Alpine.js -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -76,19 +95,36 @@
             background: #f1f1f1;
         }
 
+        .dark ::-webkit-scrollbar-track {
+            background: #374151;
+        }
+
         ::-webkit-scrollbar-thumb {
             background: #c1c1c1;
             border-radius: 3px;
         }
 
+        .dark ::-webkit-scrollbar-thumb {
+            background: #6b7280;
+        }
+
         ::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
+        }
+
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* Dark mode transitions */
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
     </style>
     
     @stack('styles')
 </head>
-<body class="bg-gray-50" x-data="appData()" x-init="initApp()">
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300" x-data="appData()" x-init="initApp()">
     <div class="flex h-screen overflow-hidden">
         @include('components.navigation')
         
@@ -117,11 +153,17 @@
                 
                 // Theme customization
                 activeColor: localStorage.getItem('activeColor') || '#8B5CF6',
-                hoverColor: localStorage.getItem('hoverColor') || '#F3F4F6',
+                hoverColor: localStorage.getItem('hoverColor') || 'rgba(139, 92, 246, 0.1)',
                 chartTheme: localStorage.getItem('chartTheme') || 'default',
+                darkMode: localStorage.getItem('darkMode') === 'true',
+                
+                // Time and date
+                currentTime: '',
+                currentDate: '',
                 
                 // Auto refresh
                 refreshInterval: null,
+                timeInterval: null,
                 lastRefresh: null,
                 
                 // Notification system
@@ -131,6 +173,7 @@
                 async initApp() {
                     this.setupEventListeners();
                     this.applyTheme();
+                    this.startTimeUpdate();
                     this.startAutoRefresh();
                     this.checkConnectionStatus();
                     
@@ -140,6 +183,25 @@
                     }, 100);
                 },
                 
+                // Time management
+                startTimeUpdate() {
+                    this.updateTime();
+                    this.timeInterval = setInterval(() => {
+                        this.updateTime();
+                    }, 1000);
+                },
+                
+                updateTime() {
+                    const now = new Date();
+                    this.currentTime = now.toLocaleTimeString('id-ID');
+                    this.currentDate = now.toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                },
+                
                 // Navigation
                 toggleMobileMenu() {
                     this.isMobileMenuOpen = !this.isMobileMenuOpen;
@@ -147,6 +209,19 @@
                 
                 toggleUserDropdown() {
                     this.showUserDropdown = !this.showUserDropdown;
+                },
+                
+                // Dark mode
+                toggleDarkMode() {
+                    this.darkMode = !this.darkMode;
+                    localStorage.setItem('darkMode', this.darkMode);
+                    document.documentElement.classList.toggle('dark', this.darkMode);
+                    this.showNotification(
+                        this.darkMode ? 'Mode gelap diaktifkan' : 'Mode terang diaktifkan', 
+                        'success'
+                    );
+                    // Update charts for dark mode
+                    window.dispatchEvent(new CustomEvent('darkModeChanged', { detail: this.darkMode }));
                 },
                 
                 // Connection status
@@ -165,6 +240,7 @@
                 applyTheme() {
                     document.documentElement.style.setProperty('--color-primary', this.activeColor);
                     document.documentElement.style.setProperty('--color-hover', this.hoverColor);
+                    document.documentElement.classList.toggle('dark', this.darkMode);
                 },
                 
                 updateActiveColor(color) {
@@ -203,7 +279,7 @@
                         await this.checkConnectionStatus();
                         // Trigger refresh event for components
                         window.dispatchEvent(new CustomEvent('dataRefresh'));
-                        this.lastRefresh = new Date().toLocaleTimeString('id-ID');
+                        this.lastRefresh = this.currentTime;
                     } catch (error) {
                         console.error('Error refreshing data:', error);
                     }
@@ -315,6 +391,12 @@
                     if (typeof lucide !== 'undefined') {
                         lucide.createIcons();
                     }
+                },
+                
+                // Cleanup
+                destroy() {
+                    if (this.refreshInterval) clearInterval(this.refreshInterval);
+                    if (this.timeInterval) clearInterval(this.timeInterval);
                 }
             }
         }

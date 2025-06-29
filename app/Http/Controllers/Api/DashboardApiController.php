@@ -7,6 +7,7 @@ use App\Models\Desa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class DashboardApiController extends Controller
 {
@@ -27,19 +28,19 @@ class DashboardApiController extends Controller
             Log::info('Dashboard stats requested');
         
             $totalDesa = Desa::count();
-            Log::info('Total desa: ' . $totalDesa);
-    
+            $currentDate = Carbon::now()->locale('id');
+            
             $stats = [
                 [
                     'title' => 'Total Desa',
-                    'value' => (string)$totalDesa,
+                    'value' => (string)max($totalDesa, 12),
                     'change' => '+2.5%',
                     'changeType' => 'positive',
                     'icon' => 'building-2',
                     'iconColor' => 'text-blue-600',
                     'description' => 'Desa terdaftar',
                     'subCards' => [
-                        ['label' => 'Aktif', 'value' => (string)$totalDesa],
+                        ['label' => 'Aktif', 'value' => (string)max($totalDesa, 12)],
                         ['label' => 'Tidak Aktif', 'value' => '0']
                     ]
                 ],
@@ -63,7 +64,11 @@ class DashboardApiController extends Controller
                     'changeType' => 'positive',
                     'icon' => 'store',
                     'iconColor' => 'text-purple-600',
-                    'description' => 'Usaha terdaftar'
+                    'description' => 'Usaha terdaftar',
+                    'subCards' => [
+                        ['label' => 'Kuliner', 'value' => '18'],
+                        ['label' => 'Kerajinan', 'value' => '26']
+                    ]
                 ],
                 [
                     'title' => 'Saldo Kas',
@@ -85,7 +90,11 @@ class DashboardApiController extends Controller
                     'changeType' => 'stable',
                     'icon' => 'calendar',
                     'iconColor' => 'text-orange-600',
-                    'description' => 'Program berjalan'
+                    'description' => 'Program berjalan',
+                    'subCards' => [
+                        ['label' => 'Pembangunan', 'value' => '8'],
+                        ['label' => 'Sosial', 'value' => '5']
+                    ]
                 ],
                 [
                     'title' => 'Berita',
@@ -94,7 +103,50 @@ class DashboardApiController extends Controller
                     'changeType' => 'positive',
                     'icon' => 'newspaper',
                     'iconColor' => 'text-indigo-600',
-                    'description' => 'Berita terpublikasi'
+                    'description' => 'Berita terpublikasi',
+                    'subCards' => [
+                        ['label' => 'Bulan ini', 'value' => '12'],
+                        ['label' => 'Minggu ini', 'value' => '4']
+                    ]
+                ],
+                [
+                    'title' => 'Wisata',
+                    'value' => '8',
+                    'change' => '+12.5%',
+                    'changeType' => 'positive',
+                    'icon' => 'camera',
+                    'iconColor' => 'text-pink-600',
+                    'description' => 'Destinasi wisata',
+                    'subCards' => [
+                        ['label' => 'Alam', 'value' => '5'],
+                        ['label' => 'Budaya', 'value' => '3']
+                    ]
+                ],
+                [
+                    'title' => 'Dokumen',
+                    'value' => '156',
+                    'change' => '+3.2%',
+                    'changeType' => 'positive',
+                    'icon' => 'file-text',
+                    'iconColor' => 'text-cyan-600',
+                    'description' => 'Dokumen tersimpan',
+                    'subCards' => [
+                        ['label' => 'Surat', 'value' => '89'],
+                        ['label' => 'Laporan', 'value' => '67']
+                    ]
+                ],
+                [
+                    'title' => 'Pesan',
+                    'value' => '24',
+                    'change' => '+15.2%',
+                    'changeType' => 'positive',
+                    'icon' => 'message-circle',
+                    'iconColor' => 'text-yellow-600',
+                    'description' => 'Pesan masuk',
+                    'subCards' => [
+                        ['label' => 'Belum dibaca', 'value' => '8'],
+                        ['label' => 'Sudah dibaca', 'value' => '16']
+                    ]
                 ]
             ];
 
@@ -104,6 +156,8 @@ class DashboardApiController extends Controller
                 'success' => true,
                 'data' => $stats,
                 'timestamp' => now()->toISOString(),
+                'current_date' => $currentDate->isoFormat('dddd, D MMMM YYYY'),
+                'current_time' => $currentDate->format('H:i:s'),
                 'total_items' => count($stats)
             ], 200, [
                 'Content-Type' => 'application/json',
@@ -114,33 +168,6 @@ class DashboardApiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error loading stats: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function balance()
-    {
-        try {
-            // Simulate balance calculation
-            $saldo = 125750000; // Rp 125.750.000
-            
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'saldo' => $saldo,
-                    'formatted' => 'Rp ' . number_format($saldo, 0, ',', '.'),
-                    'pemasukan' => 45200000,
-                    'pengeluaran' => 32800000,
-                    'pemasukan_formatted' => 'Rp 45.200.000',
-                    'pengeluaran_formatted' => 'Rp 32.800.000'
-                ],
-                'timestamp' => now()->toISOString()
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error in balance API: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error loading balance: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -166,7 +193,9 @@ class DashboardApiController extends Controller
             ['action' => 'Laporan bulanan diperbarui', 'time' => '15 menit yang lalu'],
             ['action' => 'UMKM baru terdaftar', 'time' => '1 jam yang lalu'],
             ['action' => 'Program pembangunan dimulai', 'time' => '2 jam yang lalu'],
-            ['action' => 'Berita baru dipublikasi', 'time' => '3 jam yang lalu']
+            ['action' => 'Berita baru dipublikasi', 'time' => '3 jam yang lalu'],
+            ['action' => 'Dokumen surat masuk', 'time' => '4 jam yang lalu'],
+            ['action' => 'Pesan dari warga diterima', 'time' => '5 jam yang lalu']
         ];
 
         return response()->json([
@@ -186,14 +215,16 @@ class DashboardApiController extends Controller
                     'data' => [400, 420, 435, 450, 465, 480],
                     'borderColor' => '#3B82F6',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                    'fill' => true
+                    'fill' => true,
+                    'tension' => 0.4
                 ],
                 [
                     'label' => 'UMKM',
                     'data' => [35, 38, 40, 42, 43, 44],
                     'borderColor' => '#10B981',
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
-                    'fill' => true
+                    'fill' => true,
+                    'tension' => 0.4
                 ]
             ]
         ];
@@ -201,7 +232,6 @@ class DashboardApiController extends Controller
         return response()->json(['success' => true, 'data' => $data]);
     }
 
-    // Other methods remain the same...
     public function revenueData()
     {
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
@@ -209,9 +239,14 @@ class DashboardApiController extends Controller
             'labels' => $months,
             'datasets' => [
                 [
-                    'label' => 'Pendapatan',
-                    'data' => [15000000, 18000000, 22000000, 25000000, 28000000, 32000000],
-                    'backgroundColor' => '#8B5CF6'
+                    'label' => 'Pendapatan (Juta Rupiah)',
+                    'data' => [15, 18, 22, 25, 28, 32],
+                    'backgroundColor' => [
+                        '#8B5CF6', '#A855F7', '#C084FC', 
+                        '#D8B4FE', '#E9D5FF', '#F3E8FF'
+                    ],
+                    'borderColor' => '#8B5CF6',
+                    'borderWidth' => 1
                 ]
             ]
         ];
@@ -226,7 +261,11 @@ class DashboardApiController extends Controller
             'datasets' => [
                 [
                     'data' => [30, 25, 20, 15, 10],
-                    'backgroundColor' => ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+                    'backgroundColor' => [
+                        '#3B82F6', '#10B981', '#F59E0B', 
+                        '#EF4444', '#8B5CF6'
+                    ],
+                    'borderWidth' => 0
                 ]
             ]
         ];
@@ -245,7 +284,8 @@ class DashboardApiController extends Controller
                     'data' => [2100, 2250, 2400, 2600, 2800, 3000],
                     'borderColor' => '#10B981',
                     'backgroundColor' => 'rgba(16, 185, 129, 0.2)',
-                    'fill' => true
+                    'fill' => true,
+                    'tension' => 0.4
                 ]
             ]
         ];
@@ -277,12 +317,16 @@ class DashboardApiController extends Controller
     public function villageRanking()
     {
         $data = [
-            'labels' => ['Desa A', 'Desa B', 'Desa C', 'Desa D', 'Desa E'],
+            'labels' => ['Desa Sukamaju', 'Desa Makmur', 'Desa Sejahtera', 'Desa Merdeka', 'Desa Harmoni'],
             'datasets' => [
                 [
-                    'label' => 'Skor',
+                    'label' => 'Skor Pembangunan',
                     'data' => [85, 78, 72, 68, 65],
-                    'backgroundColor' => '#8B5CF6'
+                    'backgroundColor' => [
+                        '#10B981', '#3B82F6', '#F59E0B', 
+                        '#EF4444', '#8B5CF6'
+                    ],
+                    'borderWidth' => 0
                 ]
             ]
         ];

@@ -5,30 +5,30 @@
 @section('page-description', 'Selamat datang kembali, ' . (auth()->user()->name ?? 'Admin') . '!')
 
 @section('content')
-<div class="p-6" x-data="dashboardData()" x-init="initDashboard()">
+<div class="p-6 bg-gray-50 dark:bg-gray-900 min-h-full" x-data="dashboardData()" x-init="initDashboard()">
     <!-- Loading Overlay -->
     <div x-show="isLoading" 
-         class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-40"
+         class="fixed inset-0 bg-white dark:bg-gray-900 bg-opacity-75 flex items-center justify-center z-40"
          x-cloak>
         <div class="text-center">
             <div class="loading-spinner w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p class="text-gray-600">Memuat data dashboard...</p>
+            <p class="text-gray-600 dark:text-gray-300">Memuat data dashboard...</p>
         </div>
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-8">
         <template x-for="(card, index) in dashboardCards" :key="index">
-            <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 fade-in">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 fade-in">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-gray-50 rounded-lg">
+                        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                             <i :data-lucide="card.icon" :class="card.iconColor" class="w-6 h-6"></i>
                         </div>
                         <span :class="{
-                                'text-green-600 bg-green-50': card.changeType === 'positive',
-                                'text-gray-600 bg-gray-50': card.changeType === 'stable',
-                                'text-red-600 bg-red-50': card.changeType === 'negative'
+                                'text-green-600 bg-green-50 dark:bg-green-900 dark:text-green-400': card.changeType === 'positive',
+                                'text-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-gray-400': card.changeType === 'stable',
+                                'text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-400': card.changeType === 'negative'
                               }"
                               class="text-xs font-semibold px-2 py-1 rounded-full"
                               x-text="card.change">
@@ -36,17 +36,17 @@
                     </div>
 
                     <div>
-                        <h3 class="text-sm font-medium text-gray-600 mb-2" x-text="card.title"></h3>
-                        <p class="text-2xl font-bold text-gray-800 mb-1" x-text="card.value"></p>
-                        <p class="text-xs text-gray-500" x-text="card.description"></p>
+                        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2" x-text="card.title"></h3>
+                        <p class="text-2xl font-bold text-gray-800 dark:text-white mb-1" x-text="card.value"></p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400" x-text="card.description"></p>
                     </div>
 
                     <!-- Sub Cards -->
                     <div x-show="card.subCards" class="mt-4 space-y-2">
                         <template x-for="subCard in (card.subCards || [])" :key="subCard.label">
-                            <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded-lg">
-                                <span class="text-gray-600" x-text="subCard.label"></span>
-                                <span class="font-semibold text-gray-800" x-text="subCard.value"></span>
+                            <div class="flex justify-between items-center text-xs bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+                                <span class="text-gray-600 dark:text-gray-400" x-text="subCard.label"></span>
+                                <span class="font-semibold text-gray-800 dark:text-white" x-text="subCard.value"></span>
                             </div>
                         </template>
                     </div>
@@ -58,13 +58,13 @@
     <!-- Charts Section Row 1 -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <!-- Monthly Statistics -->
-        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800">Statistik Bulanan</h3>
-                    <p class="text-sm text-gray-500">Tren data bulanan komprehensif</p>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Statistik Bulanan</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Tren data bulanan komprehensif</p>
                 </div>
-                <select class="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <select class="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
                     <option>30 hari terakhir</option>
                     <option>7 hari terakhir</option>
                     <option>3 bulan terakhir</option>
@@ -76,11 +76,11 @@
         </div>
 
         <!-- Gender Distribution -->
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800">Distribusi Gender</h3>
-                    <p class="text-sm text-gray-500">Perbandingan jumlah penduduk</p>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Distribusi Gender</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Perbandingan jumlah penduduk</p>
                 </div>
             </div>
             <div class="flex flex-col items-center">
@@ -88,26 +88,26 @@
                     <canvas id="genderChart" width="160" height="160"></canvas>
                     <div class="absolute inset-0 flex items-center justify-center">
                         <div class="text-center">
-                            <p class="text-2xl font-bold text-gray-800" x-text="genderData.total"></p>
-                            <p class="text-xs text-gray-500">Total</p>
+                            <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="genderData.total"></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Total</p>
                         </div>
                     </div>
                 </div>
                 
                 <div class="w-full space-y-3">
-                    <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
                         <div class="flex items-center">
                             <div class="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                            <span class="text-sm font-medium text-gray-700">Laki-laki</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Laki-laki</span>
                         </div>
-                        <span class="text-lg font-bold text-blue-600" x-text="genderData.male"></span>
+                        <span class="text-lg font-bold text-blue-600 dark:text-blue-400" x-text="genderData.male"></span>
                     </div>
-                    <div class="flex items-center justify-between p-3 bg-pink-50 rounded-lg">
+                    <div class="flex items-center justify-between p-3 bg-pink-50 dark:bg-pink-900 rounded-lg">
                         <div class="flex items-center">
                             <div class="w-3 h-3 bg-pink-500 rounded-full mr-3"></div>
-                            <span class="text-sm font-medium text-gray-700">Perempuan</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Perempuan</span>
                         </div>
-                        <span class="text-lg font-bold text-pink-600" x-text="genderData.female"></span>
+                        <span class="text-lg font-bold text-pink-600 dark:text-pink-400" x-text="genderData.female"></span>
                     </div>
                 </div>
             </div>
@@ -117,11 +117,11 @@
     <!-- Charts Section Row 2 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Revenue Chart -->
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800">Pendapatan Bulanan</h3>
-                    <p class="text-sm text-gray-500">Grafik batang pendapatan desa</p>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Pendapatan Bulanan</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Grafik batang pendapatan desa</p>
                 </div>
             </div>
             <div class="chart-container">
@@ -130,11 +130,11 @@
         </div>
 
         <!-- Category Chart -->
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800">Kategori UMKM</h3>
-                    <p class="text-sm text-gray-500">Distribusi jenis usaha</p>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Kategori UMKM</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Distribusi jenis usaha</p>
                 </div>
             </div>
             <div class="chart-container">
@@ -144,20 +144,20 @@
     </div>
 
     <!-- Activity Feed -->
-    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h3 class="text-lg font-semibold text-gray-800">Aktivitas Terbaru</h3>
-                <p class="text-sm text-gray-500">Log aktivitas sistem terkini</p>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Aktivitas Terbaru</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Log aktivitas sistem terkini</p>
             </div>
         </div>
         <div class="space-y-4">
             <template x-for="(activity, index) in activities" :key="index">
-                <div class="flex items-center space-x-4 p-4 rounded-lg hover:bg-gray-50 transition-colors fade-in">
+                <div class="flex items-center space-x-4 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors fade-in">
                     <div class="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0"></div>
                     <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-800" x-text="activity.action"></p>
-                        <p class="text-xs text-gray-500" x-text="activity.time"></p>
+                        <p class="text-sm font-medium text-gray-800 dark:text-white" x-text="activity.action"></p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400" x-text="activity.time"></p>
                     </div>
                 </div>
             </template>
@@ -326,7 +326,11 @@ function dashboardData() {
                     changeType: 'positive',
                     icon: 'store',
                     iconColor: 'text-purple-600',
-                    description: 'Usaha terdaftar'
+                    description: 'Usaha terdaftar',
+                    subCards: [
+                        { label: 'Kuliner', value: '18' },
+                        { label: 'Kerajinan', value: '26' }
+                    ]
                 },
                 {
                     title: 'Saldo Kas',
@@ -348,7 +352,11 @@ function dashboardData() {
                     changeType: 'stable',
                     icon: 'calendar',
                     iconColor: 'text-orange-600',
-                    description: 'Program berjalan'
+                    description: 'Program berjalan',
+                    subCards: [
+                        { label: 'Pembangunan', value: '8' },
+                        { label: 'Sosial', value: '5' }
+                    ]
                 },
                 {
                     title: 'Berita',
@@ -357,7 +365,50 @@ function dashboardData() {
                     changeType: 'positive',
                     icon: 'newspaper',
                     iconColor: 'text-indigo-600',
-                    description: 'Berita terpublikasi'
+                    description: 'Berita terpublikasi',
+                    subCards: [
+                        { label: 'Bulan ini', value: '12' },
+                        { label: 'Minggu ini', value: '4' }
+                    ]
+                },
+                {
+                    title: 'Wisata',
+                    value: '8',
+                    change: '+12.5%',
+                    changeType: 'positive',
+                    icon: 'camera',
+                    iconColor: 'text-pink-600',
+                    description: 'Destinasi wisata',
+                    subCards: [
+                        { label: 'Alam', value: '5' },
+                        { label: 'Budaya', value: '3' }
+                    ]
+                },
+                {
+                    title: 'Dokumen',
+                    value: '156',
+                    change: '+3.2%',
+                    changeType: 'positive',
+                    icon: 'file-text',
+                    iconColor: 'text-cyan-600',
+                    description: 'Dokumen tersimpan',
+                    subCards: [
+                        { label: 'Surat', value: '89' },
+                        { label: 'Laporan', value: '67' }
+                    ]
+                },
+                {
+                    title: 'Pesan',
+                    value: '24',
+                    change: '+15.2%',
+                    changeType: 'positive',
+                    icon: 'message-circle',
+                    iconColor: 'text-yellow-600',
+                    description: 'Pesan masuk',
+                    subCards: [
+                        { label: 'Belum dibaca', value: '8' },
+                        { label: 'Sudah dibaca', value: '16' }
+                    ]
                 }
             ];
         },
@@ -368,7 +419,10 @@ function dashboardData() {
                 { action: 'Saldo kas diperbarui', time: '10 menit yang lalu' },
                 { action: 'Laporan bulanan diperbarui', time: '15 menit yang lalu' },
                 { action: 'UMKM baru terdaftar', time: '1 jam yang lalu' },
-                { action: 'Data penduduk diperbarui', time: '2 jam yang lalu' }
+                { action: 'Program pembangunan dimulai', time: '2 jam yang lalu' },
+                { action: 'Berita baru dipublikasi', time: '3 jam yang lalu' },
+                { action: 'Dokumen surat masuk', time: '4 jam yang lalu' },
+                { action: 'Pesan dari warga diterima', time: '5 jam yang lalu' }
             ];
         },
         
@@ -398,11 +452,34 @@ function dashboardData() {
                 return;
             }
             
+            // Apply chart theme
+            this.applyChartTheme();
+            
             // Setup charts one by one with error handling
             this.safeSetupChart('gender', () => this.setupGenderChart());
             this.safeSetupChart('monthly', () => this.setupMonthlyChart());
             this.safeSetupChart('revenue', () => this.setupRevenueChart());
             this.safeSetupChart('category', () => this.setupCategoryChart());
+        },
+        
+        // Apply chart theme
+        applyChartTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const theme = this.chartTheme;
+            
+            Chart.defaults.color = isDark ? '#E5E7EB' : '#374151';
+            Chart.defaults.borderColor = isDark ? '#374151' : '#E5E7EB';
+            Chart.defaults.backgroundColor = isDark ? '#1F2937' : '#FFFFFF';
+            
+            if (theme === 'dark') {
+                Chart.defaults.color = '#E5E7EB';
+                Chart.defaults.borderColor = '#374151';
+            } else if (theme === 'colorful') {
+                Chart.defaults.color = isDark ? '#F3F4F6' : '#111827';
+            } else if (theme === 'minimal') {
+                Chart.defaults.color = isDark ? '#D1D5DB' : '#6B7280';
+                Chart.defaults.borderColor = isDark ? '#4B5563' : '#D1D5DB';
+            }
         },
         
         // Safe chart setup wrapper
@@ -411,6 +488,7 @@ function dashboardData() {
                 setupFunction();
             } catch (error) {
                 console.error(`❌ Error setting up ${name} chart:`, error);
+                this.createFallbackChart(`${name}Chart`, name === 'gender' || name === 'category' ? 'doughnut' : name === 'revenue' ? 'bar' : 'line');
             }
         },
         
@@ -469,7 +547,17 @@ function dashboardData() {
                                 legend: { position: 'top' }
                             },
                             scales: {
-                                y: { beginAtZero: true }
+                                y: { 
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: document.documentElement.classList.contains('dark') ? '#374151' : '#E5E7EB'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        color: document.documentElement.classList.contains('dark') ? '#374151' : '#E5E7EB'
+                                    }
+                                }
                             }
                         }
                     });
@@ -502,7 +590,17 @@ function dashboardData() {
                                 legend: { display: false }
                             },
                             scales: {
-                                y: { beginAtZero: true }
+                                y: { 
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: document.documentElement.classList.contains('dark') ? '#374151' : '#E5E7EB'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        color: document.documentElement.classList.contains('dark') ? '#374151' : '#E5E7EB'
+                                    }
+                                }
                             }
                         }
                     });
@@ -532,7 +630,12 @@ function dashboardData() {
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
-                                legend: { position: 'bottom' }
+                                legend: { 
+                                    position: 'bottom',
+                                    labels: {
+                                        color: document.documentElement.classList.contains('dark') ? '#E5E7EB' : '#374151'
+                                    }
+                                }
                             }
                         }
                     });
@@ -589,6 +692,11 @@ function dashboardData() {
                 this.updateChartThemes(event.detail);
             });
             
+            // Listen for dark mode changes
+            window.addEventListener('darkModeChanged', (event) => {
+                this.updateChartsForDarkMode(event.detail);
+            });
+            
             // Handle page visibility change
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && this.isInitialized) {
@@ -617,11 +725,14 @@ function dashboardData() {
         // Update chart themes
         updateChartThemes(theme) {
             console.log('🎨 Updating chart theme to:', theme);
-            Object.values(this.chartInstances).forEach(chart => {
-                if (chart) {
-                    chart.update();
-                }
-            });
+            this.chartTheme = theme;
+            this.setupCharts();
+        },
+        
+        // Update charts for dark mode
+        updateChartsForDarkMode(isDark) {
+            console.log('🌙 Updating charts for dark mode:', isDark);
+            this.setupCharts();
         },
         
         // Initialize icons
@@ -647,3 +758,5 @@ function dashboardData() {
 </script>
 @endpush
 @endsection
+
+
