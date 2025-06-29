@@ -18,7 +18,7 @@
          x-transition:leave-start="opacity-100 scale-100"
          x-transition:leave-end="opacity-0 scale-95"
          @click.away="closeSettings()"
-         class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-5xl w-full p-6 max-h-[90vh] overflow-y-auto">
+         class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
         
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
@@ -79,7 +79,7 @@
                             <template x-for="color in colorOptions" :key="color.value">
                                 <button @click="updateActiveColor(color.value)"
                                         :style="'background-color: ' + color.value"
-                                        :class="{ 'ring-4 ring-offset-2 ring-gray-300 dark:ring-gray-600': activeColor === color.value }"
+                                        :class="{ 'ring-4 ring-offset-2 ring-gray-300 dark:ring-gray-600 scale-110': activeColor === color.value }"
                                         class="w-12 h-12 rounded-xl shadow-sm hover:scale-110 transition-all"
                                         :title="color.name">
                                 </button>
@@ -93,8 +93,23 @@
                             <template x-for="color in hoverColorOptions" :key="color.value">
                                 <button @click="updateHoverColor(color.value)"
                                         :style="'background: ' + color.preview"
-                                        :class="{ 'ring-4 ring-offset-2 ring-gray-300 dark:ring-gray-600': hoverColor === color.value }"
+                                        :class="{ 'ring-4 ring-offset-2 ring-gray-300 dark:ring-gray-600 scale-110': hoverColor === color.value }"
                                         class="w-12 h-12 rounded-xl shadow-sm hover:scale-110 transition-all border border-gray-200 dark:border-gray-600"
+                                        :title="color.name">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Icon Color -->
+                    <div class="mb-4" x-show="showIconColors">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Warna Ikon</label>
+                        <div class="grid grid-cols-8 gap-3">
+                            <template x-for="color in iconColorOptions" :key="color.value">
+                                <button @click="updateIconColor(color.value)"
+                                        :style="'background-color: ' + color.value"
+                                        :class="{ 'ring-4 ring-offset-2 ring-gray-300 dark:ring-gray-600 scale-110': iconColor === color.value }"
+                                        class="w-12 h-12 rounded-xl shadow-sm hover:scale-110 transition-all"
                                         :title="color.name">
                                 </button>
                             </template>
@@ -106,7 +121,7 @@
                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Preview:</p>
                         <div class="space-y-2">
                             <div class="flex items-center space-x-3 p-3 rounded-lg text-white font-medium"
-                                 :style="'background-color: ' + activeColor">
+                                 :style="'background-color: ' + activeColor + '; box-shadow: 0 2px 8px ' + activeColor + '30;'">
                                 <div class="w-4 h-4 rounded-full bg-white bg-opacity-30"></div>
                                 <span class="text-sm">Menu Aktif</span>
                             </div>
@@ -137,6 +152,20 @@
                                     :class="{ 'bg-purple-600': showIcons, 'bg-gray-300 dark:bg-gray-600': !showIcons }"
                                     class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors">
                                 <span :class="{ 'translate-x-6': showIcons, 'translate-x-1': !showIcons }"
+                                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"></span>
+                            </button>
+                        </div>
+
+                        <!-- Show Icon Colors Toggle -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                            <div>
+                                <p class="font-medium text-gray-800 dark:text-white">Warna Ikon</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Menggunakan warna khusus untuk ikon</p>
+                            </div>
+                            <button @click="toggleShowIconColors()"
+                                    :class="{ 'bg-purple-600': showIconColors, 'bg-gray-300 dark:bg-gray-600': !showIconColors }"
+                                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors">
+                                <span :class="{ 'translate-x-6': showIconColors, 'translate-x-1': !showIconColors }"
                                       class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"></span>
                             </button>
                         </div>
@@ -333,10 +362,12 @@ function settingsModalData() {
         // Theme settings
         isDarkMode: localStorage.getItem('darkMode') === 'true',
         activeColor: localStorage.getItem('activeColor') || '#8B5CF6',
-        hoverColor: localStorage.getItem('hoverColor') || 'rgba(139, 92, 246, 0.1)',
+        hoverColor: localStorage.getItem('hoverColor') || 'rgba(139, 92, 246, 0.08)',
         chartTheme: localStorage.getItem('chartTheme') || 'default',
         cardStyle: localStorage.getItem('cardStyle') || 'default',
         showIcons: localStorage.getItem('showIcons') !== 'false',
+        showIconColors: localStorage.getItem('showIconColors') === 'true',
+        iconColor: localStorage.getItem('iconColor') || '#FFFFFF',
         
         // Color options
         colorOptions: [
@@ -351,14 +382,25 @@ function settingsModalData() {
         ],
         
         hoverColorOptions: [
-            { name: 'Purple Light', value: 'rgba(139, 92, 246, 0.1)', preview: 'rgba(139, 92, 246, 0.1)' },
-            { name: 'Blue Light', value: 'rgba(59, 130, 246, 0.1)', preview: 'rgba(59, 130, 246, 0.1)' },
-            { name: 'Green Light', value: 'rgba(16, 185, 129, 0.1)', preview: 'rgba(16, 185, 129, 0.1)' },
-            { name: 'Red Light', value: 'rgba(239, 68, 68, 0.1)', preview: 'rgba(239, 68, 68, 0.1)' },
-            { name: 'Yellow Light', value: 'rgba(245, 158, 11, 0.1)', preview: 'rgba(245, 158, 11, 0.1)' },
-            { name: 'Pink Light', value: 'rgba(236, 72, 153, 0.1)', preview: 'rgba(236, 72, 153, 0.1)' },
-            { name: 'Indigo Light', value: 'rgba(99, 102, 241, 0.1)', preview: 'rgba(99, 102, 241, 0.1)' },
-            { name: 'Teal Light', value: 'rgba(20, 184, 166, 0.1)', preview: 'rgba(20, 184, 166, 0.1)' }
+            { name: 'Purple Light', value: 'rgba(139, 92, 246, 0.08)', preview: 'rgba(139, 92, 246, 0.08)' },
+            { name: 'Blue Light', value: 'rgba(59, 130, 246, 0.08)', preview: 'rgba(59, 130, 246, 0.08)' },
+            { name: 'Green Light', value: 'rgba(16, 185, 129, 0.08)', preview: 'rgba(16, 185, 129, 0.08)' },
+            { name: 'Red Light', value: 'rgba(239, 68, 68, 0.08)', preview: 'rgba(239, 68, 68, 0.08)' },
+            { name: 'Yellow Light', value: 'rgba(245, 158, 11, 0.08)', preview: 'rgba(245, 158, 11, 0.08)' },
+            { name: 'Pink Light', value: 'rgba(236, 72, 153, 0.08)', preview: 'rgba(236, 72, 153, 0.08)' },
+            { name: 'Indigo Light', value: 'rgba(99, 102, 241, 0.08)', preview: 'rgba(99, 102, 241, 0.08)' },
+            { name: 'Teal Light', value: 'rgba(20, 184, 166, 0.08)', preview: 'rgba(20, 184, 166, 0.08)' }
+        ],
+        
+        iconColorOptions: [
+            { name: 'White', value: '#FFFFFF' },
+            { name: 'Yellow', value: '#FDE047' },
+            { name: 'Orange', value: '#FB923C' },
+            { name: 'Red', value: '#F87171' },
+            { name: 'Pink', value: '#F472B6' },
+            { name: 'Purple', value: '#C084FC' },
+            { name: 'Blue', value: '#60A5FA' },
+            { name: 'Green', value: '#4ADE80' }
         ],
         
         chartThemes: [
@@ -432,6 +474,16 @@ function settingsModalData() {
             this.showNotification('Warna hover berhasil diubah', 'success');
         },
         
+        updateIconColor(color) {
+            this.iconColor = color;
+            localStorage.setItem('iconColor', color);
+            
+            // Dispatch event to update navigation
+            window.dispatchEvent(new CustomEvent('iconColorChanged', { detail: color }));
+            
+            this.showNotification('Warna ikon berhasil diubah', 'success');
+        },
+        
         updateChartTheme(theme) {
             this.chartTheme = theme;
             localStorage.setItem('chartTheme', theme);
@@ -462,6 +514,16 @@ function settingsModalData() {
             this.showNotification(this.showIcons ? 'Ikon ditampilkan' : 'Ikon disembunyikan', 'success');
         },
         
+        toggleShowIconColors() {
+            this.showIconColors = !this.showIconColors;
+            localStorage.setItem('showIconColors', this.showIconColors);
+            
+            // Dispatch event to update navigation
+            window.dispatchEvent(new CustomEvent('showIconColorsChanged', { detail: this.showIconColors }));
+            
+            this.showNotification(this.showIconColors ? 'Warna ikon diaktifkan' : 'Warna ikon dinonaktifkan', 'success');
+        },
+        
         // Data management methods
         exportData() {
             this.showNotification('Fitur export data akan segera tersedia', 'info');
@@ -481,20 +543,22 @@ function settingsModalData() {
         resetSettings() {
             if (confirm('Apakah Anda yakin ingin mereset semua pengaturan ke default?')) {
                 // Reset all settings
-                localStorage.removeItem('darkMode');
-                localStorage.removeItem('activeColor');
-                localStorage.removeItem('hoverColor');
-                localStorage.removeItem('chartTheme');
-                localStorage.removeItem('cardStyle');
-                localStorage.removeItem('showIcons');
+                const keysToRemove = [
+                    'darkMode', 'activeColor', 'hoverColor', 'chartTheme', 
+                    'cardStyle', 'showIcons', 'showIconColors', 'iconColor'
+                ];
+                
+                keysToRemove.forEach(key => localStorage.removeItem(key));
                 
                 // Reset component state
                 this.isDarkMode = false;
                 this.activeColor = '#8B5CF6';
-                this.hoverColor = 'rgba(139, 92, 246, 0.1)';
+                this.hoverColor = 'rgba(139, 92, 246, 0.08)';
                 this.chartTheme = 'default';
                 this.cardStyle = 'default';
                 this.showIcons = true;
+                this.showIconColors = false;
+                this.iconColor = '#FFFFFF';
                 
                 // Apply changes
                 document.documentElement.classList.remove('dark');
@@ -502,12 +566,20 @@ function settingsModalData() {
                 document.documentElement.style.setProperty('--color-hover', this.hoverColor);
                 
                 // Dispatch events
-                window.dispatchEvent(new CustomEvent('darkModeChanged', { detail: false }));
-                window.dispatchEvent(new CustomEvent('activeColorChanged', { detail: this.activeColor }));
-                window.dispatchEvent(new CustomEvent('hoverColorChanged', { detail: this.hoverColor }));
-                window.dispatchEvent(new CustomEvent('chartThemeChanged', { detail: this.chartTheme }));
-                window.dispatchEvent(new CustomEvent('cardStyleChanged', { detail: this.cardStyle }));
-                window.dispatchEvent(new CustomEvent('showIconsChanged', { detail: this.showIcons }));
+                const events = [
+                    ['darkModeChanged', false],
+                    ['activeColorChanged', this.activeColor],
+                    ['hoverColorChanged', this.hoverColor],
+                    ['chartThemeChanged', this.chartTheme],
+                    ['cardStyleChanged', this.cardStyle],
+                    ['showIconsChanged', this.showIcons],
+                    ['showIconColorsChanged', this.showIconColors],
+                    ['iconColorChanged', this.iconColor]
+                ];
+                
+                events.forEach(([event, detail]) => {
+                    window.dispatchEvent(new CustomEvent(event, { detail }));
+                });
                 
                 this.showNotification('Pengaturan berhasil direset', 'success');
             }

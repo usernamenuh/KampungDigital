@@ -8,10 +8,40 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class DashboardApiController extends Controller
 {
+    /**
+     * Test API connection
+     */
+    public function test(): JsonResponse
+    {
+        try {
+            // Test database connection
+            DB::connection()->getPdo();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'API connection successful',
+                'timestamp' => now()->toISOString(),
+                'server_time' => now()->format('H:i:s'),
+                'status' => 'online',
+                'database' => 'connected'
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('API test failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'API connection failed',
+                'error' => $e->getMessage(),
+                'status' => 'offline'
+            ], 500);
+        }
+    }
+
     /**
      * Get dashboard statistics
      */
@@ -21,22 +51,29 @@ class DashboardApiController extends Controller
             $stats = Cache::remember('dashboard_stats', 300, function () {
                 $totalDesa = Desa::count();
                 $desaAktif = Desa::where('status', 'aktif')->count();
-                $desaTidakAktif = $totalDesa - $desaAktif;
+                $desaTidakAktif = Desa::where('status', 'tidak_aktif')->count();
+                $totalPenduduk = Desa::sum('jumlah_penduduk') ?: 2437;
                 
-                // Mock data for other statistics
-                $totalPenduduk = 2437;
-                $lakiLaki = 1256;
-                $perempuan = 1181;
-                $aktivitasHariIni = rand(8, 15);
+                // Calculate gender distribution (mock data based on total population)
+                $lakiLaki = (int) ($totalPenduduk * 0.515); // 51.5% male
+                $perempuan = $totalPenduduk - $lakiLaki;
                 
                 return [
-                    'totalDesa' => $totalDesa,
-                    'desaAktif' => $desaAktif,
+                    'totalDesa' => max($totalDesa, 13),
+                    'desaAktif' => max($desaAktif, 13),
                     'desaTidakAktif' => $desaTidakAktif,
                     'totalPenduduk' => $totalPenduduk,
                     'lakiLaki' => $lakiLaki,
                     'perempuan' => $perempuan,
-                    'aktivitasHariIni' => $aktivitasHariIni
+                    'aktivitasHariIni' => rand(8, 15),
+                    'totalUmkm' => 44,
+                    'umkmAktif' => 41,
+                    'saldoKas' => 125750000,
+                    'programAktif' => 13,
+                    'beritaTerbaru' => 28,
+                    'wisataDestinasi' => 8,
+                    'dokumenTersimpan' => 156,
+                    'pesanMasuk' => 24
                 ];
             });
 
@@ -47,6 +84,7 @@ class DashboardApiController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Error fetching dashboard stats: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch dashboard stats',
@@ -66,9 +104,12 @@ class DashboardApiController extends Controller
                     'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
                     'datasets' => [
                         [
-                            'label' => 'Pendapatan',
+                            'label' => 'Pendapatan (Juta)',
                             'data' => [15, 18, 22, 25, 28, 32],
-                            'backgroundColor' => '#8B5CF6'
+                            'backgroundColor' => '#8B5CF6',
+                            'borderColor' => '#7C3AED',
+                            'borderWidth' => 1,
+                            'borderRadius' => 8
                         ]
                     ]
                 ];
@@ -80,6 +121,7 @@ class DashboardApiController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Error fetching monthly data: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch monthly data',
@@ -95,10 +137,14 @@ class DashboardApiController extends Controller
     {
         try {
             $genderData = Cache::remember('gender_data', 300, function () {
+                $totalPenduduk = Desa::sum('jumlah_penduduk') ?: 2437;
+                $lakiLaki = (int) ($totalPenduduk * 0.515);
+                $perempuan = $totalPenduduk - $lakiLaki;
+                
                 return [
-                    'male' => 1256,
-                    'female' => 1181,
-                    'total' => 2437
+                    'male' => $lakiLaki,
+                    'female' => $perempuan,
+                    'total' => $totalPenduduk
                 ];
             });
 
@@ -108,6 +154,7 @@ class DashboardApiController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Error fetching gender data: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch gender data',
@@ -127,10 +174,13 @@ class DashboardApiController extends Controller
                     'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
                     'datasets' => [
                         [
-                            'label' => 'Revenue Trend',
+                            'label' => 'Tren Pendapatan',
                             'data' => [50, 45, 60, 55, 70, 65],
                             'borderColor' => '#8B5CF6',
-                            'backgroundColor' => 'rgba(139, 92, 246, 0.1)'
+                            'backgroundColor' => 'rgba(139, 92, 246, 0.1)',
+                            'borderWidth' => 3,
+                            'fill' => true,
+                            'tension' => 0.4
                         ]
                     ]
                 ];
@@ -142,6 +192,7 @@ class DashboardApiController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Error fetching revenue data: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch revenue data',
@@ -159,8 +210,15 @@ class DashboardApiController extends Controller
             $categoryData = Cache::remember('category_data', 300, function () {
                 return [
                     'labels' => ['Kuliner', 'Kerajinan', 'Pertanian', 'Jasa', 'Lainnya'],
-                    'data' => [35, 25, 20, 15, 5],
-                    'backgroundColor' => ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444']
+                    'datasets' => [
+                        [
+                            'data' => [35, 25, 20, 15, 5],
+                            'backgroundColor' => [
+                                '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'
+                            ],
+                            'borderWidth' => 0
+                        ]
+                    ]
                 ];
             });
 
@@ -170,6 +228,7 @@ class DashboardApiController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Error fetching category data: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch category data',
@@ -192,8 +251,8 @@ class DashboardApiController extends Controller
                         'description' => 'Desa Sukamaju berhasil didaftarkan ke sistem',
                         'type' => 'success',
                         'icon' => 'plus-circle',
-                        'timestamp' => now()->subMinutes(2)->toISOString(),
-                        'user' => 'Admin'
+                        'time' => '2 menit yang lalu',
+                        'timestamp' => now()->subMinutes(2)->toISOString()
                     ],
                     [
                         'id' => 2,
@@ -201,8 +260,8 @@ class DashboardApiController extends Controller
                         'description' => 'Update data penduduk Desa Makmur',
                         'type' => 'info',
                         'icon' => 'users',
-                        'timestamp' => now()->subMinutes(5)->toISOString(),
-                        'user' => 'Admin'
+                        'time' => '5 menit yang lalu',
+                        'timestamp' => now()->subMinutes(5)->toISOString()
                     ],
                     [
                         'id' => 3,
@@ -210,8 +269,8 @@ class DashboardApiController extends Controller
                         'description' => 'Backup otomatis database telah selesai',
                         'type' => 'success',
                         'icon' => 'database',
-                        'timestamp' => now()->subMinutes(10)->toISOString(),
-                        'user' => 'System'
+                        'time' => '10 menit yang lalu',
+                        'timestamp' => now()->subMinutes(10)->toISOString()
                     ],
                     [
                         'id' => 4,
@@ -219,8 +278,8 @@ class DashboardApiController extends Controller
                         'description' => 'Penggunaan storage mencapai 80%',
                         'type' => 'warning',
                         'icon' => 'alert-triangle',
-                        'timestamp' => now()->subMinutes(15)->toISOString(),
-                        'user' => 'System'
+                        'time' => '15 menit yang lalu',
+                        'timestamp' => now()->subMinutes(15)->toISOString()
                     ]
                 ];
             });
@@ -231,37 +290,11 @@ class DashboardApiController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Error fetching activities: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch activities',
                 'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Test connection endpoint
-     */
-    public function testConnection(): JsonResponse
-    {
-        try {
-            // Test database connection
-            DB::connection()->getPdo();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Connection successful',
-                'timestamp' => now()->toISOString(),
-                'server_time' => now()->format('H:i:s'),
-                'status' => 'online'
-            ]);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Connection failed',
-                'error' => $e->getMessage(),
-                'status' => 'offline'
             ], 500);
         }
     }
@@ -272,12 +305,18 @@ class DashboardApiController extends Controller
     public function clearCache(): JsonResponse
     {
         try {
-            Cache::forget('dashboard_stats');
-            Cache::forget('monthly_data');
-            Cache::forget('gender_data');
-            Cache::forget('revenue_data');
-            Cache::forget('category_data');
-            Cache::forget('recent_activities');
+            $cacheKeys = [
+                'dashboard_stats',
+                'monthly_data',
+                'gender_data',
+                'revenue_data',
+                'category_data',
+                'recent_activities'
+            ];
+
+            foreach ($cacheKeys as $key) {
+                Cache::forget($key);
+            }
 
             return response()->json([
                 'success' => true,
@@ -285,196 +324,12 @@ class DashboardApiController extends Controller
             ]);
 
         } catch (Exception $e) {
+            Log::error('Error clearing cache: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to clear cache',
                 'error' => $e->getMessage()
             ], 500);
         }
-    }
-
-    /**
-     * Get system status
-     */
-    public function getSystemStatus(): JsonResponse
-    {
-        try {
-            $status = [
-                'database' => $this->checkDatabaseConnection(),
-                'cache' => $this->checkCacheConnection(),
-                'storage' => $this->checkStorageSpace(),
-                'memory' => $this->getMemoryUsage(),
-                'uptime' => $this->getSystemUptime()
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $status,
-                'overall_status' => $this->getOverallStatus($status)
-            ]);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get system status',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Check database connection
-     */
-    private function checkDatabaseConnection(): array
-    {
-        try {
-            $start = microtime(true);
-            DB::connection()->getPdo();
-            $responseTime = round((microtime(true) - $start) * 1000, 2);
-
-            return [
-                'status' => 'online',
-                'response_time' => $responseTime . 'ms',
-                'message' => 'Database connection successful'
-            ];
-        } catch (Exception $e) {
-            return [
-                'status' => 'offline',
-                'response_time' => null,
-                'message' => 'Database connection failed: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Check cache connection
-     */
-    private function checkCacheConnection(): array
-    {
-        try {
-            $testKey = 'cache_test_' . time();
-            Cache::put($testKey, 'test', 10);
-            $value = Cache::get($testKey);
-            Cache::forget($testKey);
-
-            return [
-                'status' => $value === 'test' ? 'online' : 'offline',
-                'message' => $value === 'test' ? 'Cache working properly' : 'Cache not working'
-            ];
-        } catch (Exception $e) {
-            return [
-                'status' => 'offline',
-                'message' => 'Cache connection failed: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Check storage space
-     */
-    private function checkStorageSpace(): array
-    {
-        try {
-            $bytes = disk_free_space(storage_path());
-            $totalBytes = disk_total_space(storage_path());
-            $usedBytes = $totalBytes - $bytes;
-            $usedPercentage = round(($usedBytes / $totalBytes) * 100, 2);
-
-            return [
-                'free_space' => $this->formatBytes($bytes),
-                'total_space' => $this->formatBytes($totalBytes),
-                'used_space' => $this->formatBytes($usedBytes),
-                'used_percentage' => $usedPercentage,
-                'status' => $usedPercentage > 90 ? 'critical' : ($usedPercentage > 80 ? 'warning' : 'good')
-            ];
-        } catch (Exception $e) {
-            return [
-                'status' => 'error',
-                'message' => 'Unable to check storage space: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Get memory usage
-     */
-    private function getMemoryUsage(): array
-    {
-        $memoryUsage = memory_get_usage(true);
-        $memoryPeak = memory_get_peak_usage(true);
-        $memoryLimit = ini_get('memory_limit');
-
-        return [
-            'current_usage' => $this->formatBytes($memoryUsage),
-            'peak_usage' => $this->formatBytes($memoryPeak),
-            'memory_limit' => $memoryLimit,
-            'usage_percentage' => round(($memoryUsage / $this->parseBytes($memoryLimit)) * 100, 2)
-        ];
-    }
-
-    /**
-     * Get system uptime (mock)
-     */
-    private function getSystemUptime(): array
-    {
-        return [
-            'uptime' => '2 days, 14 hours, 32 minutes',
-            'started_at' => now()->subDays(2)->subHours(14)->subMinutes(32)->toISOString()
-        ];
-    }
-
-    /**
-     * Get overall system status
-     */
-    private function getOverallStatus(array $status): string
-    {
-        if ($status['database']['status'] === 'offline') {
-            return 'critical';
-        }
-
-        if (isset($status['storage']['status']) && $status['storage']['status'] === 'critical') {
-            return 'critical';
-        }
-
-        if (isset($status['storage']['status']) && $status['storage']['status'] === 'warning') {
-            return 'warning';
-        }
-
-        return 'good';
-    }
-
-    /**
-     * Format bytes to human readable format
-     */
-    private function formatBytes(int $bytes, int $precision = 2): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
-            $bytes /= 1024;
-        }
-
-        return round($bytes, $precision) . ' ' . $units[$i];
-    }
-
-    /**
-     * Parse bytes from string (like "128M")
-     */
-    private function parseBytes(string $value): int
-    {
-        $value = trim($value);
-        $last = strtolower($value[strlen($value) - 1]);
-        $value = (int) $value;
-
-        switch ($last) {
-            case 'g':
-                $value *= 1024;
-            case 'm':
-                $value *= 1024;
-            case 'k':
-                $value *= 1024;
-        }
-
-        return $value;
     }
 }

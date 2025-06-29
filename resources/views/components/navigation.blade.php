@@ -17,14 +17,14 @@
             'fixed inset-y-0 left-0 w-64 transform': isMobile,
             'translate-x-0': isMobile && isMobileMenuOpen,
             '-translate-x-full': isMobile && !isMobileMenuOpen,
-            'w-52': !isMobile
+            'w-48': !isMobile
          }"
          class="bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out flex flex-col z-50 md:relative md:translate-x-0 border-r border-gray-200 dark:border-gray-700">
          
         <!-- Header -->
         <div class="p-3 border-b border-gray-100 dark:border-gray-700">
             <div class="flex items-center space-x-2">
-                <div class="w-7 h-7 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <div class="w-6 h-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <span class="text-white font-bold text-xs">K</span>
                 </div>
                 <div>
@@ -50,17 +50,17 @@
         <nav class="flex-1 p-2 overflow-y-auto">
             <!-- Categories -->
             <template x-for="category in filteredCategories" :key="category.name">
-                <div class="mb-4">
+                <div class="mb-3">
                     <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-2" 
                         x-text="category.name"></h3>
                     
                     <ul class="space-y-1">
                         <template x-for="item in category.items" :key="item.id">
                             <li class="relative">
-                                <!-- Active Indicator with Rounded Corners -->
+                                <!-- Active Indicator with Glow Effect -->
                                 <div x-show="isActiveMenuItem(item)"
-                                     class="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-6 rounded-r-full z-10"
-                                     :style="'background-color: ' + activeColor">
+                                     class="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-5 rounded-r-full z-10 transition-all duration-300"
+                                     :style="'background-color: ' + activeColor + '; box-shadow: 0 0 8px ' + activeColor + '40, 0 0 16px ' + activeColor + '20;'">
                                 </div>
 
                                 <button @click="setActiveItem(item.id)"
@@ -68,7 +68,7 @@
                                             'text-white font-medium shadow-sm': isActiveMenuItem(item),
                                             'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white': !isActiveMenuItem(item)
                                         }"
-                                        :style="isActiveMenuItem(item) ? 'background-color: ' + activeColor : ''"
+                                        :style="isActiveMenuItem(item) ? 'background-color: ' + activeColor + '; box-shadow: 0 2px 8px ' + activeColor + '30;' : ''"
                                         class="w-full flex items-center justify-between px-3 py-2 ml-1 mr-1 rounded-lg text-left transition-all duration-200 group text-sm"
                                         @mouseenter="applyHoverEffect($event)"
                                         @mouseleave="removeHoverEffect($event)">
@@ -80,6 +80,7 @@
                                                'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200': !isActiveMenuItem(item),
                                                'text-white': isActiveMenuItem(item)
                                            }"
+                                           :style="showIconColors && isActiveMenuItem(item) ? 'color: ' + iconColor + ';' : ''"
                                            class="w-4 h-4 transition-colors"></i>
 
                                         <span class="font-medium text-xs" x-text="item.label"></span>
@@ -109,7 +110,7 @@
                         'text-white font-medium shadow-sm': activeItem === 'settings',
                         'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white': activeItem !== 'settings'
                     }"
-                    :style="activeItem === 'settings' ? 'background-color: ' + activeColor : ''"
+                    :style="activeItem === 'settings' ? 'background-color: ' + activeColor + '; box-shadow: 0 2px 8px ' + activeColor + '30;' : ''"
                     class="w-full flex items-center space-x-2 px-3 py-2 ml-1 mr-1 rounded-lg text-left transition-all duration-200 group text-sm"
                     @mouseenter="applyHoverEffect($event)"
                     @mouseleave="removeHoverEffect($event)">
@@ -120,6 +121,7 @@
                        'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200': activeItem !== 'settings',
                        'text-white': activeItem === 'settings'
                    }"
+                   :style="showIconColors && activeItem === 'settings' ? 'color: ' + iconColor + ';' : ''"
                    class="w-4 h-4 transition-colors"></i>
 
                 <span class="font-medium text-xs">Pengaturan</span>
@@ -134,8 +136,10 @@ function navigationData() {
         searchQuery: '',
         activeItem: 'dashboard',
         activeColor: localStorage.getItem('activeColor') || '#8B5CF6',
-        hoverColor: localStorage.getItem('hoverColor') || 'rgba(139, 92, 246, 0.1)',
+        hoverColor: localStorage.getItem('hoverColor') || 'rgba(139, 92, 246, 0.08)',
         showIcons: localStorage.getItem('showIcons') !== 'false',
+        showIconColors: localStorage.getItem('showIconColors') === 'true',
+        iconColor: localStorage.getItem('iconColor') || '#FFFFFF',
         
         menuCategories: [
             {
@@ -193,6 +197,14 @@ function navigationData() {
             
             window.addEventListener('showIconsChanged', (e) => {
                 this.showIcons = e.detail;
+            });
+            
+            window.addEventListener('showIconColorsChanged', (e) => {
+                this.showIconColors = e.detail;
+            });
+            
+            window.addEventListener('iconColorChanged', (e) => {
+                this.iconColor = e.detail;
             });
         },
         
