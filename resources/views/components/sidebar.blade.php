@@ -162,7 +162,7 @@ function isActiveMenuItem(item) {
         'desas': 'desa',
         'penduduk': 'penduduk',
         'lokasi': 'lokasi',
-        'rt-rw': 'rt-rw',
+        'rt-rw': 'rt-rw ',
         'umkm': 'umkm',
         'wisata': 'wisata',
         'berita': 'berita',

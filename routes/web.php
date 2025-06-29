@@ -12,16 +12,17 @@ Route::get('/', function () {
     return view('landing');
 });
 
+Route::resource('desas', DesaController::class)->middleware('role:admin');
 
-Route::prefix('desa')->name('desa.')->group(function () {
-    Route::get('/', [DesaController::class, 'index'])->name('index');
-    Route::get('/create', [DesaController::class, 'create'])->name('create');
-    Route::post('/', [DesaController::class, 'store'])->name('store');
-    Route::get('/{desa}', [DesaController::class, 'show'])->name('show');
-    Route::get('/{desa}/edit', [DesaController::class, 'edit'])->name('edit');
-    Route::put('/{desa}', [DesaController::class, 'update'])->name('update');
-    Route::delete('/{desa}', [DesaController::class, 'destroy'])->name('destroy');
-});
+// Dashboard views for each role (only for view, not for main redirect)
+Route::get('/dashboard/admin', function () { return view('dashboards.admin'); })->name('admin.dashboard');
+Route::get('/dashboard/kades', function () { return view('dashboards.kades'); })->name('kades.dashboard');
+Route::get('/dashboard/rw', function () { return view('dashboards.rw'); })->name('rw.dashboard');
+Route::get('/dashboard/rt', function () { return view('dashboards.rt'); })->name('rt.dashboard');
+Route::get('/dashboard/masyarakat', function () { return view('dashboards.masyarakat'); })->name('masyarakat.dashboard');
+
+
+
 
 // Placeholder routes for other menu items
 Route::get('/penduduk', function () { return view('penduduk.index'); })->name('penduduk.index');
@@ -49,11 +50,9 @@ Route::middleware(['auth'])->group(function () {
     })->name('dashboard');
 });
 
-Route::resource('desas', DesaController::class);
-
 // Public API routes for Indonesian territory data
 Route::prefix('api')->group(function () {
-    
+
     // Get provinces
     Route::get('/provinces', function () {
         try {
@@ -68,7 +67,7 @@ Route::prefix('api')->group(function () {
             ], 500);
         }
     });
-    
+
     // Get regencies by province code
     Route::get('/regencies/{province_code}', function ($province_code) {
         try {
@@ -85,7 +84,7 @@ Route::prefix('api')->group(function () {
             ], 500);
         }
     });
-    
+
     // Get districts by province and regency code
     Route::get('/districts/{province_code}/{regency_code}', function ($province_code, $regency_code) {
         try {
@@ -103,7 +102,7 @@ Route::prefix('api')->group(function () {
             ], 500);
         }
     });
-    
+
     // Get villages by province, regency, and district code
     Route::get('/villages/{province_code}/{regency_code}/{district_code}', function ($province_code, $regency_code, $district_code) {
         try {

@@ -13,7 +13,7 @@ class Desa extends Model
 {
     protected $table = 'desas';
    protected $fillable = [
-    'name', 'alamat', 'kode_pos',
+    'name', 'alamat', 'kode_pos', 'saldo', 'status',
     'province_code', 'regency_code', 'district_code', 'village_code', 'foto'
 ];
 

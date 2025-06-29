@@ -19,6 +19,8 @@
                 <th>Wilayah (Desa)</th>
                 <th>Alamat</th>
                 <th>Kode Pos</th>
+                <th>Saldo</th>
+                <th>Status</th>
                 <th>Aksi</th>
             </tr>
         </thead>
@@ -39,6 +41,8 @@
                 <td>{{ $desa->village->village_name ?? '-' }}</td>
                 <td>{{ $desa->alamat }}</td>
                 <td>{{ $desa->kode_pos }}</td>
+                <td>{{ $desa->saldo }}</td>
+                <td>{{ $desa->status }}</td>
                 <td>
                     <a href="{{ route('desas.edit', $desa->id) }}" class="btn btn-sm btn-warning">Edit</a>
                     <form action="{{ route('desas.destroy', $desa->id) }}" method="POST" style="display:inline;">

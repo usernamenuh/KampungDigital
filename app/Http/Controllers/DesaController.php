@@ -39,11 +39,35 @@ class DesaController extends Controller
             'district_code' => 'required|exists:id_districts,district_code',
             'village_code' => 'required|exists:id_villages,village_code',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'saldo' => 'required|numeric|min:0',
+            'status' => 'required|in:aktif,tidak_aktif',
+        ], [
+            'alamat.required' => 'Alamat harus diisi',
+            'alamat.string' => 'Alamat harus berupa teks',
+            'alamat.max' => 'Alamat maksimal 255 karakter',
+            'kode_pos.required' => 'Kode pos harus diisi',
+            'kode_pos.numeric' => 'Kode pos harus berupa angka',
+            'province_code.required' => 'Provinsi harus dipilih',
+            'province_code.exists' => 'Provinsi tidak valid',
+            'regency_code.required' => 'Kabupaten/Kota harus dipilih',
+            'regency_code.exists' => 'Kabupaten/Kota tidak valid',
+            'district_code.required' => 'Kecamatan harus dipilih',
+            'district_code.exists' => 'Kecamatan tidak valid',
+            'village_code.required' => 'Desa harus dipilih',
+            'village_code.exists' => 'Desa tidak valid',
+            'foto.image' => 'Foto harus berupa gambar',
+            'foto.mimes' => 'Foto harus berformat jpeg, png, jpg, atau gif',
+            'foto.max' => 'Foto maksimal 2MB',
+            'saldo.required' => 'Saldo harus diisi',
+            'saldo.numeric' => 'Saldo harus berupa angka',
+            'saldo.min' => 'Saldo minimal 0',
+            'status.required' => 'Status harus dipilih',
+            'status.in' => 'Status harus berupa aktif atau tidak aktif',
         ]);
 
         $data = $request->only([
             'alamat', 'kode_pos',
-            'province_code', 'regency_code', 'district_code', 'village_code'
+            'province_code', 'regency_code', 'district_code', 'village_code', 'saldo', 'status'
         ]);
 
         if ($request->hasFile('foto')) {
@@ -75,13 +99,37 @@ class DesaController extends Controller
             'district_code' => 'required|exists:id_districts,district_code',
             'village_code' => 'required|exists:id_villages,village_code',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'saldo' => 'required|numeric|min:0',
+            'status' => 'required|in:aktif,tidak_aktif',
+        ],[
+            'alamat.required' => 'Alamat harus diisi',
+            'alamat.string' => 'Alamat harus berupa teks',
+            'alamat.max' => 'Alamat maksimal 255 karakter',
+            'kode_pos.required' => 'Kode pos harus diisi',
+            'kode_pos.numeric' => 'Kode pos harus berupa angka',
+            'province_code.required' => 'Provinsi harus dipilih',
+            'province_code.exists' => 'Provinsi tidak valid',
+            'regency_code.required' => 'Kabupaten/Kota harus dipilih',
+            'regency_code.exists' => 'Kabupaten/Kota tidak valid',
+            'district_code.required' => 'Kecamatan harus dipilih',
+            'district_code.exists' => 'Kecamatan tidak valid',
+            'village_code.required' => 'Desa harus dipilih',
+            'village_code.exists' => 'Desa tidak valid',
+            'foto.image' => 'Foto harus berupa gambar',
+            'foto.mimes' => 'Foto harus berformat jpeg, png, jpg, atau gif',
+            'foto.max' => 'Foto maksimal 2MB',
+            'saldo.required' => 'Saldo harus diisi',
+            'saldo.numeric' => 'Saldo harus berupa angka',
+            'saldo.min' => 'Saldo minimal 0',
+            'status.required' => 'Status harus dipilih',
+            'status.in' => 'Status harus berupa aktif atau tidak aktif',
         ]);
 
         $desa = Desa::findOrFail($id);
 
         $data = $request->only([
             'alamat', 'kode_pos',
-            'province_code', 'regency_code', 'district_code', 'village_code'
+            'province_code', 'regency_code', 'district_code', 'village_code', 'saldo', 'status'
         ]);
 
         if ($request->hasFile('foto')) {

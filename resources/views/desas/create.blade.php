@@ -62,6 +62,19 @@
             <input type="file" name="foto" id="foto" class="form-control" accept="image/*">
         </div>
 
+        <div class="mb-3">
+            <label for="saldo" class="form-label">Saldo</label>
+            <input type="number" name="saldo" id="saldo" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select name="status" id="status" class="form-select" required>
+                <option value="aktif">Aktif</option>
+                <option value="tidak_aktif">Tidak Aktif</option>
+            </select>
+        </div>
+
         <button type="submit" class="btn btn-primary">Simpan</button>
     </form>
 </div>

@@ -19,6 +19,8 @@ return new class extends Migration
             $table->char('village_code', 4);
             $table->string('alamat');
             $table->integer('kode_pos');
+            $table->decimal('saldo', 15, 2)->default(0.00);
+            $table->enum('status', ['aktif', 'tidak_aktif'])->default('aktif');
             $table->string('foto')->nullable();
             $table->timestamps();
         });
