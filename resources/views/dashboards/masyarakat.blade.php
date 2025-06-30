@@ -253,7 +253,7 @@
 <script>
 function masyarakatDashboardData() {
     return {
-        userName: 'Ahmad Suryadi',
+        userName: '{{ auth()->user()->name }}',
         userAddress: 'RT 001, RW 01, Desa Sukamaju',
         totalKasBelumBayar: 0,
         kasBelumBayarCount: 0,

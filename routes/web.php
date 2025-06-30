@@ -5,54 +5,89 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DesaController;
 use App\Http\Controllers\HomeController;
-use PhpParser\Node\Stmt\HaltCompiler;
+use App\Http\Controllers\Api\DashboardApiController;
 
 // Landing page route
 Route::get('/', function () {
     return view('landing');
 });
 
+// Resource route untuk desa - hanya admin yang bisa akses
 Route::resource('desas', DesaController::class)->middleware('role:admin');
 
-// Dashboard views for each role (only for view, not for main redirect)
-Route::get('/dashboard/admin', function () { return view('dashboards.admin'); })->name('admin.dashboard');
-Route::get('/dashboard/kades', function () { return view('dashboards.kades'); })->name('kades.dashboard');
-Route::get('/dashboard/rw', function () { return view('dashboards.rw'); })->name('rw.dashboard');
-Route::get('/dashboard/rt', function () { return view('dashboards.rt'); })->name('rt.dashboard');
-Route::get('/dashboard/masyarakat', function () { return view('dashboards.masyarakat'); })->name('masyarakat.dashboard');
+// Dashboard routes dengan middleware role yang sesuai
+Route::middleware(['auth'])->group(function () {
+    // Main dashboard route - akan redirect berdasarkan role
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard', [HomeController::class, 'redirectToDashboard'])->name('dashboard');
+    
+    // Dashboard khusus untuk setiap role
+    Route::get('/dashboard/admin', function () { 
+        return view('dashboards.admin'); 
+    })->name('admin.dashboard')->middleware('role:admin');
+    
+    Route::get('/dashboard/kades', function () { 
+        return view('dashboards.kades'); 
+    })->name('kades.dashboard')->middleware('role:kades');
+    
+    Route::get('/dashboard/rw', function () { 
+        return view('dashboards.rw'); 
+    })->name('rw.dashboard')->middleware('role:rw');
+    
+    Route::get('/dashboard/rt', function () { 
+        return view('dashboards.rt'); 
+    })->name('rt.dashboard')->middleware('role:rt');
+    
+    Route::get('/dashboard/masyarakat', function () { 
+        return view('dashboards.masyarakat'); 
+    })->name('masyarakat.dashboard')->middleware('role:masyarakat');
+});
 
+// API Routes untuk Dashboard (Protected)
+Route::prefix('api')->middleware(['auth'])->group(function () {
+    // Dashboard API routes - bisa diakses semua role yang login
+    Route::get('/dashboard/test', [DashboardApiController::class, 'test'])->name('api.dashboard.test');
+    Route::get('/dashboard/stats', [DashboardApiController::class, 'getStats'])->name('api.dashboard.stats');
+    Route::get('/dashboard/monthly-data', [DashboardApiController::class, 'getMonthlyData'])->name('api.dashboard.monthly');
+    Route::get('/dashboard/activities', [DashboardApiController::class, 'getActivities'])->name('api.dashboard.activities');
+    Route::get('/dashboard/online-status', [DashboardApiController::class, 'getOnlineStatus'])->name('api.dashboard.online-status');
+    Route::get('/dashboard/system-health', [DashboardApiController::class, 'getSystemHealth'])->name('api.dashboard.system-health');
+    
+    // Admin only API routes
+    Route::middleware(['role:admin'])->group(function () {
+        Route::post('/dashboard/clear-cache', [DashboardApiController::class, 'clearCache'])->name('api.dashboard.clear-cache');
+    });
+});
 
+// Routes dengan pembatasan role
+Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
+    Route::get('/penduduk', function () { return view('penduduk.index'); })->name('penduduk.index');
+    Route::get('/lokasi', function () { return view('lokasi.index'); })->name('lokasi.index');
+    Route::get('/rt-rw', function () { return view('rt-rw.index'); })->name('rt-rw.index');
+    Route::get('/umkm', function () { return view('umkm.index'); })->name('umkm.index');
+});
 
+Route::middleware(['auth', 'role:admin,kades'])->group(function () {
+    Route::get('/wisata', function () { return view('wisata.index'); })->name('wisata.index');
+    Route::get('/berita', function () { return view('berita.index'); })->name('berita.index');
+    Route::get('/program', function () { return view('program.index'); })->name('program.index');
+    Route::get('/pembangunan', function () { return view('pembangunan.index'); })->name('pembangunan.index');
+    Route::get('/keuangan', function () { return view('keuangan.index'); })->name('keuangan.index');
+});
 
-// Placeholder routes for other menu items
-Route::get('/penduduk', function () { return view('penduduk.index'); })->name('penduduk.index');
-Route::get('/lokasi', function () { return view('lokasi.index'); })->name('lokasi.index');
-Route::get('/rt-rw', function () { return view('rt-rw.index'); })->name('rt-rw.index');
-Route::get('/umkm', function () { return view('umkm.index'); })->name('umkm.index');
-Route::get('/wisata', function () { return view('wisata.index'); })->name('wisata.index');
-Route::get('/berita', function () { return view('berita.index'); })->name('berita.index');
-Route::get('/program', function () { return view('program.index'); })->name('program.index');
-Route::get('/pembangunan', function () { return view('pembangunan.index'); })->name('pembangunan.index');
-Route::get('/keuangan', function () { return view('keuangan.index'); })->name('keuangan.index');
-Route::get('/laporan', function () { return view('laporan.index'); })->name('laporan.index');
-Route::get('/agenda', function () { return view('agenda.index'); })->name('agenda.index');
-Route::get('/media', function () { return view('media.index'); })->name('media.index');
-Route::get('/dokumen', function () { return view('dokumen.index'); })->name('dokumen.index');
-Route::get('/pesan', function () { return view('pesan.index'); })->name('pesan.index');
+// Routes yang bisa diakses semua role yang sudah login
+Route::middleware(['auth'])->group(function () {
+    Route::get('/laporan', function () { return view('laporan.index'); })->name('laporan.index');
+    Route::get('/agenda', function () { return view('agenda.index'); })->name('agenda.index');
+    Route::get('/media', function () { return view('media.index'); })->name('media.index');
+    Route::get('/dokumen', function () { return view('dokumen.index'); })->name('dokumen.index');
+    Route::get('/pesan', function () { return view('pesan.index'); })->name('pesan.index');
+});
 
 Auth::routes();
 
-Route::middleware(['auth'])->group(function () {
-    // Dashboard/Home Routes
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
-    Route::get('/dashboard', function () {
-        return redirect('/home');
-    })->name('dashboard');
-});
-
-// Public API routes for Indonesian territory data
+// Public API routes untuk data wilayah Indonesia
 Route::prefix('api')->group(function () {
-
     // Get provinces
     Route::get('/provinces', function () {
         try {
