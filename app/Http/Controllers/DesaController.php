@@ -150,4 +150,10 @@ class DesaController extends Controller
 
         return redirect()->route('desas.index')->with('success', 'Desa berhasil dihapus!');
     }
+
+    public function show($id)
+    {
+        $desa = Desa::findOrFail($id);
+        return view('desas.show', compact('desa'));
+    }
 }

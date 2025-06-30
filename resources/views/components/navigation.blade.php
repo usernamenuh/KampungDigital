@@ -47,7 +47,7 @@
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 p-2 overflow-y-auto">
+        <nav class="flex-1 p-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
             <!-- Categories -->
             <template x-for="category in filteredCategories" :key="category.name">
                 <div class="mb-3">
@@ -57,33 +57,23 @@
                     <ul class="space-y-1">
                         <template x-for="item in category.items" :key="item.id">
                             <li class="relative">
-                                <!-- Active Indicator with Glow Effect -->
-                                <div x-show="isActiveMenuItem(item)"
-                                     class="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-5 rounded-r-full z-10 transition-all duration-300"
-                                     :style="'background-color: ' + activeColor + '; box-shadow: 0 0 8px ' + activeColor + '40, 0 0 16px ' + activeColor + '20;'">
-                                </div>
-
                                 <button @click="setActiveItem(item.id)"
                                         :class="{
-                                            'text-white font-medium shadow-sm': isActiveMenuItem(item),
-                                            'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white': !isActiveMenuItem(item)
+                                            'text-gray-800 dark:text-white font-medium shadow-sm border-l-2': isActiveMenuItem(item),
+                                            'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white border-l-2 border-transparent': !isActiveMenuItem(item)
                                         }"
-                                        :style="isActiveMenuItem(item) ? 'background-color: ' + activeColor + '; box-shadow: 0 2px 8px ' + activeColor + '30;' : ''"
+                                        :style="getMenuItemStyle(item)"
                                         class="w-full flex items-center justify-between px-3 py-2 ml-1 mr-1 rounded-lg text-left transition-all duration-200 group text-sm"
-                                        @mouseenter="applyHoverEffect($event)"
-                                        @mouseleave="removeHoverEffect($event)">
+                                        @mouseenter="applyHoverEffect($event, item)"
+                                        @mouseleave="removeHoverEffect($event, item)">
                                 
                                     <div class="flex items-center space-x-2">
                                         <i x-show="showIcons" 
                                            :data-lucide="item.icon" 
-                                           :class="{
-                                               'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200': !isActiveMenuItem(item),
-                                               'text-white': isActiveMenuItem(item)
-                                           }"
-                                           :style="showIconColors && isActiveMenuItem(item) ? 'color: ' + iconColor + ';' : ''"
-                                           class="w-4 h-4 transition-colors"></i>
+                                           :style="getIconStyle(item)"
+                                           class="w-4 h-4 transition-colors flex-shrink-0"></i>
 
-                                        <span class="font-medium text-xs" x-text="item.label"></span>
+                                        <span class="font-medium text-xs truncate" x-text="item.label"></span>
                                     </div>
 
                                     <!-- Badge -->
@@ -93,7 +83,7 @@
                                               'bg-white text-purple-600': isActiveMenuItem(item),
                                               'bg-red-500 text-white': !isActiveMenuItem(item)
                                           }"
-                                          class="text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
+                                          class="text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center flex-shrink-0">
                                     </span>
                                 </button>
                             </li>
@@ -107,22 +97,18 @@
         <div class="p-2 border-t border-gray-100 dark:border-gray-700">
             <button @click="openSettings()"
                     :class="{
-                        'text-white font-medium shadow-sm': activeItem === 'settings',
-                        'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white': activeItem !== 'settings'
+                        'text-gray-800 dark:text-white font-medium shadow-sm border-l-2': activeItem === 'settings',
+                        'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white border-l-2 border-transparent': activeItem !== 'settings'
                     }"
-                    :style="activeItem === 'settings' ? 'background-color: ' + activeColor + '; box-shadow: 0 2px 8px ' + activeColor + '30;' : ''"
+                    :style="getSettingsStyle()"
                     class="w-full flex items-center space-x-2 px-3 py-2 ml-1 mr-1 rounded-lg text-left transition-all duration-200 group text-sm"
-                    @mouseenter="applyHoverEffect($event)"
-                    @mouseleave="removeHoverEffect($event)">
+                    @mouseenter="applyHoverEffect($event, { id: 'settings' })"
+                    @mouseleave="removeHoverEffect($event, { id: 'settings' })">
                 
                 <i x-show="showIcons"
                    data-lucide="settings" 
-                   :class="{
-                       'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200': activeItem !== 'settings',
-                       'text-white': activeItem === 'settings'
-                   }"
-                   :style="showIconColors && activeItem === 'settings' ? 'color: ' + iconColor + ';' : ''"
-                   class="w-4 h-4 transition-colors"></i>
+                   :style="getSettingsIconStyle()"
+                   class="w-4 h-4 transition-colors flex-shrink-0"></i>
 
                 <span class="font-medium text-xs">Pengaturan</span>
             </button>
@@ -135,11 +121,13 @@ function navigationData() {
     return {
         searchQuery: '',
         activeItem: 'dashboard',
-        activeColor: localStorage.getItem('activeColor') || '#8B5CF6',
-        hoverColor: localStorage.getItem('hoverColor') || 'rgba(139, 92, 246, 0.08)',
+        activeColor: localStorage.getItem('activeColor') || '#6366F1',
+        hoverColor: localStorage.getItem('hoverColor') || 'rgba(99, 102, 241, 0.08)',
         showIcons: localStorage.getItem('showIcons') !== 'false',
         showIconColors: localStorage.getItem('showIconColors') === 'true',
-        iconColor: localStorage.getItem('iconColor') || '#FFFFFF',
+        iconColor: localStorage.getItem('iconColor') || '#6366F1',
+        isMobile: window.innerWidth < 768,
+        isMobileMenuOpen: false,
         
         menuCategories: [
             {
@@ -186,32 +174,92 @@ function navigationData() {
             this.filteredCategories = this.menuCategories;
             this.activeItem = this.getCurrentRoute();
             
-            // Listen for color changes
+            // Listen for color changes from settings modal
             window.addEventListener('activeColorChanged', (e) => {
                 this.activeColor = e.detail;
+                this.updateStyles();
             });
             
             window.addEventListener('hoverColorChanged', (e) => {
                 this.hoverColor = e.detail;
+                this.updateStyles();
             });
             
             window.addEventListener('showIconsChanged', (e) => {
                 this.showIcons = e.detail;
+                this.reinitializeIcons();
             });
             
             window.addEventListener('showIconColorsChanged', (e) => {
                 this.showIconColors = e.detail;
+                this.updateStyles();
             });
             
             window.addEventListener('iconColorChanged', (e) => {
                 this.iconColor = e.detail;
+                this.updateStyles();
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                this.isMobile = window.innerWidth < 768;
+            });
+
+            // Initialize icons and styles
+            this.reinitializeIcons();
+            this.updateStyles();
+        },
+
+        updateStyles() {
+            // Force Alpine to re-evaluate styles
+            this.$nextTick(() => {
+                // Trigger reactivity
+                this.activeColor = this.activeColor;
+                this.hoverColor = this.hoverColor;
+                this.iconColor = this.iconColor;
+            });
+        },
+
+        getMenuItemStyle(item) {
+            if (this.isActiveMenuItem(item)) {
+                return `background-color: ${this.activeColor}15; border-left-color: ${this.activeColor};`;
+            }
+            return '';
+        },
+
+        getIconStyle(item) {
+            if (this.isActiveMenuItem(item)) {
+                return this.showIconColors ? `color: ${this.iconColor};` : `color: ${this.activeColor};`;
+            }
+            return '';
+        },
+
+        getSettingsStyle() {
+            if (this.activeItem === 'settings') {
+                return `background-color: ${this.activeColor}15; border-left-color: ${this.activeColor};`;
+            }
+            return '';
+        },
+
+        getSettingsIconStyle() {
+            if (this.activeItem === 'settings') {
+                return this.showIconColors ? `color: ${this.iconColor};` : `color: ${this.activeColor};`;
+            }
+            return '';
+        },
+
+        reinitializeIcons() {
+            this.$nextTick(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
             });
         },
         
         getCurrentRoute() {
             const path = window.location.pathname;
             if (path === '/home' || path === '/') return 'dashboard';
-            if (path === '/desas') return 'desa';
+            if (path === '/desas' || path.includes('/desas')) return 'desa';
             return path.substring(1) || 'dashboard';
         },
         
@@ -250,16 +298,20 @@ function navigationData() {
             return this.activeItem === item.id;
         },
         
-        applyHoverEffect(event) {
-            if (!this.isActiveMenuItem({ id: this.activeItem })) {
+        applyHoverEffect(event, item) {
+            if (!this.isActiveMenuItem(item)) {
                 event.target.style.backgroundColor = this.hoverColor;
             }
         },
         
-        removeHoverEffect(event) {
-            if (!this.isActiveMenuItem({ id: this.activeItem })) {
+        removeHoverEffect(event, item) {
+            if (!this.isActiveMenuItem(item)) {
                 event.target.style.backgroundColor = '';
             }
+        },
+
+        closeMobileMenu() {
+            this.isMobileMenuOpen = false;
         },
         
         openSettings() {
@@ -268,3 +320,32 @@ function navigationData() {
     }
 }
 </script>
+
+<style>
+/* Custom scrollbar for navigation */
+.scrollbar-thin {
+    scrollbar-width: thin;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar {
+    width: 4px;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 2px;
+}
+
+.dark .scrollbar-thumb-gray-600::-webkit-scrollbar-thumb {
+    background-color: #4b5563;
+}
+
+/* Ensure icons don't scroll */
+[data-lucide] {
+    flex-shrink: 0;
+}
+</style>

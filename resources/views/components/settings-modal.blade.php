@@ -368,6 +368,9 @@ function settingsModalData() {
         showIcons: localStorage.getItem('showIcons') !== 'false',
         showIconColors: localStorage.getItem('showIconColors') === 'true',
         iconColor: localStorage.getItem('iconColor') || '#FFFFFF',
+        connectionStatus: 'online',
+        currentTime: new Date().toLocaleTimeString(),
+        currentDate: new Date().toLocaleDateString(),
         
         // Color options
         colorOptions: [
@@ -429,6 +432,19 @@ function settingsModalData() {
                 preview: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)'
             }
         ],
+
+        init() {
+            // Update time every second
+            setInterval(() => {
+                this.currentTime = new Date().toLocaleTimeString();
+                this.currentDate = new Date().toLocaleDateString();
+            }, 1000);
+
+            // Initialize icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        },
         
         openSettings() {
             this.showSettingsModal = true;
@@ -593,3 +609,34 @@ function settingsModalData() {
     }
 }
 </script>
+
+<style>
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-online {
+    background-color: #10B981;
+    animation: pulse 2s infinite;
+}
+
+.status-offline {
+    background-color: #EF4444;
+}
+
+.status-loading {
+    background-color: #F59E0B;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+</style>
