@@ -3,7 +3,7 @@
 @section('title', 'Manajemen RT & RW')
 
 @section('content')
-<div class="p-6" x-data="rtRwManager()">
+<div class="p-6" x-data="rtRwManager()" x-init="init()">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
         <div>
@@ -150,7 +150,7 @@
                     <!-- RW Data -->
                     @foreach($rws as $rw)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200" 
-                        x-show="shouldShowItem('rw', {{ $rw->id }}, '{{ $rw->nama_rw }}', '{{ $rw->desa->alamat ?? '' }}', '{{ $rw->status }}')">
+                        x-show="shouldShowItem('rw', {{ $rw->id }}, '{{ addslashes($rw->nama_rw) }}', '{{ addslashes($rw->desa->alamat ?? '') }}', '{{ $rw->status }}')">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                                 <i data-lucide="home" class="w-3 h-3 mr-1"></i>
@@ -186,15 +186,15 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-2">
                                 <button @click="viewDetail('rw', {{ $rw->id }})" 
-                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded">
                                     <i data-lucide="eye" class="w-4 h-4"></i>
                                 </button>
                                 <button @click="openModal('rw', 'edit', {{ $rw->id }})" 
-                                        class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300">
+                                        class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 p-1 rounded">
                                     <i data-lucide="edit" class="w-4 h-4"></i>
                                 </button>
-                                <button @click="openDeleteModal('rw', {{ $rw->id }}, '{{ $rw->nama_rw }}')" 
-                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                <button @click="openDeleteModal('rw', {{ $rw->id }}, '{{ addslashes($rw->nama_rw) }}')" 
+                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
                             </div>
@@ -205,7 +205,7 @@
                     <!-- RT Data -->
                     @foreach($rts as $rt)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200" 
-                        x-show="shouldShowItem('rt', {{ $rt->id }}, '{{ $rt->nama_rt }}', '{{ $rt->rw->desa->alamat ?? '' }}', '{{ $rt->status }}')">
+                        x-show="shouldShowItem('rt', {{ $rt->id }}, '{{ addslashes($rt->nama_rt) }}', '{{ addslashes($rt->rw->desa->alamat ?? '') }}', '{{ $rt->status }}')">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                 <i data-lucide="users" class="w-3 h-3 mr-1"></i>
@@ -242,15 +242,15 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end space-x-2">
                                 <button @click="viewDetail('rt', {{ $rt->id }})" 
-                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded">
                                     <i data-lucide="eye" class="w-4 h-4"></i>
                                 </button>
                                 <button @click="openModal('rt', 'edit', {{ $rt->id }})" 
-                                        class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300">
+                                        class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 p-1 rounded">
                                     <i data-lucide="edit" class="w-4 h-4"></i>
                                 </button>
-                                <button @click="openDeleteModal('rt', {{ $rt->id }}, '{{ $rt->nama_rt }}')" 
-                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                <button @click="openDeleteModal('rt', {{ $rt->id }}, '{{ addslashes($rt->nama_rt) }}')" 
+                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
                             </div>
@@ -642,6 +642,7 @@
         </div>
     </div>
 </div>
+@endsection
 
 @push('scripts')
 <script>
@@ -674,6 +675,7 @@ function rtRwManager() {
         rtData: @json($rts),
         
         init() {
+            console.log('RT RW Manager initialized');
             this.resetFormData();
             this.initializeIcons();
         },
@@ -682,6 +684,7 @@ function rtRwManager() {
             this.$nextTick(() => {
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
+                    console.log('Icons initialized');
                 }
             });
         },
@@ -707,6 +710,7 @@ function rtRwManager() {
         },
         
         openModal(type, action, id = null) {
+            console.log('Opening modal:', type, action, id);
             this.modalType = type;
             this.modalAction = action;
             this.editId = id;
@@ -729,6 +733,7 @@ function rtRwManager() {
         },
 
         openDeleteModal(type, id, name) {
+            console.log('Opening delete modal:', type, id, name);
             this.deleteData = {
                 type: type,
                 id: id,
@@ -766,17 +771,31 @@ function rtRwManager() {
                 
                 if (response.ok) {
                     const result = await response.json();
-                    this.showAlert(result.message || `${this.deleteData.type.toUpperCase()} berhasil dihapus!`, 'success');
+                    // Use global notification system from app.blade.php
+                    if (window.showNotification) {
+                        window.showNotification(result.message || `${this.deleteData.type.toUpperCase()} berhasil dihapus!`, 'success');
+                    } else {
+                        alert(result.message || `${this.deleteData.type.toUpperCase()} berhasil dihapus!`);
+                    }
                     this.closeDeleteModal();
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
                 } else {
                     const errorData = await response.json();
-                    this.showAlert(errorData.message || 'Gagal menghapus data', 'error');
+                    if (window.showNotification) {
+                        window.showNotification(errorData.message || 'Gagal menghapus data', 'error');
+                    } else {
+                        alert(errorData.message || 'Gagal menghapus data');
+                    }
                 }
             } catch (error) {
-                this.showAlert('Terjadi kesalahan koneksi. Silakan coba lagi.', 'error');
+                console.error('Delete error:', error);
+                if (window.showNotification) {
+                    window.showNotification('Terjadi kesalahan koneksi. Silakan coba lagi.', 'error');
+                } else {
+                    alert('Terjadi kesalahan koneksi. Silakan coba lagi.');
+                }
             } finally {
                 this.isDeleting = false;
             }
@@ -799,6 +818,7 @@ function rtRwManager() {
         async submitForm(type) {
             if (this.isSubmitting) return;
             
+            console.log('Submitting form:', type, this.formData);
             this.isSubmitting = true;
             this.validationErrors = {};
             
@@ -866,10 +886,15 @@ function rtRwManager() {
                 if (response.ok) {
                     const result = await response.json();
                     
-                    this.showAlert(
-                        result.message || `${type.toUpperCase()} berhasil ${this.modalAction === 'create' ? 'ditambahkan' : 'diperbarui'}!`, 
-                        'success'
-                    );
+                    // Use global notification system from app.blade.php
+                    if (window.showNotification) {
+                        window.showNotification(
+                            result.message || `${type.toUpperCase()} berhasil ${this.modalAction === 'create' ? 'ditambahkan' : 'diperbarui'}!`, 
+                            'success'
+                        );
+                    } else {
+                        alert(result.message || `${type.toUpperCase()} berhasil ${this.modalAction === 'create' ? 'ditambahkan' : 'diperbarui'}!`);
+                    }
                     this.closeModal();
                     setTimeout(() => {
                         window.location.reload();
@@ -880,21 +905,34 @@ function rtRwManager() {
                     if (response.status === 422 && errorData.errors) {
                         // Validation errors
                         this.validationErrors = errorData.errors;
-                        this.showAlert('Mohon periksa kembali data yang dimasukkan', 'error');
+                        if (window.showNotification) {
+                            window.showNotification('Mohon periksa kembali data yang dimasukkan', 'error');
+                        } else {
+                            alert('Mohon periksa kembali data yang dimasukkan');
+                        }
                     } else {
                         let errorMessage = errorData.message || 'Terjadi kesalahan saat menyimpan data';
-                        this.showAlert(errorMessage, 'error');
+                        if (window.showNotification) {
+                            window.showNotification(errorMessage, 'error');
+                        } else {
+                            alert(errorMessage);
+                        }
                     }
                 }
             } catch (error) {
                 console.error('Submit error:', error);
-                this.showAlert('Terjadi kesalahan koneksi. Silakan coba lagi.', 'error');
+                if (window.showNotification) {
+                    window.showNotification('Terjadi kesalahan koneksi. Silakan coba lagi.', 'error');
+                } else {
+                    alert('Terjadi kesalahan koneksi. Silakan coba lagi.');
+                }
             } finally {
                 this.isSubmitting = false;
             }
         },
         
         viewDetail(type, id) {
+            console.log('Viewing detail:', type, id);
             const data = type === 'rw' 
                 ? this.rwData.find(item => item.id === id)
                 : this.rtData.find(item => item.id === id);
@@ -913,14 +951,13 @@ function rtRwManager() {
                     parent: type === 'rw' ? (data.desa ? data.desa.alamat : '') : (data.rw ? data.rw.nama_rw : '')
                 };
                 this.showDetailModal = true;
+                this.$nextTick(() => {
+                    this.initializeIcons();
+                });
             }
         },
         
         closeDetailModal() {
-            this.showDetailModal = false;
-            this.detailData = {};
-        },
-          {
             this.showDetailModal = false;
             this.detailData = {};
         },
@@ -932,7 +969,8 @@ function rtRwManager() {
             }
             
             // Filter by search query
-            if (this.searchQuery && !name.toLowerCase().includes(this.searchQuery.toLowerCase()) && 
+            if (this.searchQuery && 
+                !name.toLowerCase().includes(this.searchQuery.toLowerCase()) && 
                 !desa.toLowerCase().includes(this.searchQuery.toLowerCase())) {
                 return false;
             }
@@ -960,91 +998,32 @@ function rtRwManager() {
         },
         
         filterData() {
+            console.log('Filtering data with:', {
+                search: this.searchQuery,
+                desa: this.selectedDesa,
+                status: this.selectedStatus,
+                view: this.viewMode
+            });
             // This method is called when filters change
             // The actual filtering is done in shouldShowItem method
             this.$nextTick(() => {
                 this.initializeIcons();
             });
-        },
-
-        showAlert(message, type = 'info') {
-            // Create alert element
-            const alert = document.createElement('div');
-            alert.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full max-w-sm`;
-            
-            if (type === 'success') {
-                alert.className += ' bg-green-500 text-white';
-                alert.innerHTML = `
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        <span class="flex-1">${message}</span>
-                        <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                `;
-            } else if (type === 'error') {
-                alert.className += ' bg-red-500 text-white';
-                alert.innerHTML = `
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span class="flex-1">${message}</span>
-                        <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                `;
-            } else {
-                alert.className += ' bg-blue-500 text-white';
-                alert.innerHTML = `
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span class="flex-1">${message}</span>
-                        <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                `;
-            }
-            
-            document.body.appendChild(alert);
-            
-            // Animate in
-            setTimeout(() => {
-                alert.classList.remove('translate-x-full');
-            }, 100);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                alert.classList.add('translate-x-full');
-                setTimeout(() => {
-                    if (alert.parentElement) {
-                        alert.remove();
-                    }
-                }, 300);
-            }, 5000);
         }
     }
 }
 
 // Initialize icons after page load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing icons');
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
 });
+
+// Debug Alpine.js
+document.addEventListener('alpine:init', () => {
+    console.log('Alpine.js initialized');
+});
 </script>
 @endpush
-@endsection

@@ -41,7 +41,7 @@ Route::middleware(['auth'])->group(function () {
     })->name('masyarakat.dashboard')->middleware('role:masyarakat');
 });
 
-
+// Resource route untuk desa - hanya admin yang bisa akses
 Route::resource('desas', DesaController::class)->middleware('role:admin');
 
 // Routes dengan pembatasan role
