@@ -14,6 +14,17 @@ use App\Http\Controllers\Api\DashboardApiController;
 Route::get('/', function () {
     return view('landing');
 });
+
+// Routes dengan pembatasan role
+Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
+    // Route untuk halaman gabungan RT & RW
+    Route::get('/rt-rw', [RtRwController::class, 'index'])->name('rt-rw.index');
+    // Route untuk CRUD RW
+    Route::resource('rw', RwController::class)->except(['index', 'show']);
+    // Route untuk CRUD RT  
+    Route::resource('rt', RtController::class)->except(['index', 'show']);
+});
+
 Route::middleware(['auth'])->group(function () {
     // Main dashboard route - akan redirect berdasarkan role
     Route::get('/home', [HomeController::class, 'index'])->name('home');
@@ -44,15 +55,6 @@ Route::middleware(['auth'])->group(function () {
 // Resource route untuk desa - hanya admin yang bisa akses
 Route::resource('desas', DesaController::class)->middleware('role:admin');
 
-// Routes dengan pembatasan role
-Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
-    // Route untuk halaman gabungan RT & RW
-    Route::get('/rt-rw', [RtRwController::class, 'index'])->name('rt-rw.index');
-    // Route untuk CRUD RW
-    Route::resource('rw', RwController::class)->except(['index', 'show']);
-    // Route untuk CRUD RT  
-    Route::resource('rt', RtController::class)->except(['index', 'show']);
-});
 
 Route::middleware(['auth', 'role:admin,kades'])->group(function () {
     Route::get('/wisata', function () { return view('wisata.index'); })->name('wisata.index');
