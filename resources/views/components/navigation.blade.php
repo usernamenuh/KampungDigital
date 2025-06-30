@@ -57,35 +57,38 @@
                     <ul class="space-y-1">
                         <template x-for="item in category.items" :key="item.id">
                             <li class="relative">
-                                <button @click="setActiveItem(item.id)"
-                                        :class="{
-                                            'text-gray-800 dark:text-white font-medium shadow-sm border-l-2': isActiveMenuItem(item),
-                                            'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white border-l-2 border-transparent': !isActiveMenuItem(item)
-                                        }"
-                                        :style="getMenuItemStyle(item)"
-                                        class="w-full flex items-center justify-between px-3 py-2 ml-1 mr-1 rounded-lg text-left transition-all duration-200 group text-sm"
-                                        @mouseenter="applyHoverEffect($event, item)"
-                                        @mouseleave="removeHoverEffect($event, item)">
-                                
-                                    <div class="flex items-center space-x-2">
-                                        <i x-show="showIcons" 
-                                           :data-lucide="item.icon" 
-                                           :style="getIconStyle(item)"
-                                           class="w-4 h-4 transition-colors flex-shrink-0"></i>
+                                <!-- Kondisi untuk menu Desa - hanya tampil untuk admin -->
+                                <div x-show="item.id !== 'desa' || userRole === 'admin'">
+                                    <button @click="setActiveItem(item.id)"
+                                            :class="{
+                                                'text-gray-800 dark:text-white font-medium shadow-sm border-l-2': isActiveMenuItem(item),
+                                                'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white border-l-2 border-transparent': !isActiveMenuItem(item)
+                                            }"
+                                            :style="getMenuItemStyle(item)"
+                                            class="w-full flex items-center justify-between px-3 py-2 ml-1 mr-1 rounded-lg text-left transition-all duration-200 group text-sm"
+                                            @mouseenter="applyHoverEffect($event, item)"
+                                            @mouseleave="removeHoverEffect($event, item)">
+                                    
+                                        <div class="flex items-center space-x-2">
+                                            <i x-show="showIcons" 
+                                               :data-lucide="item.icon" 
+                                               :style="getIconStyle(item)"
+                                               class="w-4 h-4 transition-colors flex-shrink-0"></i>
 
-                                        <span class="font-medium text-xs truncate" x-text="item.label"></span>
-                                    </div>
+                                            <span class="font-medium text-xs truncate" x-text="item.label"></span>
+                                        </div>
 
-                                    <!-- Badge -->
-                                    <span x-show="item.count" 
-                                          x-text="item.count"
-                                          :class="{
-                                              'bg-white text-purple-600': isActiveMenuItem(item),
-                                              'bg-red-500 text-white': !isActiveMenuItem(item)
-                                          }"
-                                          class="text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center flex-shrink-0">
-                                    </span>
-                                </button>
+                                        <!-- Badge -->
+                                        <span x-show="item.count" 
+                                              x-text="item.count"
+                                              :class="{
+                                                  'bg-white text-purple-600': isActiveMenuItem(item),
+                                                  'bg-red-500 text-white': !isActiveMenuItem(item)
+                                              }"
+                                              class="text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center flex-shrink-0">
+                                        </span>
+                                    </button>
+                                </div>
                             </li>
                         </template>
                     </ul>
@@ -128,6 +131,7 @@ function navigationData() {
         iconColor: localStorage.getItem('iconColor') || '#6366F1',
         isMobile: window.innerWidth < 768,
         isMobileMenuOpen: false,
+        userRole: '{{ Auth::user()->role ?? "guest" }}', // Ambil role user dari Laravel
         
         menuCategories: [
             {
@@ -272,9 +276,12 @@ function navigationData() {
             const query = this.searchQuery.toLowerCase();
             this.filteredCategories = this.menuCategories.map(category => ({
                 ...category,
-                items: category.items.filter(item => 
-                    item.label.toLowerCase().includes(query)
-                )
+                items: category.items.filter(item => {
+                    // Filter berdasarkan pencarian dan role
+                    const matchesSearch = item.label.toLowerCase().includes(query);
+                    const hasAccess = item.id !== 'desa' || this.userRole === 'admin';
+                    return matchesSearch && hasAccess;
+                })
             })).filter(category => category.items.length > 0);
         },
         
