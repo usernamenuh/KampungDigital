@@ -71,7 +71,7 @@ class DashboardApiController extends Controller
                 $totalSaldoSistem = $totalSaldoDesa + $totalSaldoRw + $totalSaldoRt;
 
                 // Desa statistics
-                $totalDesa = max(Desa::count(), 5);
+                $totalDesa = max(Desa::count(), 90);
                 $desaAktif = max(Desa::where('status', 'aktif')->count(), 5);
                 $desaTidakAktif = Desa::where('status', 'tidak_aktif')->count();
 

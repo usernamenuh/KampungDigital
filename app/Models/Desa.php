@@ -13,7 +13,7 @@ class Desa extends Model
 {
     protected $table = 'desas';
    protected $fillable = [
-    'name', 'alamat', 'kode_pos', 'saldo', 'status',
+    'alamat', 'kode_pos', 'saldo', 'status', 'no_telpon', 'gmail',
     'province_code', 'regency_code', 'district_code', 'village_code', 'foto'
 ];
 
@@ -35,5 +35,9 @@ class Desa extends Model
     public function province()
     {
         return $this->belongsTo(Province::class, 'province_code', 'province_code');
+    }
+    public function rws()
+    {
+        return $this->hasMany(Rw::class, 'desa_id', 'id');
     }
 }

@@ -41,6 +41,8 @@ class DesaController extends Controller
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'saldo' => 'required|numeric|min:0',
             'status' => 'required|in:aktif,tidak_aktif',
+            'no_telpon' => 'nullable|numeric',
+            'gmail'=> 'nullable|email',
         ], [
             'alamat.required' => 'Alamat harus diisi',
             'alamat.string' => 'Alamat harus berupa teks',
@@ -67,7 +69,7 @@ class DesaController extends Controller
 
         $data = $request->only([
             'alamat', 'kode_pos',
-            'province_code', 'regency_code', 'district_code', 'village_code', 'saldo', 'status'
+            'province_code', 'regency_code', 'district_code', 'village_code', 'saldo', 'status', 'gmail', 'no_telpon'
         ]);
 
         if ($request->hasFile('foto')) {
@@ -101,6 +103,8 @@ class DesaController extends Controller
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'saldo' => 'required|numeric|min:0',
             'status' => 'required|in:aktif,tidak_aktif',
+            'no_telpon' => 'nullable|numeric',
+            'gmail' => 'nullable|email',
         ],[
             'alamat.required' => 'Alamat harus diisi',
             'alamat.string' => 'Alamat harus berupa teks',
@@ -123,13 +127,15 @@ class DesaController extends Controller
             'saldo.min' => 'Saldo minimal 0',
             'status.required' => 'Status harus dipilih',
             'status.in' => 'Status harus berupa aktif atau tidak aktif',
+            'no_telpon.numeric' => 'Nomor telepon harus berupa angka',
+            'gmail.string'=> 'gmail harus di isi',
         ]);
 
         $desa = Desa::findOrFail($id);
 
         $data = $request->only([
             'alamat', 'kode_pos',
-            'province_code', 'regency_code', 'district_code', 'village_code', 'saldo', 'status'
+            'province_code', 'regency_code', 'district_code', 'village_code', 'saldo', 'status', 'gmail', 'no_telpon'
         ]);
 
         if ($request->hasFile('foto')) {

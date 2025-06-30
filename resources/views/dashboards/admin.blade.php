@@ -301,7 +301,7 @@ function adminDashboardData() {
                 this.totalSaldoRt = 15000000;
                 this.totalSaldoSistem = this.totalSaldoDesa + this.totalSaldoRw + this.totalSaldoRt;
                 this.totalUsers = 1250;
-                this.totalDesa = 5;
+                this.totalDesa = {{ $desaCount ?? 5 }};
                 this.totalRw = 25;
                 this.totalRt = 125;
                 this.totalMasyarakat = 1200;

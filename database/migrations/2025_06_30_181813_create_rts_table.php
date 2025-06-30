@@ -11,19 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('desas', function (Blueprint $table) {
+        Schema::create('rts', function (Blueprint $table) {
             $table->id();
-            $table->char('province_code', 2);
-            $table->char('regency_code', 2);
-            $table->char('district_code', 2);
-            $table->char('village_code', 4);
-            $table->string('alamat');
-            $table->integer('kode_pos');
-            $table->integer('no_telpon')->nullable();
-            $table->string('gmail');
+            $table->foreignId('rw_id')->constrained('rws')->onDelete('cascade');
+            $table->string('nama_rt');
+            $table->string('alamat')->nullable();
+            $table->string('ketua_rt')->nullable();
+            $table->string('no_telpon')->nullable();
+            $table->integer('jumlah_kk')->default(0);
             $table->decimal('saldo', 15, 2)->default(0.00);
             $table->enum('status', ['aktif', 'tidak_aktif'])->default('aktif');
-            $table->string('foto')->nullable();
             $table->timestamps();
         });
     }
@@ -33,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('desas');
+        Schema::dropIfExists('rts');
     }
 };

@@ -1,4 +1,4 @@
-<div x-data="navigationData()" x-init="initNavigation()" class="flex flex-col h-full">
+<div x-data="navigationData()" x-init="initNavigation()" class="flex flex-col h-full min-h-screen">
     <!-- Mobile Overlay -->
     <div x-show="isMobileMenuOpen" 
          x-transition:enter="transition-opacity ease-linear duration-300"
@@ -19,7 +19,7 @@
             '-translate-x-full': isMobile && !isMobileMenuOpen,
             'w-48': !isMobile
          }"
-         class="bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out flex flex-col z-50 md:relative md:translate-x-0 border-r border-gray-200 dark:border-gray-700">
+         class="bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out flex flex-col z-50 md:relative md:translate-x-0 border-r border-gray-200 dark:border-gray-700 min-h-screen">
          
         <!-- Header -->
         <div class="p-3 border-b border-gray-100 dark:border-gray-700">
@@ -50,15 +50,16 @@
         <nav class="flex-1 p-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
             <!-- Categories -->
             <template x-for="category in filteredCategories" :key="category.name">
-                <div class="mb-3">
+                <!-- Hanya tampilkan kategori jika ada item yang bisa diakses -->
+                <div x-show="category.items.length > 0" class="mb-3">
                     <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-2" 
                         x-text="category.name"></h3>
                     
                     <ul class="space-y-1">
                         <template x-for="item in category.items" :key="item.id">
                             <li class="relative">
-                                <!-- Kondisi untuk menu Desa - hanya tampil untuk admin -->
-                                <div x-show="item.id !== 'desa' || userRole === 'admin'">
+                                <!-- Kondisi untuk menu berdasarkan role -->
+                                <div x-show="hasMenuAccess(item.id)">
                                     <button @click="setActiveItem(item.id)"
                                             :class="{
                                                 'text-gray-800 dark:text-white font-medium shadow-sm border-l-2': isActiveMenuItem(item),
@@ -97,7 +98,7 @@
         </nav>
 
         <!-- Settings -->
-        <div class="p-2 border-t border-gray-100 dark:border-gray-700">
+        <div class="p-2 border-t border-gray-100 dark:border-gray-700 mt-auto">
             <button @click="openSettings()"
                     :class="{
                         'text-gray-800 dark:text-white font-medium shadow-sm border-l-2': activeItem === 'settings',
@@ -137,7 +138,7 @@ function navigationData() {
             {
                 name: 'Dashboard',
                 items: [
-                    { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', route: '/home' }
+                    { id: 'dashboard', label: 'Dashboard', icon: 'gauge', route: '/home' }
                 ]
             },
             {
@@ -160,7 +161,8 @@ function navigationData() {
                 items: [
                     { id: 'wisata', label: 'Wisata', icon: 'camera', route: '/wisata' },
                     { id: 'berita', label: 'Berita', icon: 'newspaper', route: '/berita' },
-                    { id: 'program', label: 'Program', icon: 'calendar', route: '/program' }
+                    { id: 'program', label: 'Program', icon: 'calendar', route: '/program' },
+                    { id: 'pendidikan', label: 'Pendidikan', icon: 'graduation-cap', route: '/pendidikan' }
                 ]
             },
             {
@@ -174,8 +176,46 @@ function navigationData() {
         
         filteredCategories: [],
         
+        // Fungsi untuk mengecek akses menu berdasarkan role
+        hasMenuAccess(menuId) {
+            switch(menuId) {
+                case 'desa':
+                    // Menu Desa hanya untuk admin
+                    return this.userRole === 'admin';
+                    
+                case 'rt-rw':
+                    // Menu RT & RW hanya untuk kades dan admin
+                    return this.userRole === 'admin' || this.userRole === 'kades';
+                    
+                case 'wisata':
+                case 'berita':
+                case 'program':
+                case 'pendidikan':
+                    // Menu ini bisa diakses oleh admin, kades, dan masyarakat
+                    return ['admin', 'kades', 'masyarakat'].includes(this.userRole);
+                    
+                case 'pembangunan':
+                case 'keuangan':
+                    // Menu ini hanya untuk admin dan kades
+                    return this.userRole === 'admin' || this.userRole === 'kades';
+                    
+                case 'penduduk':
+                case 'lokasi':
+                    // Menu ini bisa diakses oleh admin, kades, rw, rt
+                    return ['admin', 'kades', 'rw', 'rt'].includes(this.userRole);
+                    
+                case 'umkm':
+                    // Menu UMKM bisa diakses oleh admin, kades, rw, rt, dan masyarakat
+                    return ['admin', 'kades', 'rw', 'rt', 'masyarakat'].includes(this.userRole);
+                    
+                default:
+                    // Menu lainnya (dashboard, dll) bisa diakses semua role yang login
+                    return this.userRole !== 'guest';
+            }
+        },
+        
         initNavigation() {
-            this.filteredCategories = this.menuCategories;
+            this.filterMenuItems(); // Filter menu items berdasarkan role
             this.activeItem = this.getCurrentRoute();
             
             // Listen for color changes from settings modal
@@ -264,12 +304,18 @@ function navigationData() {
             const path = window.location.pathname;
             if (path === '/home' || path === '/') return 'dashboard';
             if (path === '/desas' || path.includes('/desas')) return 'desa';
+            if (path === '/rt-rw' || path.includes('/rt-rw')) return 'rt-rw';
+            if (path === '/pendidikan' || path.includes('/pendidikan')) return 'pendidikan';
             return path.substring(1) || 'dashboard';
         },
         
         filterMenuItems() {
             if (!this.searchQuery.trim()) {
-                this.filteredCategories = this.menuCategories;
+                // Filter kategori dan item berdasarkan akses role
+                this.filteredCategories = this.menuCategories.map(category => ({
+                    ...category,
+                    items: category.items.filter(item => this.hasMenuAccess(item.id))
+                })).filter(category => category.items.length > 0); // Hanya tampilkan kategori yang memiliki item
                 return;
             }
             
@@ -279,10 +325,10 @@ function navigationData() {
                 items: category.items.filter(item => {
                     // Filter berdasarkan pencarian dan role
                     const matchesSearch = item.label.toLowerCase().includes(query);
-                    const hasAccess = item.id !== 'desa' || this.userRole === 'admin';
+                    const hasAccess = this.hasMenuAccess(item.id);
                     return matchesSearch && hasAccess;
                 })
-            })).filter(category => category.items.length > 0);
+            })).filter(category => category.items.length > 0); // Hanya tampilkan kategori yang memiliki item
         },
         
         setActiveItem(itemId) {
@@ -353,6 +399,11 @@ function navigationData() {
 
 /* Ensure icons don't scroll */
 [data-lucide] {
-    flex-shrink: 0;
+    flex-shrink-0;
+}
+
+/* Ensure sidebar takes full height */
+.min-h-screen {
+    min-height: 100vh;
 }
 </style>

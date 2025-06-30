@@ -259,8 +259,8 @@
                             </div>
 
                             <div class="form-section p-6 rounded-xl">
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div class="lg:col-span-2">
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div class="lg:col-span-3">
                                         <label for="alamat" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                                             <i data-lucide="map-pin" class="w-4 h-4 inline mr-2"></i>
                                             Alamat Lengkap
@@ -291,6 +291,26 @@
                                     </div>
 
                                     <div>
+                                        <label for="gmail" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                            <i data-lucide="mail" class="w-4 h-4 inline mr-2"></i>
+                                            Email/Gmail
+                                        </label>
+                                        <input type="email" name="gmail" id="gmail"
+                                               class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 rounded-xl"
+                                               required placeholder="contoh@gmail.com" value="{{ old('gmail') }}">
+                                    </div>
+
+                                    <div>
+                                        <label for="no_telpon" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                            <i data-lucide="phone" class="w-4 h-4 inline mr-2"></i>
+                                            No. HP/Telepon
+                                        </label>
+                                        <input type="tel" name="no_telpon" id="no_telpon"
+                                               class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 rounded-xl"
+                                               placeholder="08123456789" value="{{ old('no_telpon') }}">
+                                    </div>
+
+                                    <div>
                                         <label for="status" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                                             <i data-lucide="toggle-left" class="w-4 h-4 inline mr-2"></i>
                                             Status
@@ -303,7 +323,7 @@
                                         </select>
                                     </div>
 
-                                    <div class="lg:col-span-2">
+                                    <div class="lg:col-span-3">
                                         <label for="foto" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                                             <i data-lucide="camera" class="w-4 h-4 inline mr-2"></i>
                                             Foto Desa (Opsional)

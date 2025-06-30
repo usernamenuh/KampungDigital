@@ -5,17 +5,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DesaController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\RwController;
+use App\Http\Controllers\RtController;
+use App\Http\Controllers\RtRwController;
 use App\Http\Controllers\Api\DashboardApiController;
 
 // Landing page route
 Route::get('/', function () {
     return view('landing');
 });
-
-// Resource route untuk desa - hanya admin yang bisa akses
-Route::resource('desas', DesaController::class)->middleware('role:admin');
-
-// Dashboard routes dengan middleware role yang sesuai
 Route::middleware(['auth'])->group(function () {
     // Main dashboard route - akan redirect berdasarkan role
     Route::get('/home', [HomeController::class, 'index'])->name('home');
@@ -43,28 +41,17 @@ Route::middleware(['auth'])->group(function () {
     })->name('masyarakat.dashboard')->middleware('role:masyarakat');
 });
 
-// API Routes untuk Dashboard (Protected)
-Route::prefix('api')->middleware(['auth'])->group(function () {
-    // Dashboard API routes - bisa diakses semua role yang login
-    Route::get('/dashboard/test', [DashboardApiController::class, 'test'])->name('api.dashboard.test');
-    Route::get('/dashboard/stats', [DashboardApiController::class, 'getStats'])->name('api.dashboard.stats');
-    Route::get('/dashboard/monthly-data', [DashboardApiController::class, 'getMonthlyData'])->name('api.dashboard.monthly');
-    Route::get('/dashboard/activities', [DashboardApiController::class, 'getActivities'])->name('api.dashboard.activities');
-    Route::get('/dashboard/online-status', [DashboardApiController::class, 'getOnlineStatus'])->name('api.dashboard.online-status');
-    Route::get('/dashboard/system-health', [DashboardApiController::class, 'getSystemHealth'])->name('api.dashboard.system-health');
-    
-    // Admin only API routes
-    Route::middleware(['role:admin'])->group(function () {
-        Route::post('/dashboard/clear-cache', [DashboardApiController::class, 'clearCache'])->name('api.dashboard.clear-cache');
-    });
-});
+
+Route::resource('desas', DesaController::class)->middleware('role:admin');
 
 // Routes dengan pembatasan role
 Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
-    Route::get('/penduduk', function () { return view('penduduk.index'); })->name('penduduk.index');
-    Route::get('/lokasi', function () { return view('lokasi.index'); })->name('lokasi.index');
-    Route::get('/rt-rw', function () { return view('rt-rw.index'); })->name('rt-rw.index');
-    Route::get('/umkm', function () { return view('umkm.index'); })->name('umkm.index');
+    // Route untuk halaman gabungan RT & RW
+    Route::get('/rt-rw', [RtRwController::class, 'index'])->name('rt-rw.index');
+    // Route untuk CRUD RW
+    Route::resource('rw', RwController::class)->except(['index', 'show']);
+    // Route untuk CRUD RT  
+    Route::resource('rt', RtController::class)->except(['index', 'show']);
 });
 
 Route::middleware(['auth', 'role:admin,kades'])->group(function () {
@@ -85,6 +72,22 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Auth::routes();
+
+// API Routes untuk Dashboard (Protected)
+Route::prefix('api')->middleware(['auth'])->group(function () {
+    // Dashboard API routes - bisa diakses semua role yang login
+    Route::get('/dashboard/test', [DashboardApiController::class, 'test'])->name('api.dashboard.test');
+    Route::get('/dashboard/stats', [DashboardApiController::class, 'getStats'])->name('api.dashboard.stats');
+    Route::get('/dashboard/monthly-data', [DashboardApiController::class, 'getMonthlyData'])->name('api.dashboard.monthly');
+    Route::get('/dashboard/activities', [DashboardApiController::class, 'getActivities'])->name('api.dashboard.activities');
+    Route::get('/dashboard/online-status', [DashboardApiController::class, 'getOnlineStatus'])->name('api.dashboard.online-status');
+    Route::get('/dashboard/system-health', [DashboardApiController::class, 'getSystemHealth'])->name('api.dashboard.system-health');
+    
+    // Admin only API routes
+    Route::middleware(['role:admin'])->group(function () {
+        Route::post('/dashboard/clear-cache', [DashboardApiController::class, 'clearCache'])->name('api.dashboard.clear-cache');
+    });
+});
 
 // Public API routes untuk data wilayah Indonesia
 Route::prefix('api')->group(function () {

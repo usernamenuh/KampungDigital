@@ -1,0 +1,1050 @@
+@extends('layouts.app')
+
+@section('title', 'Manajemen RT & RW')
+
+@section('content')
+<div class="p-6" x-data="rtRwManager()">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Manajemen RT & RW</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Kelola data Rukun Warga (RW) dan Rukun Tetangga (RT) dalam satu tempat</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button @click="openModal('rw', 'create')" 
+                    class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors duration-200">
+                <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                Tambah RW
+            </button>
+            <button @click="openModal('rt', 'create')" 
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
+                <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                Tambah RT
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter & Search -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cari</label>
+                <input type="text" 
+                       x-model="searchQuery"
+                       @input="filterData()"
+                       placeholder="Cari RW atau RT..."
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Desa</label>
+                <select x-model="selectedDesa" @change="filterData()" 
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    <option value="">Semua Desa</option>
+                    @foreach($desas as $desa)
+                        <option value="{{ $desa->id }}">{{ $desa->alamat }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+                <select x-model="selectedStatus" @change="filterData()" 
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    <option value="">Semua Status</option>
+                    <option value="aktif">Aktif</option>
+                    <option value="tidak_aktif">Tidak Aktif</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tampilkan</label>
+                <select x-model="viewMode" @change="filterData()" 
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    <option value="all">Semua</option>
+                    <option value="rw">Hanya RW</option>
+                    <option value="rt">Hanya RT</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center">
+                <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <i data-lucide="home" class="w-5 h-5 text-purple-600 dark:text-purple-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total RW</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $rws->count() }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center">
+                <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <i data-lucide="users" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total RT</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $rts->count() }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center">
+                <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <i data-lucide="check-circle" class="w-5 h-5 text-green-600 dark:text-green-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Aktif</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $rws->where('status', 'aktif')->count() + $rts->where('status', 'aktif')->count() }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center">
+                <div class="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                    <i data-lucide="users-2" class="w-5 h-5 text-yellow-600 dark:text-yellow-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total KK</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $rts->sum('jumlah_kk') }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center">
+                <div class="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg">
+                    <i data-lucide="banknote" class="w-5 h-5 text-emerald-600 dark:text-emerald-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Saldo</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">Rp {{ number_format($rws->sum('saldo') + $rts->sum('saldo'), 0, ',', '.') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipe</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Wilayah</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ketua</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kontak</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">KK/RT</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Saldo</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    <!-- RW Data -->
+                    @foreach($rws as $rw)
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200" 
+                        x-show="shouldShowItem('rw', {{ $rw->id }}, '{{ $rw->nama_rw }}', '{{ $rw->desa->alamat ?? '' }}', '{{ $rw->status }}')">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                <i data-lucide="home" class="w-3 h-3 mr-1"></i>
+                                RW
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $rw->nama_rw }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ $rw->alamat }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rw->desa->alamat ?? 'N/A' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rw->ketua_rw ?? '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rw->no_telpon ?? '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rw->rts->count() }} RT</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                Rp {{ number_format($rw->saldo, 0, ',', '.') }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $rw->status == 'aktif' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
+                                {{ ucfirst($rw->status) }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex items-center justify-end space-x-2">
+                                <button @click="viewDetail('rw', {{ $rw->id }})" 
+                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button @click="openModal('rw', 'edit', {{ $rw->id }})" 
+                                        class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300">
+                                    <i data-lucide="edit" class="w-4 h-4"></i>
+                                </button>
+                                <button @click="openDeleteModal('rw', {{ $rw->id }}, '{{ $rw->nama_rw }}')" 
+                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+
+                    <!-- RT Data -->
+                    @foreach($rts as $rt)
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200" 
+                        x-show="shouldShowItem('rt', {{ $rt->id }}, '{{ $rt->nama_rt }}', '{{ $rt->rw->desa->alamat ?? '' }}', '{{ $rt->status }}')">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                <i data-lucide="users" class="w-3 h-3 mr-1"></i>
+                                RT
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $rt->nama_rt }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ $rt->alamat ?? '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rt->rw->nama_rw ?? 'N/A' }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ $rt->rw->desa->alamat ?? 'N/A' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rt->ketua_rt ?? '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rt->no_telpon ?? '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rt->jumlah_kk }} KK</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                Rp {{ number_format($rt->saldo, 0, ',', '.') }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $rt->status == 'aktif' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
+                                {{ ucfirst($rt->status) }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex items-center justify-end space-x-2">
+                                <button @click="viewDetail('rt', {{ $rt->id }})" 
+                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button @click="openModal('rt', 'edit', {{ $rt->id }})" 
+                                        class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300">
+                                    <i data-lucide="edit" class="w-4 h-4"></i>
+                                </button>
+                                <button @click="openDeleteModal('rt', {{ $rt->id }}, '{{ $rt->nama_rt }}')" 
+                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal for RW CRUD -->
+    <div x-show="showModal && modalType === 'rw'" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
+            
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form @submit.prevent="submitForm('rw')">
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4" 
+                                    x-text="modalAction === 'create' ? 'Tambah RW' : 'Edit RW'"></h3>
+                                
+                                <!-- Error Messages -->
+                                <div x-show="validationErrors && Object.keys(validationErrors).length > 0" 
+                                     class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                                    <ul class="list-disc list-inside text-sm">
+                                        <template x-for="(errors, field) in validationErrors" :key="field">
+                                            <template x-for="error in errors" :key="error">
+                                                <li x-text="error"></li>
+                                            </template>
+                                        </template>
+                                    </ul>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Desa <span class="text-red-500">*</span>
+                                        </label>
+                                        <select x-model="formData.desa_id" required
+                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                            <option value="">Pilih Desa</option>
+                                            @foreach($desas as $desa)
+                                                <option value="{{ $desa->id }}">{{ $desa->alamat }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Nama RW <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text" x-model="formData.nama_rw" required
+                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                               placeholder="Masukkan nama RW">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Alamat <span class="text-red-500">*</span>
+                                        </label>
+                                        <textarea x-model="formData.alamat" required rows="3"
+                                                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                  placeholder="Masukkan alamat RW"></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Ketua RW
+                                        </label>
+                                        <input type="text" x-model="formData.ketua_rw"
+                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                               placeholder="Masukkan nama ketua RW">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            No. Telepon
+                                        </label>
+                                        <input type="text" x-model="formData.no_telpon"
+                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                               placeholder="Masukkan nomor telepon">
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Saldo
+                                            </label>
+                                            <input type="number" x-model="formData.saldo" min="0" step="0.01"
+                                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                   placeholder="0">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Status <span class="text-red-500">*</span>
+                                            </label>
+                                            <select x-model="formData.status" required
+                                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                                <option value="aktif">Aktif</option>
+                                                <option value="tidak_aktif">Tidak Aktif</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" :disabled="isSubmitting"
+                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
+                            <span x-show="!isSubmitting" x-text="modalAction === 'create' ? 'Simpan' : 'Update'"></span>
+                            <span x-show="isSubmitting">Menyimpan...</span>
+                        </button>
+                        <button type="button" @click="closeModal()" 
+                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for RT CRUD -->
+    <div x-show="showModal && modalType === 'rt'" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
+            
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form @submit.prevent="submitForm('rt')">
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4" 
+                                    x-text="modalAction === 'create' ? 'Tambah RT' : 'Edit RT'"></h3>
+                                
+                                <!-- Error Messages -->
+                                <div x-show="validationErrors && Object.keys(validationErrors).length > 0" 
+                                     class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                                    <ul class="list-disc list-inside text-sm">
+                                        <template x-for="(errors, field) in validationErrors" :key="field">
+                                            <template x-for="error in errors" :key="error">
+                                                <li x-text="error"></li>
+                                            </template>
+                                        </template>
+                                    </ul>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            RW <span class="text-red-500">*</span>
+                                        </label>
+                                        <select x-model="formData.rw_id" required
+                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                            <option value="">Pilih RW</option>
+                                            @foreach($rws as $rw)
+                                                <option value="{{ $rw->id }}">{{ $rw->nama_rw }} - {{ $rw->desa->alamat ?? 'N/A' }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Nama RT <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text" x-model="formData.nama_rt" required
+                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                               placeholder="Masukkan nama RT">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Alamat
+                                        </label>
+                                        <textarea x-model="formData.alamat" rows="3"
+                                                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                  placeholder="Masukkan alamat RT"></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Ketua RT
+                                        </label>
+                                        <input type="text" x-model="formData.ketua_rt"
+                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                               placeholder="Masukkan nama ketua RT">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            No. Telepon
+                                        </label>
+                                        <input type="text" x-model="formData.no_telpon"
+                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                               placeholder="Masukkan nomor telepon">
+                                    </div>
+
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Jumlah KK
+                                            </label>
+                                            <input type="number" x-model="formData.jumlah_kk" min="0"
+                                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                   placeholder="0">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Saldo
+                                            </label>
+                                            <input type="number" x-model="formData.saldo" min="0" step="0.01"
+                                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                   placeholder="0">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Status <span class="text-red-500">*</span>
+                                            </label>
+                                            <select x-model="formData.status" required
+                                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                                <option value="aktif">Aktif</option>
+                                                <option value="tidak_aktif">Tidak Aktif</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" :disabled="isSubmitting"
+                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
+                            <span x-show="!isSubmitting" x-text="modalAction === 'create' ? 'Simpan' : 'Update'"></span>
+                            <span x-show="isSubmitting">Menyimpan...</span>
+                        </button>
+                        <button type="button" @click="closeModal()" 
+                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div x-show="showDeleteModal" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeDeleteModal()"></div>
+            
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 sm:mx-0 sm:h-10 sm:w-10">
+                            <i data-lucide="alert-triangle" class="h-6 w-6 text-red-600 dark:text-red-400"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                                Konfirmasi Hapus
+                            </h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    Apakah Anda yakin ingin menghapus <span class="font-semibold" x-text="deleteData.type?.toUpperCase()"></span> 
+                                    "<span class="font-semibold" x-text="deleteData.name"></span>"?
+                                </p>
+                                <p class="text-sm text-red-600 dark:text-red-400 mt-2">
+                                    Tindakan ini tidak dapat dibatalkan!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button @click="confirmDelete()" :disabled="isDeleting"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
+                        <span x-show="!isDeleting">Hapus</span>
+                        <span x-show="isDeleting">Menghapus...</span>
+                    </button>
+                    <button @click="closeDeleteModal()" :disabled="isDeleting"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div x-show="showDetailModal" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeDetailModal()"></div>
+            
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4" 
+                                x-text="'Detail ' + (detailData.type === 'rw' ? 'RW' : 'RT')"></h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" x-show="detailData">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400">Nama</label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white" x-text="detailData.nama"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                                    <span class="mt-1 inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                                          :class="detailData.status === 'aktif' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'"
+                                          x-text="detailData.status ? detailData.status.charAt(0).toUpperCase() + detailData.status.slice(1) : ''"></span>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400">Alamat</label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white" x-text="detailData.alamat || '-'"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400" x-text="'Ketua ' + (detailData.type === 'rw' ? 'RW' : 'RT')"></label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white" x-text="detailData.ketua || '-'"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400">No. Telepon</label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white" x-text="detailData.no_telpon || '-'"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400">Saldo</label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white" x-text="'Rp ' + (detailData.saldo ? new Intl.NumberFormat('id-ID').format(detailData.saldo) : '0')"></p>
+                                </div>
+                                <div x-show="detailData.type === 'rt'">
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400">Jumlah KK</label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white" x-text="(detailData.jumlah_kk || 0) + ' KK'"></p>
+                                </div>
+                                <div x-show="detailData.type === 'rw'">
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400">Jumlah RT</label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white" x-text="(detailData.jumlah_rt || 0) + ' RT'"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400" x-text="detailData.type === 'rw' ? 'Desa' : 'RW'"></label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white" x-text="detailData.parent || '-'"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" @click="closeDetailModal()" 
+                            class="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:w-auto sm:text-sm">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function rtRwManager() {
+    return {
+        // Modal state
+        showModal: false,
+        showDetailModal: false,
+        showDeleteModal: false,
+        modalType: '', // 'rw' or 'rt'
+        modalAction: '', // 'create' or 'edit'
+        editId: null,
+        isSubmitting: false,
+        isDeleting: false,
+        
+        // Filter state
+        searchQuery: '',
+        selectedDesa: '',
+        selectedStatus: '',
+        viewMode: 'all',
+        
+        // Form data
+        formData: {},
+        detailData: {},
+        deleteData: {},
+        validationErrors: {},
+        
+        // Data arrays
+        rwData: @json($rws),
+        rtData: @json($rts),
+        
+        init() {
+            this.resetFormData();
+            this.initializeIcons();
+        },
+        
+        initializeIcons() {
+            this.$nextTick(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            });
+        },
+        
+        resetFormData() {
+            this.formData = {
+                // RW fields
+                desa_id: '',
+                nama_rw: '',
+                alamat: '',
+                ketua_rw: '',
+                no_telpon: '',
+                saldo: 0,
+                status: 'aktif',
+                
+                // RT fields
+                rw_id: '',
+                nama_rt: '',
+                ketua_rt: '',
+                jumlah_kk: 0
+            };
+            this.validationErrors = {};
+        },
+        
+        openModal(type, action, id = null) {
+            this.modalType = type;
+            this.modalAction = action;
+            this.editId = id;
+            this.resetFormData();
+            
+            if (action === 'edit' && id) {
+                this.loadEditData(type, id);
+            }
+            
+            this.showModal = true;
+            this.$nextTick(() => {
+                this.initializeIcons();
+            });
+        },
+        
+        closeModal() {
+            this.showModal = false;
+            this.resetFormData();
+            this.isSubmitting = false;
+        },
+
+        openDeleteModal(type, id, name) {
+            this.deleteData = {
+                type: type,
+                id: id,
+                name: name
+            };
+            this.showDeleteModal = true;
+            this.$nextTick(() => {
+                this.initializeIcons();
+            });
+        },
+
+        closeDeleteModal() {
+            this.showDeleteModal = false;
+            this.deleteData = {};
+            this.isDeleting = false;
+        },
+
+        async confirmDelete() {
+            if (this.isDeleting) return;
+            
+            this.isDeleting = true;
+            
+            try {
+                const formData = new FormData();
+                formData.append('_method', 'DELETE');
+                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                
+                const response = await fetch(`/${this.deleteData.type}/${this.deleteData.id}`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    this.showAlert(result.message || `${this.deleteData.type.toUpperCase()} berhasil dihapus!`, 'success');
+                    this.closeDeleteModal();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    const errorData = await response.json();
+                    this.showAlert(errorData.message || 'Gagal menghapus data', 'error');
+                }
+            } catch (error) {
+                this.showAlert('Terjadi kesalahan koneksi. Silakan coba lagi.', 'error');
+            } finally {
+                this.isDeleting = false;
+            }
+        },
+        
+        loadEditData(type, id) {
+            const data = type === 'rw' 
+                ? this.rwData.find(item => item.id === id)
+                : this.rtData.find(item => item.id === id);
+                
+            if (data) {
+                Object.keys(this.formData).forEach(key => {
+                    if (data.hasOwnProperty(key)) {
+                        this.formData[key] = data[key];
+                    }
+                });
+            }
+        },
+        
+        async submitForm(type) {
+            if (this.isSubmitting) return;
+            
+            this.isSubmitting = true;
+            this.validationErrors = {};
+            
+            try {
+                // Client-side validation
+                if (type === 'rw') {
+                    if (!this.formData.desa_id) {
+                        this.validationErrors.desa_id = ['Desa harus dipilih.'];
+                    }
+                    if (!this.formData.nama_rw) {
+                        this.validationErrors.nama_rw = ['Nama RW harus diisi.'];
+                    }
+                    if (!this.formData.alamat) {
+                        this.validationErrors.alamat = ['Alamat harus diisi.'];
+                    }
+                } else if (type === 'rt') {
+                    if (!this.formData.rw_id) {
+                        this.validationErrors.rw_id = ['RW harus dipilih.'];
+                    }
+                    if (!this.formData.nama_rt) {
+                        this.validationErrors.nama_rt = ['Nama RT harus diisi.'];
+                    }
+                }
+
+                if (Object.keys(this.validationErrors).length > 0) {
+                    this.isSubmitting = false;
+                    return;
+                }
+
+                const url = this.modalAction === 'create' 
+                    ? `/${type}`
+                    : `/${type}/${this.editId}`;
+                    
+                const method = this.modalAction === 'create' ? 'POST' : 'PUT';
+                
+                // Prepare form data
+                const formData = new FormData();
+                
+                // Add CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                if (csrfToken) {
+                    formData.append('_token', csrfToken.getAttribute('content'));
+                }
+                
+                // Add method for PUT requests
+                if (method === 'PUT') {
+                    formData.append('_method', 'PUT');
+                }
+                
+                // Add form fields
+                Object.keys(this.formData).forEach(key => {
+                    if (this.formData[key] !== null && this.formData[key] !== '' && this.formData[key] !== undefined) {
+                        formData.append(key, this.formData[key]);
+                    }
+                });
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    this.showAlert(
+                        result.message || `${type.toUpperCase()} berhasil ${this.modalAction === 'create' ? 'ditambahkan' : 'diperbarui'}!`, 
+                        'success'
+                    );
+                    this.closeModal();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    const errorData = await response.json();
+                    
+                    if (response.status === 422 && errorData.errors) {
+                        // Validation errors
+                        this.validationErrors = errorData.errors;
+                        this.showAlert('Mohon periksa kembali data yang dimasukkan', 'error');
+                    } else {
+                        let errorMessage = errorData.message || 'Terjadi kesalahan saat menyimpan data';
+                        this.showAlert(errorMessage, 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                this.showAlert('Terjadi kesalahan koneksi. Silakan coba lagi.', 'error');
+            } finally {
+                this.isSubmitting = false;
+            }
+        },
+        
+        viewDetail(type, id) {
+            const data = type === 'rw' 
+                ? this.rwData.find(item => item.id === id)
+                : this.rtData.find(item => item.id === id);
+                
+            if (data) {
+                this.detailData = {
+                    type: type,
+                    nama: type === 'rw' ? data.nama_rw : data.nama_rt,
+                    alamat: data.alamat,
+                    ketua: type === 'rw' ? data.ketua_rw : data.ketua_rt,
+                    no_telpon: data.no_telpon,
+                    saldo: data.saldo,
+                    status: data.status,
+                    jumlah_kk: data.jumlah_kk,
+                    jumlah_rt: type === 'rw' ? (data.rts ? data.rts.length : 0) : null,
+                    parent: type === 'rw' ? (data.desa ? data.desa.alamat : '') : (data.rw ? data.rw.nama_rw : '')
+                };
+                this.showDetailModal = true;
+            }
+        },
+        
+        closeDetailModal() {
+            this.showDetailModal = false;
+            this.detailData = {};
+        },
+          {
+            this.showDetailModal = false;
+            this.detailData = {};
+        },
+        
+        shouldShowItem(type, id, name, desa, status) {
+            // Filter by view mode
+            if (this.viewMode !== 'all' && this.viewMode !== type) {
+                return false;
+            }
+            
+            // Filter by search query
+            if (this.searchQuery && !name.toLowerCase().includes(this.searchQuery.toLowerCase()) && 
+                !desa.toLowerCase().includes(this.searchQuery.toLowerCase())) {
+                return false;
+            }
+            
+            // Filter by desa
+            if (this.selectedDesa) {
+                const item = type === 'rw' 
+                    ? this.rwData.find(rw => rw.id === id)
+                    : this.rtData.find(rt => rt.id === id);
+                    
+                if (type === 'rw' && item && item.desa_id != this.selectedDesa) {
+                    return false;
+                }
+                if (type === 'rt' && item && item.rw && item.rw.desa_id != this.selectedDesa) {
+                    return false;
+                }
+            }
+            
+            // Filter by status
+            if (this.selectedStatus && status !== this.selectedStatus) {
+                return false;
+            }
+            
+            return true;
+        },
+        
+        filterData() {
+            // This method is called when filters change
+            // The actual filtering is done in shouldShowItem method
+            this.$nextTick(() => {
+                this.initializeIcons();
+            });
+        },
+
+        showAlert(message, type = 'info') {
+            // Create alert element
+            const alert = document.createElement('div');
+            alert.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full max-w-sm`;
+            
+            if (type === 'success') {
+                alert.className += ' bg-green-500 text-white';
+                alert.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span class="flex-1">${message}</span>
+                        <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            } else if (type === 'error') {
+                alert.className += ' bg-red-500 text-white';
+                alert.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="flex-1">${message}</span>
+                        <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            } else {
+                alert.className += ' bg-blue-500 text-white';
+                alert.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="flex-1">${message}</span>
+                        <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }
+            
+            document.body.appendChild(alert);
+            
+            // Animate in
+            setTimeout(() => {
+                alert.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                alert.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (alert.parentElement) {
+                        alert.remove();
+                    }
+                }, 300);
+            }, 5000);
+        }
+    }
+}
+
+// Initialize icons after page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+});
+</script>
+@endpush
+@endsection

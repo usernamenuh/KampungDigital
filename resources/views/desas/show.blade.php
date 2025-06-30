@@ -245,7 +245,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl text-center">
                         <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
                             <i data-lucide="calendar-plus" class="w-6 h-6 text-blue-600 dark:text-blue-400"></i>
@@ -282,6 +282,32 @@
                         </p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
                             Database ID
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl text-center">
+                        <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                            <i data-lucide="mail" class="w-6 h-6 text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Email/Gmail</p>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white break-all">
+                            {{ $desa->gmail ?? '-' }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            Kontak Email
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl text-center">
+                        <div class="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                            <i data-lucide="phone" class="w-6 h-6 text-green-600 dark:text-green-400"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">No. HP/Telepon</p>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ $desa->no_telpon ?? '-' }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            Kontak Telepon
                         </p>
                     </div>
                 </div>
