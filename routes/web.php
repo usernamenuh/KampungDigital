@@ -11,11 +11,16 @@ use App\Http\Controllers\RtRwController;
 use App\Http\Controllers\Api\DashboardApiController;
 use App\Http\Controllers\PendudukController;
 use App\Http\Controllers\KkController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\Auth\RegisterController;
 
 // Landing page route
 Route::get('/', function () {
     return view('landing');
 });
+
+// Route untuk check NIK saat registrasi
+Route::post('/check-nik', [RegisterController::class, 'checkNik'])->name('check.nik');
 
 // Routes dengan pembatasan role
 Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
@@ -31,6 +36,17 @@ Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
     // Routes untuk Kartu Keluarga - bisa diakses admin, kades, rw, rt
     Route::resource('kk', KkController::class);
     Route::post('kk/{kk}/set-kepala-keluarga', [KkController::class, 'setKepalaKeluarga'])->name('kk.set-kepala-keluarga');
+});
+
+// Routes khusus admin
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    // Resource route untuk desa - hanya admin yang bisa akses
+    Route::resource('desas', DesaController::class);
+    
+    // User Management - hanya admin yang bisa akses
+    Route::resource('users', UserController::class);
+    Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::patch('users/{user}/change-role', [UserController::class, 'changeRole'])->name('users.change-role');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -59,10 +75,6 @@ Route::middleware(['auth'])->group(function () {
         return view('dashboards.masyarakat'); 
     })->name('masyarakat.dashboard')->middleware('role:masyarakat');
 });
-
-// Resource route untuk desa - hanya admin yang bisa akses
-Route::resource('desas', DesaController::class)->middleware('role:admin');
-
 
 Route::middleware(['auth', 'role:admin,kades'])->group(function () {
     Route::get('/wisata', function () { return view('wisata.index'); })->name('wisata.index');

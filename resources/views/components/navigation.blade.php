@@ -150,9 +150,15 @@ function navigationData() {
                 ]
             },
             {
+                name: 'Sistem',
+                items: [
+                    { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '/users' },
+                    { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '/rt-rw' }
+                ]
+            },
+            {
                 name: 'Keuangan',
                 items: [
-                    { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '/rt-rw' },
                     { id: 'umkm', label: 'UMKM', icon: 'store', count: 3, route: '/umkm' }
                 ]
             },
@@ -179,6 +185,10 @@ function navigationData() {
         // Fungsi untuk mengecek akses menu berdasarkan role
         hasMenuAccess(menuId) {
             switch(menuId) {
+                case 'users':
+                    // Menu Kelola Pengguna hanya untuk admin
+                    return this.userRole === 'admin';
+                    
                 case 'desa':
                     // Menu Desa hanya untuk admin
                     return this.userRole === 'admin';
@@ -306,6 +316,7 @@ function navigationData() {
             if (path === '/desas' || path.includes('/desas')) return 'desa';
             if (path === '/rt-rw' || path.includes('/rt-rw')) return 'rt-rw';
             if (path === '/kk' || path.includes('/kk')) return 'kk';
+            if (path === '/users' || path.includes('/users')) return 'users';
             if (path === '/pendidikan' || path.includes('/pendidikan')) return 'pendidikan';
             return path.substring(1) || 'dashboard';
         },

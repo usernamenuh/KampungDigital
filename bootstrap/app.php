@@ -12,10 +12,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Middleware alias
         $middleware->alias([
-        'role' => \App\Http\Middleware\RoleCheck::class,
+            'role' => \App\Http\Middleware\RoleCheck::class,
+            'user.status' => \App\Http\Middleware\CheckUserStatus::class,
+        ]);
+
+        // Global middleware untuk semua web routes
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckUserStatus::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-
+        //
     })->create();

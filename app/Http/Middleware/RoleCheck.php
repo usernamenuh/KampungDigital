@@ -32,8 +32,83 @@ class RoleCheck
             return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        // Ambil role user yang sedang login
+        // Ambil user yang sedang login
         $user = Auth::user();
+
+        // Cek status user - jika inactive, logout dan redirect
+        if ($user->status === 'inactive') {
+            Log::warning('Inactive user attempted to access system', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'user_role' => $user->role,
+                'url' => $request->fullUrl(),
+                'ip' => $request->ip()
+            ]);
+
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.'
+                ], 403);
+            }
+
+            return redirect()->route('login')->with('error', 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.');
+        }
+
+        // Cek relasi dengan penduduk - jika penduduk dihapus atau nonaktif, logout
+        if ($user->penduduk) {
+            // Jika penduduk statusnya inactive
+            if ($user->penduduk->status === 'inactive') {
+                Log::warning('User with inactive penduduk attempted to access system', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'penduduk_id' => $user->penduduk->id,
+                    'penduduk_nik' => $user->penduduk->nik,
+                    'penduduk_status' => $user->penduduk->status,
+                    'url' => $request->fullUrl(),
+                    'ip' => $request->ip()
+                ]);
+
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Data kependudukan Anda telah dinonaktifkan. Silakan hubungi administrator.'
+                    ], 403);
+                }
+
+                return redirect()->route('login')->with('error', 'Data kependudukan Anda telah dinonaktifkan. Silakan hubungi administrator.');
+            }
+        } else {
+            // Jika user punya role masyarakat tapi tidak ada data penduduk, logout
+            if ($user->role === 'masyarakat') {
+                Log::warning('Masyarakat user without penduduk data attempted to access system', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'user_role' => $user->role,
+                    'url' => $request->fullUrl(),
+                    'ip' => $request->ip()
+                ]);
+
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Data kependudukan Anda tidak ditemukan. Silakan hubungi administrator.'
+                    ], 403);
+                }
+
+                return redirect()->route('login')->with('error', 'Data kependudukan Anda tidak ditemukan. Silakan hubungi administrator.');
+            }
+        }
+
         $userRole = $user->role;
 
         // Cek apakah role user termasuk dalam role yang diizinkan

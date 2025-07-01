@@ -70,6 +70,10 @@
         .form-control::placeholder {
             color: #bfc9db;
         }
+        .form-control:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
         .btn-register, .btn-nik {
             width: 100%;
             padding: 0.75rem;
@@ -82,10 +86,18 @@
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .btn-register:hover, .btn-nik:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+        .btn-register:disabled, .btn-nik:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
         .error-message {
             background: rgba(239, 68, 68, 0.1);
@@ -97,9 +109,48 @@
             margin-top: 0.5rem;
             margin-bottom: 1rem;
         }
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ade80;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .back-btn {
+            background: rgba(107, 114, 128, 0.2);
+            color: #9ca3af;
+            border: 1px solid rgba(107, 114, 128, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        .back-btn:hover {
+            background: rgba(107, 114, 128, 0.3);
+            color: #d1d5db;
+        }
         @media (max-width: 600px) {
             .register-card {
-                padding: 1.5rem 0.5rem;
+                padding: 1.5rem 1rem;
+                margin: 1rem;
             }
         }
     </style>
@@ -112,17 +163,29 @@
             <h2>Register</h2>
             <p>Buat akun baru untuk Kampung Digital</p>
         </div>
+
+        <!-- NIK Validation Section -->
         <div id="nik-section">
             <div class="form-group">
                 <label for="nik" class="form-label">NIK <span style="color:#3b82f6">*</span></label>
                 <input id="nik" type="text" class="form-control" maxlength="16" placeholder="Masukkan 16 digit NIK" autocomplete="off">
                 <div id="nik-error" class="error-message" style="display:none;"></div>
+                <div id="nik-success" class="success-message" style="display:none;"></div>
             </div>
-            <button class="btn-nik" type="button" onclick="cekNik()">Cek NIK</button>
+            <button class="btn-nik" type="button" onclick="cekNik()" id="btn-cek-nik">
+                <span id="btn-text">Cek NIK</span>
+            </button>
         </div>
+
+        <!-- Registration Form -->
         <form id="register-form" method="POST" action="{{ route('register') }}" style="display:none;">
             @csrf
             <input type="hidden" name="nik" id="hidden-nik">
+            
+            <button type="button" class="back-btn" onclick="backToNik()">
+                ← Kembali ke Input NIK
+            </button>
+
             <div class="form-group">
                 <label for="name" class="form-label">Nama Lengkap <span style="color:#3b82f6">*</span></label>
                 <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required autocomplete="name" autofocus placeholder="Masukkan nama lengkap">
@@ -130,6 +193,7 @@
                     <div class="error-message">{{ $message }}</div>
                 @enderror
             </div>
+
             <div class="form-group">
                 <label for="email" class="form-label">Email <span style="color:#3b82f6">*</span></label>
                 <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" placeholder="Masukkan email">
@@ -137,6 +201,7 @@
                     <div class="error-message">{{ $message }}</div>
                 @enderror
             </div>
+
             <div class="form-group">
                 <label for="password" class="form-label">Password <span style="color:#3b82f6">*</span></label>
                 <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password" placeholder="Masukkan password">
@@ -144,31 +209,149 @@
                     <div class="error-message">{{ $message }}</div>
                 @enderror
             </div>
+
             <div class="form-group">
                 <label for="password-confirm" class="form-label">Konfirmasi Password <span style="color:#3b82f6">*</span></label>
                 <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password" placeholder="Ulangi password">
             </div>
-            <button type="submit" class="btn-register">Register</button>
+
+            <button type="submit" class="btn-register" id="btn-register">
+                <span id="register-text">Register</span>
+            </button>
         </form>
+
+        <div style="text-align: center; margin-top: 1.5rem;">
+            <p style="color: #9ca3af; font-size: 0.875rem;">
+                Sudah punya akun? 
+                <a href="{{ route('login') }}" style="color: #3b82f6; text-decoration: none;">Login di sini</a>
+            </p>
+        </div>
     </div>
 </div>
 @endsection
 
 @section('script')
 <script>
+let nikValidated = false;
+let pendudukData = null;
+
 function cekNik() {
     const nikInput = document.getElementById('nik');
     const nikError = document.getElementById('nik-error');
+    const nikSuccess = document.getElementById('nik-success');
+    const btnCekNik = document.getElementById('btn-cek-nik');
+    const btnText = document.getElementById('btn-text');
     const nik = nikInput.value.trim();
+
+    // Reset messages
+    nikError.style.display = 'none';
+    nikSuccess.style.display = 'none';
+
+    // Validate NIK format
     if (!/^\d{16}$/.test(nik)) {
         nikError.textContent = 'NIK harus 16 digit angka.';
         nikError.style.display = 'block';
         return;
     }
-    nikError.style.display = 'none';
-    document.getElementById('register-form').style.display = 'block';
-    document.getElementById('nik-section').style.display = 'none';
-    document.getElementById('hidden-nik').value = nik;
+
+    // Show loading
+    btnCekNik.disabled = true;
+    btnText.innerHTML = '<div class="loading-spinner"></div>Memvalidasi...';
+
+    // Send AJAX request
+    fetch('/check-nik', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({ nik: nik })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            nikSuccess.textContent = data.message;
+            nikSuccess.style.display = 'block';
+            pendudukData = data.data;
+            nikValidated = true;
+            
+            // Show form after delay
+            setTimeout(() => {
+                showRegistrationForm();
+            }, 1000);
+        } else {
+            nikError.textContent = data.message;
+            nikError.style.display = 'block';
+            nikValidated = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        nikError.textContent = 'Terjadi kesalahan saat memvalidasi NIK. Silakan coba lagi.';
+        nikError.style.display = 'block';
+        nikValidated = false;
+    })
+    .finally(() => {
+        // Reset button
+        btnCekNik.disabled = false;
+        btnText.textContent = 'Cek NIK';
+    });
 }
+
+function showRegistrationForm() {
+    document.getElementById('nik-section').style.display = 'none';
+    document.getElementById('register-form').style.display = 'block';
+    document.getElementById('hidden-nik').value = document.getElementById('nik').value;
+    
+    // Pre-fill name if available
+    if (pendudukData && pendudukData.nama_lengkap) {
+        document.getElementById('name').value = pendudukData.nama_lengkap;
+    }
+}
+
+function backToNik() {
+    document.getElementById('register-form').style.display = 'none';
+    document.getElementById('nik-section').style.display = 'block';
+    nikValidated = false;
+    pendudukData = null;
+}
+
+// Handle form submission
+document.getElementById('register-form').addEventListener('submit', function(e) {
+    const btnRegister = document.getElementById('btn-register');
+    const registerText = document.getElementById('register-text');
+    
+    if (!nikValidated) {
+        e.preventDefault();
+        alert('Silakan validasi NIK terlebih dahulu.');
+        return;
+    }
+    
+    // Show loading
+    btnRegister.disabled = true;
+    registerText.innerHTML = '<div class="loading-spinner"></div>Mendaftar...';
+});
+
+// Handle Enter key on NIK input
+document.getElementById('nik').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        cekNik();
+    }
+});
+
+// Show form if there are validation errors
+@if($errors->any())
+    document.addEventListener('DOMContentLoaded', function() {
+        // If there are errors, show the form
+        const oldNik = '{{ old('nik') }}';
+        if (oldNik) {
+            document.getElementById('nik').value = oldNik;
+            document.getElementById('hidden-nik').value = oldNik;
+            nikValidated = true;
+            showRegistrationForm();
+        }
+    });
+@endif
 </script>
 @endsection
