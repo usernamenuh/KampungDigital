@@ -9,6 +9,8 @@ use App\Http\Controllers\RwController;
 use App\Http\Controllers\RtController;
 use App\Http\Controllers\RtRwController;
 use App\Http\Controllers\Api\DashboardApiController;
+use App\Http\Controllers\PendudukController;
+use App\Http\Controllers\KkController;
 
 // Landing page route
 Route::get('/', function () {
@@ -23,6 +25,12 @@ Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
     Route::resource('rw', RwController::class)->except(['index', 'show']);
     // Route untuk CRUD RT  
     Route::resource('rt', RtController::class)->except(['index', 'show']);
+    // Routes untuk Penduduk - bisa diakses admin, kades, rw, rt
+    Route::resource('penduduk', PendudukController::class);
+    Route::get('penduduk-statistics', [PendudukController::class, 'statistics'])->name('penduduk.statistics');
+    // Routes untuk Kartu Keluarga - bisa diakses admin, kades, rw, rt
+    Route::resource('kk', KkController::class);
+    Route::post('kk/{kk}/set-kepala-keluarga', [KkController::class, 'setKepalaKeluarga'])->name('kk.set-kepala-keluarga');
 });
 
 Route::middleware(['auth'])->group(function () {

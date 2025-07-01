@@ -35,4 +35,28 @@ class Rt extends Model
     {
         return $this->hasOneThrough(Desa::class, Rw::class, 'id', 'id', 'rw_id', 'desa_id');
     }
+
+    /**
+     * Relasi dengan KK (One to Many)
+     */
+    public function kks()
+    {
+        return $this->hasMany(Kk::class);
+    }
+
+    /**
+     * Update jumlah KK otomatis
+     */
+    public function updateJumlahKk()
+    {
+        $this->update(['jumlah_kk' => $this->kks()->count()]);
+    }
+
+    /**
+     * Get total penduduk
+     */
+    public function getTotalPendudukAttribute()
+    {
+        return $this->kks()->withCount('penduduks')->get()->sum('penduduks_count');
+    }
 }

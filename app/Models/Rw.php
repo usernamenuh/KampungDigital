@@ -35,15 +35,23 @@ class Rw extends Model
         return $this->hasMany(Rt::class);
     }
 
-    // Method untuk mendapatkan total saldo RW + RT
     public function getTotalSaldoAttribute()
     {
         return $this->saldo + $this->rts->sum('saldo');
     }
+    /**
+     * Get total RT count
+     */
+    public function getTotalRtAttribute()
+    {
+        return $this->rts()->count();
+    }
 
-    // Method untuk mendapatkan total KK
+    /**
+     * Get total KK count
+     */
     public function getTotalKkAttribute()
     {
-        return $this->rts->sum('jumlah_kk');
+        return $this->rts()->withCount('kks')->get()->sum('kks_count');
     }
 }

@@ -2,107 +2,67 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Carbon\Carbon;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
         'role',
-        'last_activity',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'last_activity' => 'datetime',
-        'password' => 'hashed',
-    ];
-
-    /**
-     * Check if user is currently online
-     *
-     * @return bool
-     */
-    public function isOnline(): bool
+    protected function casts(): array
     {
-        return $this->last_activity && $this->last_activity->gt(now()->subMinutes(5));
-    }
-
-    /**
-     * Get online users
-     *
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public static function online()
-    {
-        return static::where('last_activity', '>=', now()->subMinutes(5));
-    }
-
-    /**
-     * Get users by role
-     *
-     * @param string $role
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public static function byRole(string $role)
-    {
-        return static::where('role', $role);
-    }
-
-    /**
-     * Get online users count by role
-     *
-     * @return array
-     */
-    public static function getOnlineCountByRole(): array
-    {
-        $onlineThreshold = now()->subMinutes(5);
-        
         return [
-            'admin' => static::where('role', 'admin')->where('last_activity', '>=', $onlineThreshold)->count(),
-            'kades' => static::where('role', 'kades')->where('last_activity', '>=', $onlineThreshold)->count(),
-            'rw' => static::where('role', 'rw')->where('last_activity', '>=', $onlineThreshold)->count(),
-            'rt' => static::where('role', 'rt')->where('last_activity', '>=', $onlineThreshold)->count(),
-            'masyarakat' => static::where('role', 'masyarakat')->where('last_activity', '>=', $onlineThreshold)->count(),
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
         ];
     }
 
     /**
-     * Scope for active users
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * Relasi dengan Penduduk (One to One)
      */
-    public function scopeActive($query)
+    public function penduduk()
     {
-        return $query->where('last_activity', '>=', now()->subMinutes(5));
+        return $this->hasOne(Penduduk::class);
+    }
+
+    /**
+     * Check user roles
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isKades()
+    {
+        return $this->role === 'kades';
+    }
+
+    public function isRW()
+    {
+        return $this->role === 'rw';
+    }
+
+    public function isRT()
+    {
+        return $this->role === 'rt';
+    }
+
+    public function isMasyarakat()
+    {
+        return $this->role === 'masyarakat';
     }
 }

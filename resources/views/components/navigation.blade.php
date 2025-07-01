@@ -145,7 +145,7 @@ function navigationData() {
                 name: 'Data Master',
                 items: [
                     { id: 'penduduk', label: 'Penduduk', icon: 'users', count: 12, route: '/penduduk' },
-                    { id: 'lokasi', label: 'Lokasi', icon: 'map-pin', route: '/lokasi' },
+                    { id: 'kk', label: 'Kartu Keluarga', icon: 'users', route: '/kk' },
                     { id: 'desa', label: 'Desa', icon: 'building-2', route: '/desas' }
                 ]
             },
@@ -200,8 +200,8 @@ function navigationData() {
                     return this.userRole === 'admin' || this.userRole === 'kades';
                     
                 case 'penduduk':
-                case 'lokasi':
-                    // Menu ini bisa diakses oleh admin, kades, rw, rt
+                case 'kk':
+                    // Menu Kartu Keluarga bisa diakses oleh admin, kades, rw, rt
                     return ['admin', 'kades', 'rw', 'rt'].includes(this.userRole);
                     
                 case 'umkm':
@@ -305,6 +305,7 @@ function navigationData() {
             if (path === '/home' || path === '/') return 'dashboard';
             if (path === '/desas' || path.includes('/desas')) return 'desa';
             if (path === '/rt-rw' || path.includes('/rt-rw')) return 'rt-rw';
+            if (path === '/kk' || path.includes('/kk')) return 'kk';
             if (path === '/pendidikan' || path.includes('/pendidikan')) return 'pendidikan';
             return path.substring(1) || 'dashboard';
         },
