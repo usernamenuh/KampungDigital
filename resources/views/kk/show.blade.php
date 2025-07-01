@@ -57,7 +57,7 @@
                             @if($kk->kepalaKeluarga)
                                 <div class="flex items-center space-x-3 mt-2">
                                     @if($kk->kepalaKeluarga->foto)
-                                        <img src="{{ Storage::url($kk->kepalaKeluarga->foto) }}" alt="Foto" class="w-10 h-10 rounded-full object-cover">
+                                        <img src="{{ asset('storage/' . $kk->kepalaKeluarga->foto) }}" alt="Foto" class="w-10 h-10 rounded-full object-cover">
                                     @else
                                         <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
                                             <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +108,7 @@
                                 <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200">
                                     <div class="flex items-center space-x-4">
                                         @if($penduduk->foto)
-                                            <img src="{{ Storage::url($penduduk->foto) }}" alt="Foto" class="w-12 h-12 rounded-full object-cover">
+                                            <img src="{{ asset('storage/' . $penduduk->foto) }}" alt="Foto" class="w-12 h-12 rounded-full object-cover">
                                         @else
                                             <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
                                                 <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

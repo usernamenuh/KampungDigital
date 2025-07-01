@@ -3,6 +3,40 @@
 @section('content')
 <div class="min-h-screen bg-gray-50">
     <div class="container mx-auto px-4 py-6">
+        <!-- Success Alert -->
+        @if(session('success'))
+        <div id="success-alert" class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg relative">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                <span>{{ session('success') }}</span>
+                <button onclick="document.getElementById('success-alert').remove()" class="absolute top-0 right-0 mt-2 mr-2 text-green-500 hover:text-green-700">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        @endif
+
+        <!-- Error Alert -->
+        @if(session('error'))
+        <div id="error-alert" class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg relative">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                </svg>
+                <span>{{ session('error') }}</span>
+                <button onclick="document.getElementById('error-alert').remove()" class="absolute top-0 right-0 mt-2 mr-2 text-red-500 hover:text-red-700">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        @endif
+
         <!-- Header -->
         <div class="mb-6">
             <div class="flex items-center space-x-4">
@@ -61,7 +95,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="nik" class="block text-sm font-medium text-gray-700 mb-2">NIK <span class="text-red-500">*</span></label>
-                            <input type="text" id="nik" name="nik" maxlength="16" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('nik') border-red-500 @enderror" value="{{ old('nik') }}" required>
+                            <input type="text" id="nik" name="nik" maxlength="16" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('nik') border-red-500 @enderror" value="{{ old('nik') }}" required>
                             @error('nik')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -69,7 +103,7 @@
 
                         <div>
                             <label for="nama_lengkap" class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap <span class="text-red-500">*</span></label>
-                            <input type="text" id="nama_lengkap" name="nama_lengkap" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('nama_lengkap') border-red-500 @enderror" value="{{ old('nama_lengkap') }}" required>
+                            <input type="text" id="nama_lengkap" name="nama_lengkap" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('nama_lengkap') border-red-500 @enderror" value="{{ old('nama_lengkap') }}" required>
                             @error('nama_lengkap')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -77,7 +111,7 @@
 
                         <div>
                             <label for="jenis_kelamin" class="block text-sm font-medium text-gray-700 mb-2">Jenis Kelamin <span class="text-red-500">*</span></label>
-                            <select id="jenis_kelamin" name="jenis_kelamin" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('jenis_kelamin') border-red-500 @enderror" required>
+                            <select id="jenis_kelamin" name="jenis_kelamin" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('jenis_kelamin') border-red-500 @enderror" required>
                                 <option value="">Pilih Jenis Kelamin</option>
                                 <option value="L" {{ old('jenis_kelamin') == 'L' ? 'selected' : '' }}>Laki-laki</option>
                                 <option value="P" {{ old('jenis_kelamin') == 'P' ? 'selected' : '' }}>Perempuan</option>
@@ -89,7 +123,7 @@
 
                         <div>
                             <label for="tempat_lahir" class="block text-sm font-medium text-gray-700 mb-2">Tempat Lahir <span class="text-red-500">*</span></label>
-                            <input type="text" id="tempat_lahir" name="tempat_lahir" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('tempat_lahir') border-red-500 @enderror" value="{{ old('tempat_lahir') }}" required>
+                            <input type="text" id="tempat_lahir" name="tempat_lahir" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('tempat_lahir') border-red-500 @enderror" value="{{ old('tempat_lahir') }}" required>
                             @error('tempat_lahir')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -97,7 +131,7 @@
 
                         <div>
                             <label for="tanggal_lahir" class="block text-sm font-medium text-gray-700 mb-2">Tanggal Lahir <span class="text-red-500">*</span></label>
-                            <input type="date" id="tanggal_lahir" name="tanggal_lahir" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('tanggal_lahir') border-red-500 @enderror" value="{{ old('tanggal_lahir') }}" required>
+                            <input type="date" id="tanggal_lahir" name="tanggal_lahir" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('tanggal_lahir') border-red-500 @enderror" value="{{ old('tanggal_lahir') }}" required>
                             @error('tanggal_lahir')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -105,7 +139,7 @@
 
                         <div>
                             <label for="agama" class="block text-sm font-medium text-gray-700 mb-2">Agama <span class="text-red-500">*</span></label>
-                            <select id="agama" name="agama" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('agama') border-red-500 @enderror" required>
+                            <select id="agama" name="agama" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('agama') border-red-500 @enderror" required>
                                 <option value="">Pilih Agama</option>
                                 <option value="Islam" {{ old('agama') == 'Islam' ? 'selected' : '' }}>Islam</option>
                                 <option value="Kristen" {{ old('agama') == 'Kristen' ? 'selected' : '' }}>Kristen</option>
@@ -135,11 +169,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="md:col-span-2">
                             <label for="kk_id" class="block text-sm font-medium text-gray-700 mb-2">Kartu Keluarga <span class="text-red-500">*</span></label>
-                            <select id="kk_id" name="kk_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('kk_id') border-red-500 @enderror" required>
+                            <select id="kk_id" name="kk_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('kk_id') border-red-500 @enderror" required>
                                 <option value="">Pilih Kartu Keluarga</option>
                                 @foreach($kks as $kk)
-                                    <option value="{{ $kk->id }}" {{ (old('kk_id', request('kk_id')) == $kk->id) ? 'selected' : '' }}>
-                                        {{ $kk->no_kk }} - {{ $kk->alamat }}
+                                    <option value="{{ $kk->id }}" {{ (old('kk_id', request('kk_id')) == $kk->id) ? 'selected' : '' }} data-has-kepala="{{ $kk->kepala_keluarga_id ? 'true' : 'false' }}">
+                                        {{ $kk->no_kk }} - {{ $kk->alamat }} {{ $kk->kepala_keluarga_id ? '(Sudah ada kepala keluarga)' : '' }}
                                     </option>
                                 @endforeach
                             </select>
@@ -150,7 +184,7 @@
 
                         <div>
                             <label for="hubungan_keluarga" class="block text-sm font-medium text-gray-700 mb-2">Hubungan Keluarga <span class="text-red-500">*</span></label>
-                            <select id="hubungan_keluarga" name="hubungan_keluarga" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('hubungan_keluarga') border-red-500 @enderror" required>
+                            <select id="hubungan_keluarga" name="hubungan_keluarga" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('hubungan_keluarga') border-red-500 @enderror" required>
                                 <option value="">Pilih Hubungan</option>
                                 <option value="Kepala Keluarga" {{ old('hubungan_keluarga') == 'Kepala Keluarga' ? 'selected' : '' }}>Kepala Keluarga</option>
                                 <option value="Istri" {{ old('hubungan_keluarga') == 'Istri' ? 'selected' : '' }}>Istri</option>
@@ -166,11 +200,19 @@
                             @error('hubungan_keluarga')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
+                            <div id="kepala-keluarga-warning" class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg hidden">
+                                <div class="flex">
+                                    <svg class="w-5 h-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <p class="text-sm text-yellow-700">Kartu Keluarga yang dipilih sudah memiliki Kepala Keluarga. Silakan pilih hubungan keluarga yang lain.</p>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
                             <label for="status_perkawinan" class="block text-sm font-medium text-gray-700 mb-2">Status Perkawinan <span class="text-red-500">*</span></label>
-                            <select id="status_perkawinan" name="status_perkawinan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('status_perkawinan') border-red-500 @enderror" required>
+                            <select id="status_perkawinan" name="status_perkawinan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('status_perkawinan') border-red-500 @enderror" required>
                                 <option value="">Pilih Status</option>
                                 <option value="Belum Kawin" {{ old('status_perkawinan') == 'Belum Kawin' ? 'selected' : '' }}>Belum Kawin</option>
                                 <option value="Kawin" {{ old('status_perkawinan') == 'Kawin' ? 'selected' : '' }}>Kawin</option>
@@ -184,7 +226,7 @@
 
                         <div>
                             <label for="nama_ayah" class="block text-sm font-medium text-gray-700 mb-2">Nama Ayah</label>
-                            <input type="text" id="nama_ayah" name="nama_ayah" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('nama_ayah') border-red-500 @enderror" value="{{ old('nama_ayah') }}">
+                            <input type="text" id="nama_ayah" name="nama_ayah" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('nama_ayah') border-red-500 @enderror" value="{{ old('nama_ayah') }}">
                             @error('nama_ayah')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -192,7 +234,7 @@
 
                         <div>
                             <label for="nama_ibu" class="block text-sm font-medium text-gray-700 mb-2">Nama Ibu</label>
-                            <input type="text" id="nama_ibu" name="nama_ibu" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('nama_ibu') border-red-500 @enderror" value="{{ old('nama_ibu') }}">
+                            <input type="text" id="nama_ibu" name="nama_ibu" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('nama_ibu') border-red-500 @enderror" value="{{ old('nama_ibu') }}">
                             @error('nama_ibu')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -216,7 +258,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="pendidikan" class="block text-sm font-medium text-gray-700 mb-2">Pendidikan</label>
-                            <select id="pendidikan" name="pendidikan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('pendidikan') border-red-500 @enderror">
+                            <select id="pendidikan" name="pendidikan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('pendidikan') border-red-500 @enderror">
                                 <option value="">Pilih Pendidikan</option>
                                 <option value="Tidak/Belum Sekolah" {{ old('pendidikan') == 'Tidak/Belum Sekolah' ? 'selected' : '' }}>Tidak/Belum Sekolah</option>
                                 <option value="Belum Tamat SD/Sederajat" {{ old('pendidikan') == 'Belum Tamat SD/Sederajat' ? 'selected' : '' }}>Belum Tamat SD/Sederajat</option>
@@ -236,7 +278,7 @@
 
                         <div>
                             <label for="pekerjaan" class="block text-sm font-medium text-gray-700 mb-2">Pekerjaan</label>
-                            <input type="text" id="pekerjaan" name="pekerjaan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('pekerjaan') border-red-500 @enderror" value="{{ old('pekerjaan') }}">
+                            <input type="text" id="pekerjaan" name="pekerjaan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('pekerjaan') border-red-500 @enderror" value="{{ old('pekerjaan') }}">
                             @error('pekerjaan')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -244,7 +286,7 @@
 
                         <div>
                             <label for="kewarganegaraan" class="block text-sm font-medium text-gray-700 mb-2">Kewarganegaraan</label>
-                            <input type="text" id="kewarganegaraan" name="kewarganegaraan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('kewarganegaraan') border-red-500 @enderror" value="{{ old('kewarganegaraan', 'WNI') }}">
+                            <input type="text" id="kewarganegaraan" name="kewarganegaraan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('kewarganegaraan') border-red-500 @enderror" value="{{ old('kewarganegaraan', 'WNI') }}">
                             @error('kewarganegaraan')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -252,7 +294,7 @@
 
                         <div>
                             <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">User Account</label>
-                            <select id="user_id" name="user_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('user_id') border-red-500 @enderror">
+                            <select id="user_id" name="user_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('user_id') border-red-500 @enderror">
                                 <option value="">Pilih User (Opsional)</option>
                                 @foreach($users as $user)
                                     <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }}>
@@ -369,6 +411,32 @@ document.addEventListener('DOMContentLoaded', function() {
         return isValid;
     }
     
+    // Check KK and Hubungan Keluarga validation
+    function checkKepalaKeluargaValidation() {
+        const kkSelect = document.getElementById('kk_id');
+        const hubunganSelect = document.getElementById('hubungan_keluarga');
+        const warningDiv = document.getElementById('kepala-keluarga-warning');
+        
+        if (kkSelect.value && hubunganSelect.value === 'Kepala Keluarga') {
+            const selectedOption = kkSelect.options[kkSelect.selectedIndex];
+            const hasKepala = selectedOption.getAttribute('data-has-kepala') === 'true';
+            
+            if (hasKepala) {
+                warningDiv.classList.remove('hidden');
+                hubunganSelect.classList.add('border-red-500');
+                return false;
+            } else {
+                warningDiv.classList.add('hidden');
+                hubunganSelect.classList.remove('border-red-500');
+                return true;
+            }
+        } else {
+            warningDiv.classList.add('hidden');
+            hubunganSelect.classList.remove('border-red-500');
+            return true;
+        }
+    }
+    
     // Event listeners
     document.getElementById('next-step-1').addEventListener('click', function() {
         if (validateStep(1)) {
@@ -379,10 +447,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     document.getElementById('next-step-2').addEventListener('click', function() {
-        if (validateStep(2)) {
+        if (validateStep(2) && checkKepalaKeluargaValidation()) {
             showStep(3);
         } else {
-            alert('Mohon lengkapi semua field yang wajib diisi');
+            alert('Mohon lengkapi semua field yang wajib diisi dan periksa validasi');
         }
     });
     
@@ -394,18 +462,29 @@ document.addEventListener('DOMContentLoaded', function() {
         showStep(2);
     });
     
+    // KK and Hubungan Keluarga change listeners
+    document.getElementById('kk_id').addEventListener('change', checkKepalaKeluargaValidation);
+    document.getElementById('hubungan_keluarga').addEventListener('change', checkKepalaKeluargaValidation);
+    
     // File upload preview
     document.getElementById('foto').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                // You can add image preview here if needed
                 console.log('File selected:', file.name);
             };
             reader.readAsDataURL(file);
         }
     });
+    
+    // Auto hide alerts after 5 seconds
+    setTimeout(function() {
+        const successAlert = document.getElementById('success-alert');
+        const errorAlert = document.getElementById('error-alert');
+        if (successAlert) successAlert.remove();
+        if (errorAlert) errorAlert.remove();
+    }, 5000);
 });
 </script>
 @endsection

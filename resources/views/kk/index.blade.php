@@ -178,15 +178,11 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
                                     </a>
-                                    <form action="{{ route('kk.destroy', $kk) }}" method="POST" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-900 transition-colors duration-200" onclick="return confirm('Yakin ingin menghapus?')">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
-                                    </form>
+                                    <button onclick="confirmDelete('{{ $kk->id }}', '{{ $kk->no_kk }}')" class="text-red-600 hover:text-red-900 transition-colors duration-200" title="Hapus">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -221,5 +217,239 @@
             @endif
         </div>
     </div>
-</div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div id="modalOverlay" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity duration-300 ease-out opacity-0" aria-hidden="true"></div>
+
+            <!-- Modal positioning -->
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <!-- Modal panel -->
+            <div id="modalPanel" class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all duration-300 ease-out translate-y-4 opacity-0 sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10 animate-pulse">
+                        <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                            Konfirmasi Hapus
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500" id="modal-message">
+                                Apakah Anda yakin ingin menghapus Kartu Keluarga ini? Semua data yang terkait akan ikut terhapus dan tindakan ini tidak dapat dibatalkan.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="confirmDeleteBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 sm:ml-3 sm:w-auto sm:text-sm">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Hapus
+                    </button>
+                    <button type="button" id="cancelDeleteBtn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 sm:mt-0 sm:w-auto sm:text-sm">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error/Warning Modal -->
+    <div id="errorModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="error-modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div id="errorModalOverlay" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity duration-300 ease-out opacity-0" aria-hidden="true"></div>
+
+            <!-- Modal positioning -->
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <!-- Modal panel -->
+            <div id="errorModalPanel" class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all duration-300 ease-out translate-y-4 opacity-0 sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="error-modal-title">
+                            Tidak Dapat Menghapus
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500" id="error-modal-message">
+                                Kartu Keluarga ini tidak dapat dihapus karena masih memiliki anggota keluarga. Silakan hapus atau pindahkan semua anggota keluarga terlebih dahulu.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="closeErrorBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 sm:w-auto sm:text-sm">
+                        Mengerti
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div id="successToast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 ease-out translate-x-full opacity-0">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                <span id="successMessage">Operasi berhasil!</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden form for delete -->
+    <form id="deleteForm" method="POST" style="display: none;">
+        @csrf
+        @method('DELETE')
+    </form>
+
+<script>
+let kkToDelete = null;
+
+// Show delete confirmation modal
+function confirmDelete(kkId, kkNo) {
+    kkToDelete = { id: kkId, no: kkNo };
+    
+    // Update modal content
+    document.getElementById('modal-title').textContent = 'Konfirmasi Hapus';
+    document.getElementById('modal-message').textContent = `Apakah Anda yakin ingin menghapus Kartu Keluarga No. ${kkNo}? Semua data yang terkait akan ikut terhapus dan tindakan ini tidak dapat dibatalkan.`;
+    
+    // Show modal with animation
+    showModal('deleteModal');
+}
+
+// Show error modal
+function showErrorModal(message) {
+    document.getElementById('error-modal-message').textContent = message;
+    showModal('errorModal');
+}
+
+// Generic function to show modal with animation
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    const overlay = document.getElementById(modalId === 'deleteModal' ? 'modalOverlay' : 'errorModalOverlay');
+    const panel = document.getElementById(modalId === 'deleteModal' ? 'modalPanel' : 'errorModalPanel');
+    
+    modal.classList.remove('hidden');
+    
+    // Trigger animation
+    setTimeout(() => {
+        overlay.classList.remove('opacity-0');
+        overlay.classList.add('opacity-100');
+        panel.classList.remove('translate-y-4', 'opacity-0');
+        panel.classList.add('translate-y-0', 'opacity-100');
+    }, 10);
+}
+
+// Generic function to hide modal with animation
+function hideModal(modalId) {
+    const modal = document.getElementById(modalId);
+    const overlay = document.getElementById(modalId === 'deleteModal' ? 'modalOverlay' : 'errorModalOverlay');
+    const panel = document.getElementById(modalId === 'deleteModal' ? 'modalPanel' : 'errorModalPanel');
+    
+    overlay.classList.remove('opacity-100');
+    overlay.classList.add('opacity-0');
+    panel.classList.remove('translate-y-0', 'opacity-100');
+    panel.classList.add('translate-y-4', 'opacity-0');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+// Show success toast
+function showSuccessToast(message) {
+    const toast = document.getElementById('successToast');
+    const toastContent = toast.querySelector('div');
+    
+    document.getElementById('successMessage').textContent = message;
+    toast.classList.remove('hidden');
+    
+    setTimeout(() => {
+        toastContent.classList.remove('translate-x-full', 'opacity-0');
+        toastContent.classList.add('translate-x-0', 'opacity-100');
+    }, 10);
+    
+    setTimeout(() => {
+        toastContent.classList.remove('translate-x-0', 'opacity-100');
+        toastContent.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 300);
+    }, 3000);
+}
+
+// Event listeners
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (kkToDelete) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/kk/${kkToDelete.id}`;
+        
+        // Show loading state
+        this.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Menghapus...';
+        this.disabled = true;
+        
+        form.submit();
+    }
+});
+
+document.getElementById('cancelDeleteBtn').addEventListener('click', function() {
+    hideModal('deleteModal');
+    kkToDelete = null;
+});
+
+document.getElementById('closeErrorBtn').addEventListener('click', function() {
+    hideModal('errorModal');
+});
+
+// Close modal when clicking outside
+document.getElementById('modalOverlay').addEventListener('click', function() {
+    hideModal('deleteModal');
+    kkToDelete = null;
+});
+
+document.getElementById('errorModalOverlay').addEventListener('click', function() {
+    hideModal('errorModal');
+});
+
+// Handle escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        if (!document.getElementById('deleteModal').classList.contains('hidden')) {
+            hideModal('deleteModal');
+            kkToDelete = null;
+        }
+        if (!document.getElementById('errorModal').classList.contains('hidden')) {
+            hideModal('errorModal');
+        }
+    }
+});
+
+// Show success message if exists
+@if(session('success'))
+    document.addEventListener('DOMContentLoaded', function() {
+        showSuccessToast('{{ session('success') }}');
+    });
+@endif
+
+// Show error modal if exists
+@if(session('error'))
+    document.addEventListener('DOMContentLoaded', function() {
+        showErrorModal('{{ session('error') }}');
+    });
+@endif
+</script>
 @endsection
