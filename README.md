@@ -1,1 +1,1 @@
-### DI clone adik adik
+### Jum'at di cek 60%
