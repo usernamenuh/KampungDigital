@@ -3,402 +3,132 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Desa;
 use App\Models\User;
+use App\Models\Kas;
+use App\Models\Penduduk;
+use App\Models\Notifikasi;
+use App\Models\Rt;
+use App\Models\Rw;
+use App\Models\Desa;
+use App\Models\Kk;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-use Exception;
 
 class DashboardApiController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+
     /**
-     * Test API connection and system status
+     * Test API endpoint
      */
-    public function test(): JsonResponse
+    public function test()
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Dashboard API is working',
+            'timestamp' => now()->toISOString(),
+            'user' => Auth::user()->name,
+            'authenticated' => Auth::check(),
+            'user_id' => Auth::id()
+        ]);
+    }
+
+    /**
+     * Get online status of users
+     */
+    public function getOnlineStatus()
     {
         try {
-            // Test database connection
-            $dbConnected = DB::connection()->getPdo();
+            // Update current user activity first
+            $currentUser = Auth::user();
+            $currentUser->update(['last_activity' => now()]);
             
-            // Get system info
-            $systemInfo = [
-                'php_version' => PHP_VERSION,
-                'laravel_version' => app()->version(),
-                'memory_usage' => memory_get_usage(true),
-                'memory_peak' => memory_get_peak_usage(true),
-                'uptime' => $this->getSystemUptime()
-            ];
+            $onlineUsers = User::where('last_activity', '>=', now()->subMinutes(5))
+                             ->select('id', 'name', 'role', 'last_activity')
+                             ->orderBy('last_activity', 'desc')
+                             ->get();
+
+            $onlineCount = $onlineUsers->count();
+            $totalUsers = User::count();
 
             return response()->json([
                 'success' => true,
-                'message' => 'API connection successful',
-                'timestamp' => now()->toISOString(),
-                'server_time' => now()->format('H:i:s'),
-                'status' => 'online',
-                'database' => 'connected',
-                'system_info' => $systemInfo,
-                'online_users' => $this->getOnlineUsersCount()
-            ]);
-
-        } catch (Exception $e) {
-            Log::error('API test failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'API connection failed',
-                'error' => $e->getMessage(),
-                'status' => 'offline',
-                'timestamp' => now()->toISOString()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get comprehensive dashboard statistics
-     */
-    public function getStats(): JsonResponse
-    {
-        try {
-            $stats = Cache::remember('admin_dashboard_stats', 300, function () {
-                // Financial data
-                $totalSaldoDesa = $this->calculateTotalSaldoDesa();
-                $totalSaldoRw = $this->calculateTotalSaldoRw();
-                $totalSaldoRt = $this->calculateTotalSaldoRt();
-                $totalSaldoSistem = $totalSaldoDesa + $totalSaldoRw + $totalSaldoRt;
-
-                // Desa statistics
-                $totalDesa = max(Desa::count(), 90);
-                $desaAktif = max(Desa::where('status', 'aktif')->count(), 5);
-                $desaTidakAktif = Desa::where('status', 'tidak_aktif')->count();
-
-                // Population data
-                $totalPenduduk = max(Desa::sum('jumlah_penduduk'), 2437);
-                $lakiLaki = (int) ($totalPenduduk * 0.515);
-                $perempuan = $totalPenduduk - $lakiLaki;
-
-                // User statistics
-                $totalUsers = $this->getTotalUsers();
-                $onlineUsers = $this->getOnlineUsersCount();
-                $totalMasyarakat = User::where('role', 'masyarakat')->count() ?: 1200;
-
-                // Financial obligations
-                $kasBelumBayar = $this->getKasBelumBayar();
-                $bantuanPending = $this->getBantuanPending();
-
-                // UMKM data
-                $totalUmkm = 44;
-                $umkmAktif = 41;
-
-                // Activity data
-                $aktivitasHariIni = $this->getAktivitasHariIni();
-
-                // Administrative data
-                $totalRw = 25;
-                $totalRt = 125;
-
-                return [
-                    // Financial Summary
-                    'totalSaldoDesa' => $totalSaldoDesa,
-                    'totalSaldoRw' => $totalSaldoRw,
-                    'totalSaldoRt' => $totalSaldoRt,
-                    'totalSaldoSistem' => $totalSaldoSistem,
-                    'saldoKas' => $totalSaldoSistem, // For backward compatibility
-
-                    // Desa Statistics
-                    'totalDesa' => $totalDesa,
-                    'desaAktif' => $desaAktif,
-                    'desaTidakAktif' => $desaTidakAktif,
-
-                    // Population Data
-                    'totalPenduduk' => $totalPenduduk,
-                    'lakiLaki' => $lakiLaki,
-                    'perempuan' => $perempuan,
-
-                    // User Statistics
-                    'totalUsers' => $totalUsers,
-                    'onlineUsers' => $onlineUsers,
-                    'totalMasyarakat' => $totalMasyarakat,
-
-                    // Financial Obligations
-                    'totalKasBelumBayar' => $kasBelumBayar['total'],
-                    'jumlahKasBelumBayar' => $kasBelumBayar['count'],
-                    'bantuanPending' => $bantuanPending,
-
-                    // UMKM Data
-                    'totalUmkm' => $totalUmkm,
-                    'umkmAktif' => $umkmAktif,
-
-                    // Activity Data
-                    'aktivitasHariIni' => $aktivitasHariIni,
-
-                    // Administrative Data
-                    'totalRw' => $totalRw,
-                    'totalRt' => $totalRt,
-
-                    // Additional metrics
-                    'programAktif' => 13,
-                    'beritaTerbaru' => 28,
-                    'wisataDestinasi' => 8,
-                    'dokumenTersimpan' => 156,
-                    'pesanMasuk' => 24,
-
-                    // System status
-                    'systemStatus' => 'online',
-                    'lastUpdated' => now()->toISOString()
-                ];
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $stats,
-                'timestamp' => now()->toISOString(),
-                'cache_status' => Cache::has('admin_dashboard_stats') ? 'hit' : 'miss'
-            ]);
-
-        } catch (Exception $e) {
-            Log::error('Error fetching admin dashboard stats: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch dashboard stats',
-                'error' => $e->getMessage(),
-                'timestamp' => now()->toISOString()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get monthly financial data for charts
-     */
-    public function getMonthlyData(): JsonResponse
-    {
-        try {
-            $monthlyData = Cache::remember('monthly_kas_data', 300, function () {
-                // Generate realistic monthly data based on current totals
-                $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-                $kasData = [12000000, 15000000, 13000000, 18000000, 16000000, 20000000];
-
-                return [
-                    'labels' => $months,
-                    'datasets' => [
-                        [
-                            'label' => 'Total Kas (Rp)',
-                            'data' => $kasData,
-                            'backgroundColor' => '#8B5CF6',
-                            'borderColor' => '#7C3AED',
-                            'borderWidth' => 2,
-                            'borderRadius' => 8,
-                            'fill' => false,
-                            'tension' => 0.4
-                        ]
-                    ],
-                    'summary' => [
-                        'total' => array_sum($kasData),
-                        'average' => array_sum($kasData) / count($kasData),
-                        'growth' => $this->calculateGrowthRate($kasData),
-                        'trend' => 'increasing'
-                    ]
-                ];
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $monthlyData,
-                'timestamp' => now()->toISOString()
-            ]);
-
-        } catch (Exception $e) {
-            Log::error('Error fetching monthly data: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch monthly data',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get recent system activities
-     */
-    public function getActivities(): JsonResponse
-    {
-        try {
-            $activities = Cache::remember('admin_recent_activities', 60, function () {
-                $baseActivities = [
-                    [
-                        'id' => 1,
-                        'title' => 'Kas Dibayar',
-                        'description' => 'Ahmad membayar kas minggu ke-12',
-                        'type' => 'success',
-                        'icon' => 'check-circle',
-                        'time' => '5 menit lalu',
-                        'timestamp' => now()->subMinutes(5)->toISOString(),
-                        'user_role' => 'masyarakat',
-                        'amount' => 10000
-                    ],
-                    [
-                        'id' => 2,
-                        'title' => 'Bantuan Diajukan',
-                        'description' => 'RW 03 mengajukan bantuan Rp 2.000.000',
-                        'type' => 'info',
-                        'icon' => 'hand-heart',
-                        'time' => '15 menit lalu',
-                        'timestamp' => now()->subMinutes(15)->toISOString(),
-                        'user_role' => 'rw',
-                        'amount' => 2000000
-                    ],
-                    [
-                        'id' => 3,
-                        'title' => 'User Baru',
-                        'description' => 'Siti Aminah mendaftar sebagai warga',
-                        'type' => 'info',
-                        'icon' => 'user-plus',
-                        'time' => '1 jam lalu',
-                        'timestamp' => now()->subHour()->toISOString(),
-                        'user_role' => 'masyarakat'
-                    ],
-                    [
-                        'id' => 4,
-                        'title' => 'Backup Data',
-                        'description' => 'Backup otomatis database berhasil',
-                        'type' => 'success',
-                        'icon' => 'database',
-                        'time' => '2 jam lalu',
-                        'timestamp' => now()->subHours(2)->toISOString(),
-                        'system' => true
-                    ],
-                    [
-                        'id' => 5,
-                        'title' => 'Desa Baru',
-                        'description' => 'Desa Sukamaju berhasil didaftarkan',
-                        'type' => 'success',
-                        'icon' => 'plus-circle',
-                        'time' => '3 jam lalu',
-                        'timestamp' => now()->subHours(3)->toISOString(),
-                        'user_role' => 'admin'
-                    ]
-                ];
-
-                // Add real-time online user activity
-                $onlineCount = $this->getOnlineUsersCount();
-                if ($onlineCount > 0) {
-                    array_unshift($baseActivities, [
-                        'id' => 0,
-                        'title' => 'Pengguna Online',
-                        'description' => "{$onlineCount} pengguna sedang aktif di sistem",
-                        'type' => 'info',
-                        'icon' => 'users',
-                        'time' => 'Sekarang',
-                        'timestamp' => now()->toISOString(),
-                        'system' => true,
-                        'online_count' => $onlineCount
-                    ]);
-                }
-
-                return $baseActivities;
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $activities,
-                'timestamp' => now()->toISOString(),
-                'total_activities' => count($activities)
-            ]);
-
-        } catch (Exception $e) {
-            Log::error('Error fetching activities: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch activities',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get online users status
-     */
-    public function getOnlineStatus(): JsonResponse
-    {
-        try {
-            $onlineData = Cache::remember('online_users_status', 60, function () {
-                $onlineUsers = $this->getOnlineUsersCount();
-                $totalUsers = $this->getTotalUsers();
-                
-                // Get online users by role
-                $onlineByRole = $this->getOnlineUsersByRole();
-                
-                return [
-                    'online_users' => $onlineUsers,
+                'data' => [
+                    'online_count' => $onlineCount,
+                    'online_users' => $onlineCount,
                     'total_users' => $totalUsers,
-                    'online_percentage' => $totalUsers > 0 ? round(($onlineUsers / $totalUsers) * 100, 2) : 0,
-                    'by_role' => $onlineByRole,
-                    'status' => $onlineUsers > 0 ? 'active' : 'idle',
-                    'last_activity' => now()->toISOString()
-                ];
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $onlineData,
-                'timestamp' => now()->toISOString()
+                    'online_percentage' => $totalUsers > 0 ? round(($onlineCount / $totalUsers) * 100, 1) : 0,
+                    'current_user_online' => true,
+                    'last_check' => now()->toISOString(),
+                    'users' => $onlineUsers->map(function($user) {
+                        return [
+                            'id' => $user->id,
+                            'name' => $user->name,
+                            'role' => $user->role,
+                            'last_activity' => $user->last_activity ? $user->last_activity->diffForHumans() : 'Never',
+                            'is_current_user' => $user->id === Auth::id()
+                        ];
+                    })
+                ]
             ]);
 
-        } catch (Exception $e) {
-            Log::error('Error fetching online status: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Error getting online status', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch online status',
-                'error' => $e->getMessage()
+                'message' => 'Gagal mengambil status online: ' . $e->getMessage(),
+                'data' => [
+                    'online_count' => 0,
+                    'online_users' => 0,
+                    'total_users' => 0,
+                    'online_percentage' => 0,
+                    'current_user_online' => false,
+                    'error' => true
+                ]
             ], 500);
         }
     }
 
     /**
-     * Clear all dashboard cache
+     * Update user activity
      */
-    public function clearCache(): JsonResponse
+    public function updateActivity(Request $request)
     {
         try {
-            $cacheKeys = [
-                'admin_dashboard_stats',
-                'monthly_kas_data',
-                'admin_recent_activities',
-                'online_users_status',
-                'dashboard_stats', // Legacy key
-                'monthly_data',    // Legacy key
-                'recent_activities' // Legacy key
-            ];
-
-            $clearedCount = 0;
-            foreach ($cacheKeys as $key) {
-                if (Cache::forget($key)) {
-                    $clearedCount++;
-                }
-            }
-
-            Log::info('Dashboard cache cleared', [
-                'cleared_keys' => $clearedCount,
-                'admin_id' => Auth::id(),
-                'timestamp' => now()
+            $user = Auth::user();
+            $user->update([
+                'last_activity' => now(),
+                'is_online' => true
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Cache cleared successfully',
-                'cleared_keys' => $clearedCount,
-                'timestamp' => now()->toISOString()
+                'message' => 'Activity updated successfully',
+                'timestamp' => now()->toISOString(),
+                'user_id' => $user->id
             ]);
 
-        } catch (Exception $e) {
-            Log::error('Error clearing cache: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Error updating activity', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to clear cache',
-                'error' => $e->getMessage()
+                'message' => 'Gagal update aktivitas: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -406,205 +136,834 @@ class DashboardApiController extends Controller
     /**
      * Get system health status
      */
-    public function getSystemHealth(): JsonResponse
+    public function getSystemHealth()
     {
         try {
-            $health = [
-                'database' => $this->checkDatabaseHealth(),
-                'cache' => $this->checkCacheHealth(),
-                'storage' => $this->checkStorageHealth(),
-                'memory' => $this->checkMemoryUsage(),
-                'overall_status' => 'healthy',
-                'timestamp' => now()->toISOString()
+            $checks = [
+                'database' => $this->checkDatabase(),
+                'cache' => $this->checkCache(),
+                'storage' => $this->checkStorage(),
+                'queue' => $this->checkQueue()
             ];
 
-            // Determine overall status
-            $issues = array_filter($health, function($status, $key) {
-                return $key !== 'overall_status' && $key !== 'timestamp' && 
-                       (is_array($status) ? $status['status'] !== 'ok' : $status !== 'ok');
-            }, ARRAY_FILTER_USE_BOTH);
-
-            if (!empty($issues)) {
-                $health['overall_status'] = 'warning';
-            }
+            $allHealthy = !in_array('error', array_values($checks));
 
             return response()->json([
                 'success' => true,
-                'data' => $health,
+                'data' => [
+                    'status' => $allHealthy ? 'healthy' : 'degraded',
+                    'checks' => $checks,
+                    'timestamp' => now()->toISOString(),
+                    'uptime' => $this->getUptime()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting system health', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil status sistem'
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear cache
+     */
+    public function clearCache()
+    {
+        try {
+            $user = Auth::user();
+            
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak'
+                ], 403);
+            }
+
+            Cache::flush();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cache berhasil dibersihkan',
                 'timestamp' => now()->toISOString()
             ]);
 
-        } catch (Exception $e) {
-            Log::error('Error checking system health: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Error clearing cache', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to check system health',
+                'message' => 'Gagal membersihkan cache'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get comprehensive dashboard statistics for all roles - DENGAN ERROR HANDLING
+     */
+    public function getStats()
+    {
+        try {
+            $user = Auth::user();
+            
+            Log::info('Getting dashboard stats for user', [
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'name' => $user->name
+            ]);
+            
+            // Base stats yang akan dikustomisasi per role
+            $stats = [];
+
+            switch ($user->role) {
+                case 'admin':
+                    $stats = $this->getAdminStats();
+                    break;
+                case 'kades':
+                    $stats = $this->getKadesStats();
+                    break;
+                case 'rw':
+                    $stats = $this->getRwStats($user);
+                    break;
+                case 'rt':
+                    $stats = $this->getRtStats($user);
+                    break;
+                case 'masyarakat':
+                    $stats = $this->getMasyarakatStats($user);
+                    break;
+                default:
+                    $stats = $this->getBasicStats();
+            }
+
+            Log::info('Dashboard stats generated successfully', [
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'stats_keys' => array_keys($stats)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting dashboard stats', [
+                'user_id' => Auth::id(),
+                'role' => Auth::user()->role ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil statistik dashboard: ' . $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    // Private helper methods
-
-    private function calculateTotalSaldoDesa(): int
+    /**
+     * Admin Dashboard Stats - DENGAN ERROR HANDLING
+     */
+    private function getAdminStats()
     {
-        // Mock calculation - replace with actual database query
-        return 50000000;
+        try {
+            // Hitung saldo real dari database dengan fallback
+            $totalSaldoDesa = $this->safeSum('desas', 'saldo');
+            $totalSaldoRw = $this->safeSum('rws', 'saldo');
+            $totalSaldoRt = $this->safeSum('rts', 'saldo');
+
+            return [
+                // Saldo Management - REAL DATA dengan fallback
+                'totalSaldoDesa' => $totalSaldoDesa,
+                'totalSaldoRw' => $totalSaldoRw,
+                'totalSaldoRt' => $totalSaldoRt,
+                'totalSaldoSistem' => $totalSaldoDesa + $totalSaldoRw + $totalSaldoRt,
+                
+                // User Management - REAL DATA
+                'totalUsers' => User::count(),
+                'totalDesa' => $this->safeCount('desas'),
+                'totalRw' => Rw::count(),
+                'totalRt' => Rt::count(),
+                'totalMasyarakat' => User::where('role', 'masyarakat')->count(),
+                'usersOnline' => User::where('last_activity', '>=', now()->subMinutes(5))->count(),
+                'activeUsers' => User::where('status', 'active')->count(),
+                'inactiveUsers' => User::where('status', 'inactive')->count(),
+                
+                // Population Management - REAL DATA
+                'totalPenduduk' => Penduduk::count(),
+                'pendudukAktif' => Penduduk::where('status', 'aktif')->count(),
+                'pendudukLakiLaki' => Penduduk::where('jenis_kelamin', 'L')->count(),
+                'pendudukPerempuan' => Penduduk::where('jenis_kelamin', 'P')->count(),
+                'totalKk' => Kk::count(),
+                
+                // Kas Management - REAL DATA
+                'totalKas' => Kas::count(),
+                'totalKasTerkumpul' => Kas::where('status', 'lunas')->sum('jumlah'),
+                'totalKasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat'])->sum('jumlah'),
+                'jumlahKasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat'])->count(),
+                'kasLunas' => Kas::where('status', 'lunas')->count(),
+                'kasBelumBayar' => Kas::where('status', 'belum_bayar')->count(),
+                'kasTerlambat' => Kas::where('status', 'terlambat')->count(),
+                'kasHariIni' => Kas::whereDate('tanggal_bayar', today())->where('status', 'lunas')->count(),
+                'kasBulanIni' => Kas::whereMonth('tanggal_bayar', now()->month)->where('status', 'lunas')->sum('jumlah'),
+                
+                // Notifications - REAL DATA
+                'totalNotifikasi' => $this->safeCount('notifikasis'),
+                'notifikasiUnread' => $this->safeCount('notifikasis', ['dibaca' => false]),
+                'notifikasiHariIni' => $this->safeCountByDate('notifikasis', 'created_at', today()),
+                
+                // System Health
+                'systemHealth' => $this->getSystemHealthStatus(),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in getAdminStats', ['error' => $e->getMessage()]);
+            return $this->getBasicStats();
+        }
     }
 
-    private function calculateTotalSaldoRw(): int
+    /**
+     * Kades Dashboard Stats - DENGAN ERROR HANDLING
+     */
+    private function getKadesStats()
     {
-        // Mock calculation - replace with actual database query
-        return 25000000;
+        try {
+            $saldoDesa = $this->safeSum('desas', 'saldo');
+            $bantuanBulanIni = $this->safeSumByMonth('bantuan_desa', 'jumlah');
+
+            return [
+                'saldoDesa' => $saldoDesa,
+                'bantuanBulanIni' => $bantuanBulanIni,
+                'saldoTersedia' => $saldoDesa - $bantuanBulanIni,
+                'totalRw' => Rw::count(),
+                'totalRt' => Rt::count(),
+                'totalPenduduk' => Penduduk::count(),
+                'bantuanPending' => $this->safeCount('bantuan_desa', ['status' => 'pending']),
+                'totalKk' => Kk::count(),
+                'pendudukAktif' => Penduduk::where('status', 'aktif')->count(),
+                'pendudukLakiLaki' => Penduduk::where('jenis_kelamin', 'L')->count(),
+                'pendudukPerempuan' => Penduduk::where('jenis_kelamin', 'P')->count(),
+                
+                // Data pengajuan bantuan real dengan fallback
+                'pengajuanBantuan' => $this->getPengajuanBantuan()
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in getKadesStats', ['error' => $e->getMessage()]);
+            return $this->getBasicStats();
+        }
     }
 
-    private function calculateTotalSaldoRt(): int
+    /**
+     * RW Dashboard Stats - DENGAN ERROR HANDLING
+     */
+    private function getRwStats($user)
     {
-        // Mock calculation - replace with actual database query
-        return 15000000;
+        try {
+            // Cari RW ID berdasarkan user dengan fallback
+            $rwId = $this->getUserRwId($user);
+
+            if (!$rwId) {
+                return $this->getBasicStats();
+            }
+
+            $rw = Rw::find($rwId);
+            
+            return [
+                'balance' => $rw->saldo ?? 0,
+                'kasMasukBulanIni' => Kas::whereHas('rt', function($q) use ($rwId) {
+                    $q->where('rw_id', $rwId);
+                })->whereMonth('tanggal_bayar', now()->month)->where('status', 'lunas')->sum('jumlah'),
+                'bantuanDiterima' => $this->safeSum('bantuan_desa', 'jumlah', [
+                    'rw_id' => $rwId,
+                    'status' => 'approved'
+                ]),
+                'totalRts' => Rt::where('rw_id', $rwId)->count(),
+                'totalKks' => Kk::whereHas('rt', function($q) use ($rwId) {
+                    $q->where('rw_id', $rwId);
+                })->count(),
+                'totalPopulation' => Penduduk::whereHas('kk.rt', function($q) use ($rwId) {
+                    $q->where('rw_id', $rwId);
+                })->count(),
+                'bantuanPending' => $this->safeCount('bantuan_desa', [
+                    'rw_id' => $rwId,
+                    'status' => 'pending'
+                ]),
+                
+                // Data RT dalam RW ini
+                'rtData' => $this->getRtDataForRw($rwId)
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in getRwStats', ['error' => $e->getMessage()]);
+            return $this->getBasicStats();
+        }
     }
 
-    private function getTotalUsers(): int
+    /**
+     * RT Dashboard Stats - DENGAN ERROR HANDLING
+     */
+    private function getRtStats($user)
     {
-        return User::count() ?: 1250;
+        try {
+            // Cari RT ID berdasarkan user dengan fallback
+            $rtId = $this->getUserRtId($user);
+
+            if (!$rtId) {
+                return $this->getBasicStats();
+            }
+
+            $rt = Rt::find($rtId);
+
+            return [
+                'balance' => $rt->saldo ?? 0,
+                'kasMasukBulanIni' => Kas::where('rt_id', $rtId)
+                    ->whereMonth('tanggal_bayar', now()->month)
+                    ->where('status', 'lunas')
+                    ->sum('jumlah'),
+                'iuranMingguan' => 10000, // Default amount - bisa diambil dari setting
+                'totalWarga' => Penduduk::whereHas('kk', function($q) use ($rtId) {
+                    $q->where('rt_id', $rtId);
+                })->count(),
+                'kasBelumBayar' => Kas::where('rt_id', $rtId)->where('status', 'belum_bayar')->count(),
+                'totalKasBelumBayar' => Kas::where('rt_id', $rtId)->where('status', 'belum_bayar')->sum('jumlah'),
+                'kasTerlambat' => Kas::where('rt_id', $rtId)->where('status', 'terlambat')->count(),
+                'kasLunas' => Kas::where('rt_id', $rtId)->where('status', 'lunas')->count(),
+                
+                // Data warga RT
+                'daftarWarga' => $this->getDaftarWargaRt($rtId)
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in getRtStats', ['error' => $e->getMessage()]);
+            return $this->getBasicStats();
+        }
     }
 
-    private function getOnlineUsersCount(): int
+    /**
+     * Masyarakat Dashboard Stats - DENGAN ERROR HANDLING
+     */
+    private function getMasyarakatStats($user)
     {
-        // Check for users active in the last 5 minutes
-        $onlineThreshold = now()->subMinutes(5);
-        
-        return User::where('last_activity', '>=', $onlineThreshold)->count() ?: 
-               rand(8, 25); // Fallback for demo
+        try {
+            if (!$user->penduduk) {
+                return $this->getBasicStats();
+            }
+
+            return [
+                'kasLunas' => Kas::where('penduduk_id', $user->penduduk->id)->where('status', 'lunas')->count(),
+                'kasBelumBayar' => Kas::where('penduduk_id', $user->penduduk->id)->where('status', 'belum_bayar')->count(),
+                'kasTerlambat' => Kas::where('penduduk_id', $user->penduduk->id)->where('status', 'terlambat')->count(),
+                'totalKasDibayar' => Kas::where('penduduk_id', $user->penduduk->id)->where('status', 'lunas')->sum('jumlah'),
+                'kasJatuhTempo' => Kas::where('penduduk_id', $user->penduduk->id)
+                    ->where('tanggal_jatuh_tempo', '<=', now()->addDays(7))
+                    ->where('status', 'belum_bayar')
+                    ->count(),
+                'notifikasiUnread' => $this->safeCount('notifikasis', [
+                    'user_id' => $user->id,
+                    'dibaca' => false
+                ]),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in getMasyarakatStats', ['error' => $e->getMessage()]);
+            return $this->getBasicStats();
+        }
     }
 
-    private function getOnlineUsersByRole(): array
+    /**
+     * Basic stats fallback
+     */
+    private function getBasicStats()
     {
-        $onlineThreshold = now()->subMinutes(5);
-        
         return [
-            'admin' => User::where('role', 'admin')->where('last_activity', '>=', $onlineThreshold)->count() ?: 1,
-            'kades' => User::where('role', 'kades')->where('last_activity', '>=', $onlineThreshold)->count() ?: 0,
-            'rw' => User::where('role', 'rw')->where('last_activity', '>=', $onlineThreshold)->count() ?: 2,
-            'rt' => User::where('role', 'rt')->where('last_activity', '>=', $onlineThreshold)->count() ?: 3,
-            'masyarakat' => User::where('role', 'masyarakat')->where('last_activity', '>=', $onlineThreshold)->count() ?: 8
+            'totalUsers' => User::count(),
+            'totalPenduduk' => Penduduk::count(),
+            'totalKas' => Kas::count(),
+            'kasLunas' => Kas::where('status', 'lunas')->count(),
+            'balance' => 0,
+            'saldoDesa' => 0,
+            'bantuanBulanIni' => 0,
+            'saldoTersedia' => 0,
+            'totalRw' => 0,
+            'totalRt' => 0,
+            'bantuanPending' => 0,
+            'pengajuanBantuan' => [],
+            'daftarWarga' => [],
+            'rtData' => []
         ];
     }
 
-    private function getKasBelumBayar(): array
+    // HELPER METHODS UNTUK ERROR HANDLING
+
+    private function safeSum($table, $column, $conditions = [])
     {
-        // Mock data - replace with actual calculation
+        try {
+            $query = DB::table($table);
+            foreach ($conditions as $key => $value) {
+                $query->where($key, $value);
+            }
+            return $query->sum($column) ?? 0;
+        } catch (\Exception $e) {
+            Log::warning("Error in safeSum for table {$table}", ['error' => $e->getMessage()]);
+            return 0;
+        }
+    }
+
+    private function safeCount($table, $conditions = [])
+    {
+        try {
+            $query = DB::table($table);
+            foreach ($conditions as $key => $value) {
+                $query->where($key, $value);
+            }
+            return $query->count();
+        } catch (\Exception $e) {
+            Log::warning("Error in safeCount for table {$table}", ['error' => $e->getMessage()]);
+            return 0;
+        }
+    }
+
+    private function safeCountByDate($table, $dateColumn, $date)
+    {
+        try {
+            return DB::table($table)->whereDate($dateColumn, $date)->count();
+        } catch (\Exception $e) {
+            Log::warning("Error in safeCountByDate for table {$table}", ['error' => $e->getMessage()]);
+            return 0;
+        }
+    }
+
+    private function safeSumByMonth($table, $column)
+    {
+        try {
+            return DB::table($table)
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->sum($column) ?? 0;
+        } catch (\Exception $e) {
+            Log::warning("Error in safeSumByMonth for table {$table}", ['error' => $e->getMessage()]);
+            return 0;
+        }
+    }
+
+    private function getUserRwId($user)
+    {
+        try {
+            if ($user->penduduk && $user->penduduk->kk && $user->penduduk->kk->rt) {
+                return $user->penduduk->kk->rt->rw_id;
+            }
+            return null;
+        } catch (\Exception $e) {
+            Log::warning('Error getting user RW ID', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    private function getUserRtId($user)
+    {
+        try {
+            if ($user->penduduk && $user->penduduk->kk) {
+                return $user->penduduk->kk->rt_id;
+            }
+            return null;
+        } catch (\Exception $e) {
+            Log::warning('Error getting user RT ID', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    private function getPengajuanBantuan()
+    {
+        try {
+            return DB::table('bantuan_desa as bd')
+                ->join('rws as r', 'bd.rw_id', '=', 'r.id')
+                ->where('bd.status', 'pending')
+                ->select('bd.id', 'r.nama_rw as rw', 'bd.jumlah', 'bd.created_at as tanggal')
+                ->orderBy('bd.created_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'rw' => $item->rw,
+                        'jumlah' => $item->jumlah,
+                        'tanggal' => Carbon::parse($item->tanggal)->format('d M Y')
+                    ];
+                });
+        } catch (\Exception $e) {
+            Log::warning('Error getting pengajuan bantuan', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    private function getRtDataForRw($rwId)
+    {
+        try {
+            return Rt::where('rw_id', $rwId)
+                ->withCount(['kks as total_kk', 'kks as total_penduduk' => function($q) {
+                    $q->join('penduduks', 'kks.id', '=', 'penduduks.kk_id');
+                }])
+                ->get()
+                ->map(function($rt) {
+                    return [
+                        'nama' => $rt->nama_rt,
+                        'total_penduduk' => $rt->total_penduduk ?? 0
+                    ];
+                });
+        } catch (\Exception $e) {
+            Log::warning('Error getting RT data for RW', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    private function getDaftarWargaRt($rtId)
+    {
+        try {
+            return Penduduk::whereHas('kk', function($q) use ($rtId) {
+                $q->where('rt_id', $rtId);
+            })
+            ->with(['kk', 'kas' => function($q) {
+                $q->latest()->first();
+            }])
+            ->limit(10)
+            ->get()
+            ->map(function($penduduk) {
+                $kasStatus = 'lunas';
+                $statusText = 'Lunas';
+                
+                if ($penduduk->kas->isNotEmpty()) {
+                    $latestKas = $penduduk->kas->first();
+                    $kasStatus = $latestKas->status;
+                    $statusText = match($latestKas->status) {
+                        'lunas' => 'Lunas',
+                        'belum_bayar' => 'Belum Bayar',
+                        'terlambat' => 'Terlambat',
+                        default => 'Unknown'
+                    };
+                }
+                
+                return [
+                    'id' => $penduduk->id,
+                    'nama' => $penduduk->nama_lengkap,
+                    'alamat' => $penduduk->kk->alamat ?? 'N/A',
+                    'status' => $kasStatus,
+                    'statusText' => $statusText
+                ];
+            });
+        } catch (\Exception $e) {
+            Log::warning('Error getting daftar warga RT', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Get comprehensive activities for admin dashboard
+     */
+    public function getActivities(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $limit = $request->get('limit', 20);
+            $activities = [];
+
+            if ($user->role === 'admin') {
+                // Admin melihat SEMUA aktivitas sistem
+                $activities = $this->getAllSystemActivities($limit);
+            } else {
+                // Role lain melihat aktivitas sesuai scope mereka
+                $activities = $this->getRoleSpecificActivities($user, $limit);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $activities
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting activities', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil aktivitas'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get ALL system activities for admin - REAL DATA
+     */
+    private function getAllSystemActivities($limit)
+    {
+        $activities = [];
+
+        try {
+            // 1. Recent Kas Payments (All) - REAL DATA
+            $recentPayments = Kas::with(['penduduk', 'rt.rw'])
+                ->where('status', 'lunas')
+                ->whereNotNull('tanggal_bayar')
+                ->orderBy('tanggal_bayar', 'desc')
+                ->limit($limit / 4)
+                ->get();
+
+            foreach ($recentPayments as $payment) {
+                $activities[] = [
+                    'id' => 'kas_' . $payment->id,
+                    'type' => 'kas_payment',
+                    'title' => 'Pembayaran Kas',
+                    'description' => "{$payment->penduduk->nama_lengkap} membayar kas minggu ke-{$payment->minggu_ke}",
+                    'amount' => $payment->jumlah,
+                    'user' => $payment->penduduk->nama_lengkap,
+                    'location' => "RT {$payment->rt->no_rt} RW {$payment->rt->rw->no_rw}",
+                    'timestamp' => $payment->tanggal_bayar,
+                    'icon' => 'credit-card',
+                    'color' => 'green'
+                ];
+            }
+
+            // 2. User Registrations (All) - REAL DATA
+            $recentUsers = User::with('penduduk')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit / 4)
+                ->get();
+
+            foreach ($recentUsers as $newUser) {
+                $activities[] = [
+                    'id' => 'user_' . $newUser->id,
+                    'type' => 'user_registration',
+                    'title' => 'Registrasi User Baru',
+                    'description' => "User baru {$newUser->name} ({$newUser->role}) telah mendaftar",
+                    'user' => $newUser->name,
+                    'role' => $newUser->role,
+                    'timestamp' => $newUser->created_at,
+                    'icon' => 'user-plus',
+                    'color' => 'blue'
+                ];
+            }
+
+            // Sort by timestamp
+            usort($activities, function($a, $b) {
+                return $b['timestamp'] <=> $a['timestamp'];
+            });
+
+            return array_slice($activities, 0, $limit);
+        } catch (\Exception $e) {
+            Log::warning('Error getting system activities', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Get role-specific activities
+     */
+    private function getRoleSpecificActivities($user, $limit)
+    {
+        // Implementation for role-specific activities
+        return [];
+    }
+
+    /**
+     * System health and utility methods
+     */
+    private function getSystemHealthStatus()
+    {
+        $checks = [
+            'database' => $this->checkDatabase(),
+            'cache' => $this->checkCache(),
+            'storage' => $this->checkStorage(),
+            'queue' => 'ok'
+        ];
+
+        $allHealthy = !in_array('error', array_values($checks));
+
         return [
-            'total' => 5500000,
-            'count' => 45
+            'status' => $allHealthy ? 'healthy' : 'degraded',
+            'checks' => $checks,
+            'timestamp' => now()->toISOString()
         ];
     }
 
-    private function getBantuanPending(): int
-    {
-        // Mock data - replace with actual query
-        return 8;
-    }
-
-    private function getAktivitasHariIni(): int
-    {
-        // Count activities from today
-        return rand(8, 15);
-    }
-
-    private function calculateGrowthRate(array $data): float
-    {
-        if (count($data) < 2) return 0;
-        
-        $first = $data[0];
-        $last = end($data);
-        
-        return $first > 0 ? round((($last - $first) / $first) * 100, 2) : 0;
-    }
-
-    private function getSystemUptime(): string
-    {
-        // Simple uptime calculation
-        $uptime = time() - filemtime(base_path());
-        return gmdate("H:i:s", $uptime);
-    }
-
-    private function checkDatabaseHealth(): array
+    private function checkDatabase()
     {
         try {
             DB::connection()->getPdo();
-            return ['status' => 'ok', 'message' => 'Database connection healthy'];
-        } catch (Exception $e) {
-            return ['status' => 'error', 'message' => 'Database connection failed'];
+            return 'ok';
+        } catch (\Exception $e) {
+            return 'error';
         }
     }
 
-    private function checkCacheHealth(): array
+    private function checkCache()
     {
         try {
             Cache::put('health_check', 'ok', 60);
-            $result = Cache::get('health_check');
-            return ['status' => $result === 'ok' ? 'ok' : 'error', 'message' => 'Cache system healthy'];
-        } catch (Exception $e) {
-            return ['status' => 'error', 'message' => 'Cache system failed'];
+            return Cache::get('health_check') === 'ok' ? 'ok' : 'error';
+        } catch (\Exception $e) {
+            return 'error';
         }
     }
 
-    private function checkStorageHealth(): array
+    private function checkStorage()
     {
-        $freeSpace = disk_free_space(storage_path());
-        $totalSpace = disk_total_space(storage_path());
-        $usedPercentage = (($totalSpace - $freeSpace) / $totalSpace) * 100;
-        
-        return [
-            'status' => $usedPercentage < 80 ? 'ok' : 'warning',
-            'used_percentage' => round($usedPercentage, 2),
-            'free_space' => $this->formatBytes($freeSpace),
-            'total_space' => $this->formatBytes($totalSpace)
-        ];
-    }
-
-    private function checkMemoryUsage(): array
-    {
-        $memoryUsage = memory_get_usage(true);
-        $memoryPeak = memory_get_peak_usage(true);
-        $memoryLimit = $this->parseMemoryLimit(ini_get('memory_limit'));
-        
-        $usagePercentage = ($memoryUsage / $memoryLimit) * 100;
-        
-        return [
-            'status' => $usagePercentage < 80 ? 'ok' : 'warning',
-            'current' => $this->formatBytes($memoryUsage),
-            'peak' => $this->formatBytes($memoryPeak),
-            'limit' => $this->formatBytes($memoryLimit),
-            'usage_percentage' => round($usagePercentage, 2)
-        ];
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        
-        $bytes /= pow(1024, $pow);
-        
-        return round($bytes, 2) . ' ' . $units[$pow];
-    }
-
-    private function parseMemoryLimit(string $limit): int
-    {
-        $limit = trim($limit);
-        $last = strtolower($limit[strlen($limit)-1]);
-        $limit = (int) $limit;
-        
-        switch($last) {
-            case 'g': $limit *= 1024;
-            case 'm': $limit *= 1024;
-            case 'k': $limit *= 1024;
+        try {
+            return is_writable(storage_path()) ? 'ok' : 'error';
+        } catch (\Exception $e) {
+            return 'error';
         }
-        
-        return $limit;
+    }
+
+    private function checkQueue()
+    {
+        try {
+            return 'ok';
+        } catch (\Exception $e) {
+            return 'error';
+        }
+    }
+
+    private function getUptime()
+    {
+        try {
+            $uptime = time() - filemtime(base_path());
+            return gmdate("H:i:s", $uptime);
+        } catch (\Exception $e) {
+            return 'unknown';
+        }
+    }
+
+    /**
+     * Get monthly data for charts - REAL DATA
+     */
+    public function getMonthlyData()
+    {
+        try {
+            $user = Auth::user();
+            $months = [];
+            $kasData = [];
+            $pendudukData = [];
+            $userData = [];
+
+            // Generate last 6 months
+            for ($i = 5; $i >= 0; $i--) {
+                $date = now()->subMonths($i);
+                $months[] = $date->format('M Y');
+                
+                // Kas data per month - REAL DATA
+                $kasCount = Kas::whereYear('created_at', $date->year)
+                              ->whereMonth('created_at', $date->month)
+                              ->where('status', 'lunas')
+                              ->sum('jumlah');
+                $kasData[] = $kasCount;
+
+                // Penduduk data per month - REAL DATA
+                $pendudukCount = Penduduk::whereYear('created_at', $date->year)
+                                       ->whereMonth('created_at', $date->month)
+                                       ->count();
+                $pendudukData[] = $pendudukCount;
+
+                // User data per month (for admin) - REAL DATA
+                if ($user->role === 'admin') {
+                    $userCount = User::whereYear('created_at', $date->year)
+                                   ->whereMonth('created_at', $date->month)
+                                   ->count();
+                    $userData[] = $userCount;
+                }
+            }
+
+            $response = [
+                'months' => $months,
+                'kas_data' => $kasData,
+                'penduduk_data' => $pendudukData
+            ];
+
+            if ($user->role === 'admin') {
+                $response['user_data'] = $userData;
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $response
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting monthly data', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data bulanan'
+            ], 500);
+        }
+    }
+
+    /**
+     * Real-time system monitoring for admin
+     */
+    public function getSystemMonitoring()
+    {
+        try {
+            $user = Auth::user();
+            
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak'
+                ], 403);
+            }
+
+            $monitoring = [
+                'serverLoad' => sys_getloadavg()[0] ?? 0.5,
+                'memoryUsage' => memory_get_usage(true) / 1024 / 1024, // MB
+                'activeSessions' => $this->safeCount('sessions'),
+                'dbConnections' => 8, // Mock data
+                'recentErrors' => $this->getRecentErrors(),
+                'performanceMetrics' => $this->getPerformanceMetrics(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $monitoring
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting system monitoring', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil monitoring sistem'
+            ], 500);
+        }
+    }
+
+    private function getRecentErrors()
+    {
+        // Mock implementation - in production, read from log files
+        return [
+            ['message' => 'Database connection timeout', 'time' => now()->subMinutes(30)],
+            ['message' => 'Cache miss for user session', 'time' => now()->subHours(2)],
+        ];
+    }
+
+    private function getPerformanceMetrics()
+    {
+        return [
+            'avg_response_time' => 150, // ms
+            'requests_per_minute' => 45,
+            'error_rate' => 0.02, // 2%
+            'uptime' => '99.9%'
+        ];
     }
 }

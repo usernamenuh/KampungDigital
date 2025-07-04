@@ -166,9 +166,9 @@
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Daftar Warga RT</h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400">Status pembayaran kas terbaru</p>
                 </div>
-                <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                <a href="{{ route('penduduk.index') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                     Lihat Semua
-                </button>
+                </a>
             </div>
             
             <div class="space-y-3">
@@ -218,10 +218,10 @@
     <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Aksi Cepat</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button class="flex flex-col items-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
+            <a href="{{ route('kas.create') }}" class="flex flex-col items-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
                 <i data-lucide="plus" class="w-8 h-8 text-emerald-600 mb-2"></i>
                 <span class="text-sm font-medium text-emerald-600">Buat Tagihan</span>
-            </button>
+            </a>
             <button class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
                 <i data-lucide="calendar-plus" class="w-8 h-8 text-blue-600 mb-2"></i>
                 <span class="text-sm font-medium text-blue-600">Generate Kas</span>
@@ -238,6 +238,8 @@
     </div>
 </div>
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 function rtDashboardData() {
     return {
@@ -300,66 +302,40 @@ function rtDashboardData() {
             try {
                 console.log('📊 Loading RT dashboard data...');
                 
-                // Mock data - replace with actual API calls
-                this.balance = 3500000;
-                this.kasMasukBulanIni = 1200000;
-                this.iuranMingguan = 10000;
-                this.totalWarga = 85;
-                this.kasBelumBayar = 12;
-                this.totalKasBelumBayar = 120000;
-                this.kasTerlambat = 3;
-                this.kasLunas = 73;
+                // LOAD REAL DATA FROM API
+                const response = await fetch('/api/dashboard/stats', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
+                });
                 
-                this.daftarWarga = [
-                    {
-                        id: 1,
-                        nama: 'Ahmad Suryadi',
-                        alamat: 'Jl. Mawar No. 12',
-                        status: 'lunas',
-                        statusText: 'Lunas'
-                    },
-                    {
-                        id: 2,
-                        nama: 'Siti Nurhaliza',
-                        alamat: 'Jl. Melati No. 8',
-                        status: 'belum_bayar',
-                        statusText: 'Belum Bayar'
-                    },
-                    {
-                        id: 3,
-                        nama: 'Budi Santoso',
-                        alamat: 'Jl. Anggrek No. 15',
-                        status: 'terlambat',
-                        statusText: 'Terlambat'
-                    },
-                    {
-                        id: 4,
-                        nama: 'Dewi Sartika',
-                        alamat: 'Jl. Dahlia No. 3',
-                        status: 'lunas',
-                        statusText: 'Lunas'
-                    },
-                    {
-                        id: 5,
-                        nama: 'Eko Prasetyo',
-                        alamat: 'Jl. Tulip No. 7',
-                        status: 'lunas',
-                        statusText: 'Lunas'
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Assign real data
+                        Object.assign(this, data.data);
+                        console.log('✅ RT data loaded successfully:', data.data);
+                    } else {
+                        throw new Error(data.message || 'Failed to load data');
                     }
-                ];
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
-                console.log('✅ RT data loaded successfully');
             } catch (error) {
                 console.error('❌ Error loading RT dashboard data:', error);
                 if (window.showNotification) {
-                    window.showNotification('Gagal memuat data dashboard', 'error');
+                    window.showNotification('Gagal memuat data dashboard: ' + error.message, 'error');
                 }
             }
         },
         
         async refreshBalance() {
             try {
-                await new Promise(resolve => setTimeout(resolve, 1000));
                 await this.loadDashboardData();
                 
                 if (window.showNotification) {
@@ -511,4 +487,5 @@ function rtDashboardData() {
     }
 }
 </script>
+@endpush
 @endsection

@@ -31,6 +31,7 @@ class RtController extends Controller
         try {
             $validated = $request->validate([
                 'rw_id' => 'required|exists:rws,id',
+                'no_rt' => 'required|string|regex:/^\d{2,}$/',
                 'nama_rt' => 'required|string|max:255',
                 'alamat' => 'nullable|string|max:500',
                 'ketua_rt' => 'nullable|string|max:255',
@@ -41,6 +42,7 @@ class RtController extends Controller
             ], [
                 'rw_id.required' => 'RW harus dipilih.',
                 'rw_id.exists' => 'RW yang dipilih tidak valid.',
+                'no_rt.required' => 'Nomor RT harus diisi.',
                 'nama_rt.required' => 'Nama RT harus diisi.',
                 'nama_rt.string' => 'Nama RT harus berupa teks.',
                 'nama_rt.max' => 'Nama RT maksimal 255 karakter.',
@@ -104,6 +106,7 @@ class RtController extends Controller
         try {
             $validated = $request->validate([
                 'rw_id' => 'required|exists:rws,id',
+                'no_rt' => 'required|string|regex:/^\d{2,}$/',
                 'nama_rt' => 'required|string|max:255',
                 'alamat' => 'nullable|string|max:500',
                 'ketua_rt' => 'nullable|string|max:255',
@@ -115,6 +118,7 @@ class RtController extends Controller
                 'rw_id.required' => 'RW harus dipilih.',
                 'rw_id.exists' => 'RW yang dipilih tidak valid.',
                 'nama_rt.required' => 'Nama RT harus diisi.',
+                'no_rt.required' => 'No RT harus di isi',
                 'nama_rt.string' => 'Nama RT harus berupa teks.',
                 'nama_rt.max' => 'Nama RT maksimal 255 karakter.',
                 'alamat.string' => 'Alamat harus berupa teks.',

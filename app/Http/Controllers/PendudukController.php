@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class PendudukController extends Controller
@@ -56,6 +57,12 @@ class PendudukController extends Controller
         $penduduks = $query->paginate(15);
         $kks = Kk::with('rt.rw')->get();
 
+        Log::info('Penduduk index accessed', [
+            'user_id' => Auth::id(),
+            'filters' => $request->only(['kk_id', 'jenis_kelamin', 'status', 'min_umur', 'max_umur', 'search']),
+            'total_results' => $penduduks->total()
+        ]);
+
         return view('penduduk.index', compact('penduduks', 'kks'));
     }
 
@@ -65,7 +72,13 @@ class PendudukController extends Controller
     public function create()
     {
         $kks = Kk::with('rt.rw')->where('status', 'aktif')->get();
-        $users = User::whereDoesntHave('penduduk')->where('status', 'active')->get();
+        $users = User::active()->whereDoesntHave('penduduk')->get();
+        
+        Log::info('Penduduk create form accessed', [
+            'user_id' => Auth::id(),
+            'available_kks' => $kks->count(),
+            'available_users' => $users->count()
+        ]);
         
         return view('penduduk.create', compact('kks', 'users'));
     }
@@ -115,6 +128,11 @@ class PendudukController extends Controller
         if ($request->hubungan_keluarga === 'Kepala Keluarga') {
             $kk = Kk::find($request->kk_id);
             if ($kk && $kk->kepala_keluarga_id) {
+                Log::warning('Attempt to create duplicate kepala keluarga', [
+                    'user_id' => Auth::id(),
+                    'kk_id' => $request->kk_id,
+                    'existing_kepala_id' => $kk->kepala_keluarga_id
+                ]);
                 return back()->withInput()->with('error', 'Kartu Keluarga ini sudah memiliki Kepala Keluarga. Silakan pilih hubungan keluarga yang lain.');
             }
         }
@@ -122,7 +140,7 @@ class PendudukController extends Controller
         try {
             DB::transaction(function () use ($request) {
                 $data = $request->all();
-                $data['status'] = 'aktif'; // Default status aktif
+                $data['status'] = 'aktif'; // Default status
 
                 // Handle foto upload
                 if ($request->hasFile('foto')) {
@@ -139,13 +157,20 @@ class PendudukController extends Controller
                     }
                 }
 
-                // Log penduduk creation
-                Log::info('New penduduk created', [
+                // If user is assigned, ensure user is active
+                if ($request->user_id) {
+                    $user = User::find($request->user_id);
+                    if ($user) {
+                        $user->update(['status' => 'active']);
+                    }
+                }
+
+                Log::info('Penduduk created successfully', [
+                    'user_id' => Auth::id(),
                     'penduduk_id' => $penduduk->id,
                     'nik' => $penduduk->nik,
-                    'nama_lengkap' => $penduduk->nama_lengkap,
-                    'user_id' => $penduduk->user_id,
-                    'created_by' => auth()->id()
+                    'nama' => $penduduk->nama_lengkap,
+                    'assigned_user_id' => $request->user_id
                 ]);
             });
 
@@ -154,11 +179,11 @@ class PendudukController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error creating penduduk', [
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
-                'request_data' => $request->except(['foto', 'password']),
-                'user_id' => auth()->id()
+                'data' => $request->except(['foto', 'password'])
             ]);
-
+            
             return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage());
         }
     }
@@ -169,6 +194,13 @@ class PendudukController extends Controller
     public function show(Penduduk $penduduk)
     {
         $penduduk->load(['kk.rt.rw', 'user', 'kkAsKepala']);
+        
+        Log::info('Penduduk detail viewed', [
+            'user_id' => Auth::id(),
+            'penduduk_id' => $penduduk->id,
+            'nik' => $penduduk->nik
+        ]);
+        
         return view('penduduk.show', compact('penduduk'));
     }
 
@@ -178,10 +210,16 @@ class PendudukController extends Controller
     public function edit(Penduduk $penduduk)
     {
         $kks = Kk::with('rt.rw')->where('status', 'aktif')->get();
-        $users = User::whereDoesntHave('penduduk')
+        $users = User::active()
+                    ->whereDoesntHave('penduduk')
                     ->orWhere('id', $penduduk->user_id)
-                    ->where('status', 'active')
                     ->get();
+        
+        Log::info('Penduduk edit form accessed', [
+            'user_id' => Auth::id(),
+            'penduduk_id' => $penduduk->id,
+            'nik' => $penduduk->nik
+        ]);
         
         return view('penduduk.edit', compact('penduduk', 'kks', 'users'));
     }
@@ -228,9 +266,9 @@ class PendudukController extends Controller
 
         try {
             DB::transaction(function () use ($request, $penduduk) {
-                $oldStatus = $penduduk->status;
-                $oldUserId = $penduduk->user_id;
                 $data = $request->all();
+                $oldUserID = $penduduk->user_id;
+                $oldStatus = $penduduk->status;
 
                 // Handle foto upload
                 if ($request->hasFile('foto')) {
@@ -241,69 +279,43 @@ class PendudukController extends Controller
                     $data['foto'] = $request->file('foto')->store('penduduk', 'public');
                 }
 
-                // Update penduduk data
-                $penduduk->update($data);
-
-                // Handle status change - sync with user status
-                if ($penduduk->user) {
-                    $newUserStatus = in_array($request->status, ['tidak_aktif', 'meninggal', 'pindah']) ? 'inactive' : 'active';
-                    
-                    if ($penduduk->user->status !== $newUserStatus) {
-                        $penduduk->user->update(['status' => $newUserStatus]);
-                        
-                        Log::info('User status updated due to penduduk status change', [
-                            'user_id' => $penduduk->user->id,
-                            'penduduk_id' => $penduduk->id,
-                            'penduduk_nik' => $penduduk->nik,
-                            'old_penduduk_status' => $oldStatus,
-                            'new_penduduk_status' => $request->status,
-                            'new_user_status' => $newUserStatus,
-                            'updated_by' => auth()->id()
-                        ]);
-                    }
-                }
-
                 // Handle user assignment change
-                if ($oldUserId !== $request->user_id) {
-                    // If old user exists, deactivate it
-                    if ($oldUserId) {
-                        $oldUser = User::find($oldUserId);
-                        if ($oldUser && $oldUser->role === 'masyarakat') {
+                if ($oldUserID != $request->user_id) {
+                    // Deactivate old user if exists
+                    if ($oldUserID) {
+                        $oldUser = User::find($oldUserID);
+                        if ($oldUser && $oldUser->isMasyarakat()) {
                             $oldUser->update(['status' => 'inactive']);
-                            
-                            Log::info('Old user deactivated due to penduduk reassignment', [
-                                'old_user_id' => $oldUserId,
-                                'penduduk_id' => $penduduk->id,
-                                'penduduk_nik' => $penduduk->nik,
-                                'updated_by' => auth()->id()
-                            ]);
                         }
                     }
-
-                    // If new user assigned, activate it if penduduk is active
-                    if ($request->user_id && $request->status === 'aktif') {
+                    
+                    // Activate new user if assigned
+                    if ($request->user_id) {
                         $newUser = User::find($request->user_id);
                         if ($newUser) {
-                            $newUser->update(['status' => 'active']);
-                            
-                            Log::info('New user activated due to penduduk assignment', [
-                                'new_user_id' => $request->user_id,
-                                'penduduk_id' => $penduduk->id,
-                                'penduduk_nik' => $penduduk->nik,
-                                'updated_by' => auth()->id()
-                            ]);
+                            $userStatus = ($request->status === 'aktif') ? 'active' : 'inactive';
+                            $newUser->update(['status' => $userStatus]);
                         }
                     }
                 }
 
-                Log::info('Penduduk updated', [
+                // Handle status change - sync with user
+                if ($penduduk->user && ($oldStatus != $request->status)) {
+                    $userStatus = in_array($request->status, ['tidak_aktif', 'meninggal', 'pindah']) ? 'inactive' : 'active';
+                    $penduduk->user->update(['status' => $userStatus]);
+                }
+
+                $penduduk->update($data);
+
+                Log::info('Penduduk updated successfully', [
+                    'user_id' => Auth::id(),
                     'penduduk_id' => $penduduk->id,
                     'nik' => $penduduk->nik,
-                    'old_status' => $oldStatus,
-                    'new_status' => $request->status,
-                    'old_user_id' => $oldUserId,
+                    'changes' => $penduduk->getChanges(),
+                    'old_user_id' => $oldUserID,
                     'new_user_id' => $request->user_id,
-                    'updated_by' => auth()->id()
+                    'old_status' => $oldStatus,
+                    'new_status' => $request->status
                 ]);
             });
 
@@ -312,12 +324,12 @@ class PendudukController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error updating penduduk', [
+                'user_id' => Auth::id(),
                 'penduduk_id' => $penduduk->id,
                 'error' => $e->getMessage(),
-                'request_data' => $request->except(['foto', 'password']),
-                'user_id' => auth()->id()
+                'data' => $request->except(['foto', 'password'])
             ]);
-
+            
             return back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage());
         }
     }
@@ -329,15 +341,6 @@ class PendudukController extends Controller
     {
         try {
             DB::transaction(function () use ($penduduk) {
-                // Log before deletion
-                Log::info('Penduduk deletion started', [
-                    'penduduk_id' => $penduduk->id,
-                    'nik' => $penduduk->nik,
-                    'nama_lengkap' => $penduduk->nama_lengkap,
-                    'user_id' => $penduduk->user_id,
-                    'deleted_by' => auth()->id()
-                ]);
-
                 // Delete foto if exists
                 if ($penduduk->foto) {
                     Storage::disk('public')->delete($penduduk->foto);
@@ -346,37 +349,26 @@ class PendudukController extends Controller
                 // Update KK jika penduduk adalah kepala keluarga
                 if ($penduduk->kkAsKepala) {
                     $penduduk->kkAsKepala->update(['kepala_keluarga_id' => null]);
-                    
-                    Log::info('KK kepala keluarga updated due to penduduk deletion', [
-                        'kk_id' => $penduduk->kkAsKepala->id,
-                        'penduduk_id' => $penduduk->id,
-                        'deleted_by' => auth()->id()
-                    ]);
                 }
 
-                // Disable associated user account
+                // Disable/delete associated user account
                 if ($penduduk->user) {
+                    // Soft disable the user
                     $penduduk->user->update([
                         'status' => 'inactive',
                         'email_verified_at' => null
                     ]);
-                    
-                    Log::info('User deactivated due to penduduk deletion', [
-                        'user_id' => $penduduk->user->id,
-                        'user_email' => $penduduk->user->email,
-                        'penduduk_id' => $penduduk->id,
-                        'penduduk_nik' => $penduduk->nik,
-                        'deleted_by' => auth()->id()
-                    ]);
                 }
 
-                $penduduk->delete();
-
-                Log::info('Penduduk deleted successfully', [
+                Log::info('Penduduk deleted', [
+                    'user_id' => Auth::id(),
                     'penduduk_id' => $penduduk->id,
                     'nik' => $penduduk->nik,
-                    'deleted_by' => auth()->id()
+                    'nama' => $penduduk->nama_lengkap,
+                    'associated_user_id' => $penduduk->user_id
                 ]);
+
+                $penduduk->delete();
             });
 
             return redirect()->route('penduduk.index')
@@ -384,11 +376,11 @@ class PendudukController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error deleting penduduk', [
+                'user_id' => Auth::id(),
                 'penduduk_id' => $penduduk->id,
-                'error' => $e->getMessage(),
-                'user_id' => auth()->id()
+                'error' => $e->getMessage()
             ]);
-
+            
             return redirect()->route('penduduk.index')
                 ->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
         }
@@ -400,50 +392,39 @@ class PendudukController extends Controller
     public function toggleStatus(Penduduk $penduduk)
     {
         try {
-            DB::transaction(function () use ($penduduk) {
-                $oldStatus = $penduduk->status;
-                $newStatus = $penduduk->status === 'aktif' ? 'tidak_aktif' : 'aktif';
-                
+            $newStatus = $penduduk->status === 'aktif' ? 'tidak_aktif' : 'aktif';
+            
+            DB::transaction(function () use ($penduduk, $newStatus) {
                 $penduduk->update(['status' => $newStatus]);
-
-                // Update user status accordingly
+                
+                // Sync user status if exists
                 if ($penduduk->user) {
-                    $newUserStatus = $newStatus === 'aktif' ? 'active' : 'inactive';
-                    $penduduk->user->update(['status' => $newUserStatus]);
-                    
-                    Log::info('User status toggled with penduduk status', [
-                        'user_id' => $penduduk->user->id,
-                        'penduduk_id' => $penduduk->id,
-                        'penduduk_nik' => $penduduk->nik,
-                        'old_status' => $oldStatus,
-                        'new_status' => $newStatus,
-                        'new_user_status' => $newUserStatus,
-                        'toggled_by' => auth()->id()
-                    ]);
+                    $userStatus = $newStatus === 'aktif' ? 'active' : 'inactive';
+                    $penduduk->user->update(['status' => $userStatus]);
                 }
-
-                Log::info('Penduduk status toggled', [
-                    'penduduk_id' => $penduduk->id,
-                    'nik' => $penduduk->nik,
-                    'old_status' => $oldStatus,
-                    'new_status' => $newStatus,
-                    'toggled_by' => auth()->id()
-                ]);
             });
 
-            $message = $penduduk->status === 'aktif' ? 'Penduduk berhasil diaktifkan.' : 'Penduduk berhasil dinonaktifkan.';
+            $message = $newStatus === 'aktif' ? 'Penduduk berhasil diaktifkan!' : 'Penduduk berhasil dinonaktifkan!';
             
+            Log::info('Penduduk status toggled', [
+                'user_id' => Auth::id(),
+                'penduduk_id' => $penduduk->id,
+                'old_status' => $penduduk->status,
+                'new_status' => $newStatus,
+                'user_id' => $penduduk->user_id
+            ]);
+
             return redirect()->back()->with('success', $message);
 
         } catch (\Exception $e) {
             Log::error('Error toggling penduduk status', [
+                'user_id' => Auth::id(),
                 'penduduk_id' => $penduduk->id,
-                'error' => $e->getMessage(),
-                'user_id' => auth()->id()
+                'error' => $e->getMessage()
             ]);
             
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan saat mengubah status penduduk.');
+                ->with('error', 'Terjadi kesalahan saat mengubah status: ' . $e->getMessage());
         }
     }
 
@@ -455,7 +436,6 @@ class PendudukController extends Controller
         $stats = [
             'total_penduduk' => Penduduk::count(),
             'penduduk_aktif' => Penduduk::where('status', 'aktif')->count(),
-            'penduduk_tidak_aktif' => Penduduk::where('status', 'tidak_aktif')->count(),
             'laki_laki' => Penduduk::where('jenis_kelamin', 'L')->count(),
             'perempuan' => Penduduk::where('jenis_kelamin', 'P')->count(),
             'anak_anak' => Penduduk::umur(null, 17)->count(),
@@ -465,8 +445,13 @@ class PendudukController extends Controller
             'kawin' => Penduduk::where('status_perkawinan', 'Kawin')->count(),
             'total_kk' => Kk::count(),
             'users_with_penduduk' => User::whereHas('penduduk')->count(),
-            'users_without_penduduk' => User::whereDoesntHave('penduduk')->count(),
+            'active_users' => User::where('status', 'active')->count(),
         ];
+
+        Log::info('Penduduk statistics accessed', [
+            'user_id' => Auth::id(),
+            'stats' => $stats
+        ]);
 
         return view('penduduk.statistics', compact('stats'));
     }

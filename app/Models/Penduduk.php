@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class Penduduk extends Model
 {
@@ -44,6 +44,42 @@ class Penduduk extends Model
         'tanggal_pindah' => 'date',
         'tanggal_meninggal' => 'date',
     ];
+
+    /**
+     * Boot method for model events
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Auto-sync user status when penduduk status changes
+        static::updated(function ($penduduk) {
+            if ($penduduk->user && $penduduk->isDirty('status')) {
+                $userStatus = in_array($penduduk->status, ['tidak_aktif', 'meninggal', 'pindah']) ? 'inactive' : 'active';
+                
+                $penduduk->user->update(['status' => $userStatus]);
+                
+                Log::info('User status synced with penduduk', [
+                    'penduduk_id' => $penduduk->id,
+                    'user_id' => $penduduk->user_id,
+                    'penduduk_status' => $penduduk->status,
+                    'user_status' => $userStatus
+                ]);
+            }
+        });
+
+        // Auto-deactivate user when penduduk is deleted
+        static::deleting(function ($penduduk) {
+            if ($penduduk->user) {
+                $penduduk->user->update(['status' => 'inactive']);
+                
+                Log::info('User deactivated due to penduduk deletion', [
+                    'penduduk_id' => $penduduk->id,
+                    'user_id' => $penduduk->user_id
+                ]);
+            }
+        });
+    }
 
     /**
      * Relasi dengan KK (Many to One)
@@ -86,15 +122,7 @@ class Penduduk extends Model
     }
 
     /**
-     * Check if penduduk is kepala keluarga
-     */
-    public function isKepalaKeluarga()
-    {
-        return $this->hubungan_keluarga === 'Kepala Keluarga';
-    }
-
-    /**
-     * Get status badge attribute
+     * Get status badge for UI
      */
     public function getStatusBadgeAttribute()
     {
@@ -106,6 +134,14 @@ class Penduduk extends Model
         ];
 
         return $badges[$this->status] ?? '<span class="badge bg-secondary">Unknown</span>';
+    }
+
+    /**
+     * Check if penduduk is kepala keluarga
+     */
+    public function isKepalaKeluarga()
+    {
+        return $this->hubungan_keluarga === 'Kepala Keluarga';
     }
 
     /**
@@ -129,52 +165,16 @@ class Penduduk extends Model
      */
     public function scopeUmur($query, $minUmur = null, $maxUmur = null)
     {
-        if ($minUmur !== null && $maxUmur !== null) {
-            return $query->whereRaw('TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) BETWEEN ? AND ?', [$minUmur, $maxUmur]);
-        } elseif ($minUmur !== null) {
-            return $query->whereRaw('TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) >= ?', [$minUmur]);
-        } elseif ($maxUmur !== null) {
-            return $query->whereRaw('TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) <= ?', [$maxUmur]);
+        if ($minUmur !== null) {
+            $maxDate = Carbon::now()->subYears($minUmur)->endOfYear();
+            $query->where('tanggal_lahir', '<=', $maxDate);
         }
-
+        
+        if ($maxUmur !== null) {
+            $minDate = Carbon::now()->subYears($maxUmur + 1)->startOfYear();
+            $query->where('tanggal_lahir', '>=', $minDate);
+        }
+        
         return $query;
-    }
-
-    /**
-     * Boot method untuk handle events
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Event ketika penduduk akan dihapus
-        static::deleting(function ($penduduk) {
-            // Jika ada user terkait, nonaktifkan
-            if ($penduduk->user) {
-                $penduduk->user->update(['status' => 'inactive']);
-                
-                Log::info('User deactivated due to penduduk deletion', [
-                    'user_id' => $penduduk->user->id,
-                    'penduduk_id' => $penduduk->id,
-                    'penduduk_nik' => $penduduk->nik
-                ]);
-            }
-        });
-
-        // Event ketika penduduk diupdate
-        static::updated(function ($penduduk) {
-            // Jika status berubah dan ada user terkait
-            if ($penduduk->isDirty('status') && $penduduk->user) {
-                $newUserStatus = in_array($penduduk->status, ['tidak_aktif', 'meninggal', 'pindah']) ? 'inactive' : 'active';
-                $penduduk->user->update(['status' => $newUserStatus]);
-                
-                Log::info('User status updated due to penduduk status change', [
-                    'user_id' => $penduduk->user->id,
-                    'penduduk_id' => $penduduk->id,
-                    'penduduk_nik' => $penduduk->nik,
-                    'new_status' => $newUserStatus
-                ]);
-            }
-        });
     }
 }

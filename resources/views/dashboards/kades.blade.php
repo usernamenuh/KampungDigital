@@ -225,14 +225,14 @@
                 <i data-lucide="hand-heart" class="w-8 h-8 text-green-600 mb-2"></i>
                 <span class="text-sm font-medium text-green-600">Review Bantuan</span>
             </button>
-            <button class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+            <a href="{{ route('penduduk.index') }}" class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
                 <i data-lucide="users" class="w-8 h-8 text-blue-600 mb-2"></i>
                 <span class="text-sm font-medium text-blue-600">Data Penduduk</span>
-            </button>
-            <button class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
+            </a>
+            <a href="{{ route('kas.index') }}" class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
                 <i data-lucide="wallet" class="w-8 h-8 text-purple-600 mb-2"></i>
                 <span class="text-sm font-medium text-purple-600">Kelola Kas</span>
-            </button>
+            </a>
             <button class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
                 <i data-lucide="bar-chart-3" class="w-8 h-8 text-orange-600 mb-2"></i>
                 <span class="text-sm font-medium text-orange-600">Laporan</span>
@@ -241,6 +241,8 @@
     </div>
 </div>
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 function kadesDashboardData() {
     return {
@@ -301,48 +303,40 @@ function kadesDashboardData() {
             try {
                 console.log('📊 Loading kades dashboard data...');
                 
-                // Mock data - replace with actual API calls
-                this.saldoDesa = 25000000;
-                this.bantuanBulanIni = 5000000;
-                this.saldoTersedia = this.saldoDesa - this.bantuanBulanIni;
-                this.totalRw = 5;
-                this.totalRt = 25;
-                this.totalPenduduk = 2500;
-                this.bantuanPending = 3;
+                // LOAD REAL DATA FROM API
+                const response = await fetch('/api/dashboard/stats', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
+                });
                 
-                this.pengajuanBantuan = [
-                    {
-                        id: 1,
-                        rw: 'RW 01 - Sukamaju',
-                        jumlah: 2000000,
-                        tanggal: '15 Jan 2024'
-                    },
-                    {
-                        id: 2,
-                        rw: 'RW 03 - Makmur',
-                        jumlah: 1500000,
-                        tanggal: '14 Jan 2024'
-                    },
-                    {
-                        id: 3,
-                        rw: 'RW 05 - Sejahtera',
-                        jumlah: 3000000,
-                        tanggal: '13 Jan 2024'
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Assign real data
+                        Object.assign(this, data.data);
+                        console.log('✅ Kades data loaded successfully:', data.data);
+                    } else {
+                        throw new Error(data.message || 'Failed to load data');
                     }
-                ];
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
-                console.log('✅ Kades data loaded successfully');
             } catch (error) {
                 console.error('❌ Error loading kades dashboard data:', error);
                 if (window.showNotification) {
-                    window.showNotification('Gagal memuat data dashboard', 'error');
+                    window.showNotification('Gagal memuat data dashboard: ' + error.message, 'error');
                 }
             }
         },
         
         async refreshSaldo() {
             try {
-                await new Promise(resolve => setTimeout(resolve, 1000));
                 await this.loadDashboardData();
                 
                 if (window.showNotification) {
@@ -489,4 +483,5 @@ function kadesDashboardData() {
     }
 }
 </script>
+@endpush
 @endsection

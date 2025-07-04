@@ -266,6 +266,16 @@
             color: #6b7280;
         }
 
+        /* Fix autocomplete styling */
+        .form-control:-webkit-autofill,
+        .form-control:-webkit-autofill:hover,
+        .form-control:-webkit-autofill:focus,
+        .form-control:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #13151f inset !important;
+            -webkit-text-fill-color: #fff !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
         .password-container {
             position: relative;
         }
@@ -347,6 +357,17 @@
             animation: shake 0.5s ease-in-out;
         }
 
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ade80;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            animation: slideInDown 0.5s ease-out;
+        }
+
         /* Animations */
         @keyframes twinkle {
             0%, 100% { opacity: 0.2; }
@@ -377,6 +398,11 @@
         @keyframes slideInRight {
             from { opacity: 0; transform: translateX(50px); }
             to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slideInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes scrollText {
@@ -473,7 +499,7 @@
             }
             .content-overlay {
                 padding: 0.5rem 0.2rem;
-                text-align: center !important; /* Bikin tengah */
+                text-align: center !important;
                 align-items: center !important;
                 justify-content: center !important;
                 display: flex;
@@ -573,10 +599,10 @@
                 <div class="logo-container">
                     <i class="bi bi-airplane" style="font-size: 1.5rem;"></i>
                 </div>
-                <h2 class="brand-title">Kampung Ditital</h2>
+                <h2 class="brand-title">Kampung Digital</h2>
                 <p class="brand-subtitle">
                     Menuju Indonesia Yang Lebih Maju Dengan Teknologi.<br>
-                    Di Mulai Dari Akar Untuk Menciptakan Sesuatu Yang Indah.
+                    Dimulai Dari Akar Untuk Menciptakan Sesuatu Yang Indah.
                 </p>
             </div>
         </div>
@@ -585,9 +611,17 @@
         <div class="right-side">
             <div class="login-form-container">
                 <div class="login-header">
-                    <h2>Welcome back</h2>
-                    <p>Sign in to your account</p>
+                    <h2>Selamat Datang</h2>
+                    <p>Masuk ke akun Anda</p>
                 </div>
+
+                <!-- Success Message -->
+                @if(session('success'))
+                    <div class="success-message">
+                        <i class="bi bi-check-circle me-2"></i>
+                        {{ session('success') }}
+                    </div>
+                @endif
 
                 <!-- Google Login Button -->
                 <a href="#" class="google-btn">
@@ -597,11 +631,11 @@
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    Login with Google
+                    Masuk dengan Google
                 </a>
 
                 <div class="divider">
-                    <span>or</span>
+                    <span>atau</span>
                 </div>
 
                 <form method="POST" action="{{ route('login') }}">
@@ -619,7 +653,7 @@
                                required
                                autocomplete="email"
                                autofocus
-                               placeholder="Enter your email address">
+                               placeholder="Masukkan alamat email Anda">
 
                         @error('email')
                             <div class="error-message">
@@ -640,7 +674,7 @@
                                    name="password"
                                    required
                                    autocomplete="current-password"
-                                   placeholder="Enter your password">
+                                   placeholder="Masukkan password Anda">
                             <button type="button" class="password-toggle" onclick="togglePassword()">
                                 <i class="bi bi-eye" id="password-icon"></i>
                             </button>
@@ -656,7 +690,7 @@
 
                     <button type="submit" class="btn-login">
                         <span style="display: flex; align-items: center; justify-content: center;">
-                            Sign in
+                            Masuk
                             <i class="bi bi-arrow-right ms-2"></i>
                         </span>
                     </button>
@@ -664,7 +698,7 @@
 
                 @if (Route::has('password.request'))
                     <a href="{{ route('password.request') }}" class="forgot-link">
-                        Forgot password?
+                        Lupa password?
                     </a>
                 @endif
             </div>

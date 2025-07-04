@@ -206,14 +206,14 @@
                 <i data-lucide="hand-heart" class="w-8 h-8 text-blue-600 mb-2"></i>
                 <span class="text-sm font-medium text-blue-600">Ajukan Bantuan</span>
             </button>
-            <button class="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
+            <a href="{{ route('penduduk.index') }}" class="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
                 <i data-lucide="users" class="w-8 h-8 text-green-600 mb-2"></i>
                 <span class="text-sm font-medium text-green-600">Data Warga</span>
-            </button>
-            <button class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
+            </a>
+            <a href="{{ route('rt-rw.index') }}" class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
                 <i data-lucide="map-pin" class="w-8 h-8 text-purple-600 mb-2"></i>
                 <span class="text-sm font-medium text-purple-600">Kelola RT</span>
-            </button>
+            </a>
             <button class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
                 <i data-lucide="bar-chart-3" class="w-8 h-8 text-orange-600 mb-2"></i>
                 <span class="text-sm font-medium text-orange-600">Laporan</span>
@@ -222,6 +222,8 @@
     </div>
 </div>
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 function rwDashboardData() {
     return {
@@ -235,6 +237,7 @@ function rwDashboardData() {
         totalPopulation: 0,
         bantuanPending: 0,
         activities: [],
+        rtData: [],
         charts: {
             population: null
         },
@@ -283,29 +286,41 @@ function rwDashboardData() {
             try {
                 console.log('📊 Loading RW dashboard data...');
                 
-                // Mock data - replace with actual API calls
-                this.balance = 8500000;
-                this.kasMasukBulanIni = 2500000;
-                this.bantuanDiterima = 5000000;
-                this.totalRts = 5;
-                this.totalKks = 125;
-                this.totalPopulation = 450;
-                this.bantuanPending = 1;
+                // LOAD REAL DATA FROM API
+                const response = await fetch('/api/dashboard/stats', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
+                });
                 
-                this.loadActivities();
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Assign real data
+                        Object.assign(this, data.data);
+                        this.loadActivities();
+                        console.log('✅ RW data loaded successfully:', data.data);
+                    } else {
+                        throw new Error(data.message || 'Failed to load data');
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
-                console.log('✅ RW data loaded successfully');
             } catch (error) {
                 console.error('❌ Error loading RW dashboard data:', error);
                 if (window.showNotification) {
-                    window.showNotification('Gagal memuat data dashboard', 'error');
+                    window.showNotification('Gagal memuat data dashboard: ' + error.message, 'error');
                 }
             }
         },
         
         async refreshBalance() {
             try {
-                await new Promise(resolve => setTimeout(resolve, 1000));
                 await this.loadDashboardData();
                 
                 if (window.showNotification) {
@@ -382,13 +397,22 @@ function rwDashboardData() {
                 this.charts.population.destroy();
             }
             
+            // Use real data if available
+            const labels = this.rtData && this.rtData.length > 0 
+                ? this.rtData.map(rt => rt.nama) 
+                : ['RT 001', 'RT 002', 'RT 003', 'RT 004', 'RT 005'];
+            
+            const data = this.rtData && this.rtData.length > 0 
+                ? this.rtData.map(rt => rt.total_penduduk) 
+                : [85, 92, 78, 105, 90];
+            
             this.charts.population = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['RT 001', 'RT 002', 'RT 003', 'RT 004', 'RT 005'],
+                    labels: labels,
                     datasets: [{
                         label: 'Jumlah Penduduk',
-                        data: [85, 92, 78, 105, 90],
+                        data: data,
                         backgroundColor: this.getChartColors().primary,
                         borderColor: this.getChartColors().primary,
                         borderWidth: 1,
@@ -487,4 +511,5 @@ function rwDashboardData() {
     }
 }
 </script>
+@endpush
 @endsection

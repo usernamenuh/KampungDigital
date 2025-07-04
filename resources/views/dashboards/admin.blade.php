@@ -12,6 +12,16 @@
             <div>
                 <h2 class="text-2xl font-bold">Administrator System</h2>
                 <p class="text-purple-100">Sistem Manajemen Kampung Digital</p>
+                <div class="flex items-center mt-2 space-x-4">
+                    <div class="flex items-center">
+                        <div class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                        <span class="text-sm text-purple-100">System Online</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i data-lucide="users" class="w-4 h-4 mr-1"></i>
+                        <span class="text-sm text-purple-100" x-text="usersOnline + ' Online'">0 Online</span>
+                    </div>
+                </div>
             </div>
             <div class="text-right">
                 <p class="text-sm text-purple-100">Total Saldo Sistem</p>
@@ -25,21 +35,34 @@
         </div>
     </div>
 
+    <!-- System Health Alert -->
+    <div x-show="systemHealth.status !== 'healthy'" :class="getCardClass()" class="p-4 rounded-xl shadow-sm border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+        <div class="flex items-center">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600 mr-3"></i>
+            <div>
+                <h4 class="text-sm font-medium text-red-800 dark:text-red-200">Peringatan Sistem</h4>
+                <p class="text-sm text-red-700 dark:text-red-300">Beberapa komponen sistem mengalami masalah. Periksa status sistem.</p>
+            </div>
+            <button @click="checkSystemHealth()" class="ml-auto bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors">
+                Periksa Sekarang
+            </button>
+        </div>
+    </div>
+
     <!-- Saldo Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <!-- Total Saldo Desa -->
         <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Saldo Desa</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalSaldoDesa)">Rp 0</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalSaldoDesa)">Rp 0</p>
                     <div class="flex items-center mt-2">
                         <span class="text-sm text-green-600 font-medium" x-text="totalDesa + ' Desa'">0 Desa</span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">terdaftar</span>
                     </div>
                 </div>
                 <div class="p-3 bg-green-100 dark:bg-green-900 rounded-xl">
-                    <i data-lucide="landmark" class="w-8 h-8 text-green-600 dark:text-green-400"></i>
+                    <i data-lucide="landmark" class="w-6 h-6 text-green-600 dark:text-green-400"></i>
                 </div>
             </div>
         </div>
@@ -49,14 +72,13 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Saldo RW</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalSaldoRw)">Rp 0</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalSaldoRw)">Rp 0</p>
                     <div class="flex items-center mt-2">
                         <span class="text-sm text-blue-600 font-medium" x-text="totalRw + ' RW'">0 RW</span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">aktif</span>
                     </div>
                 </div>
                 <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-xl">
-                    <i data-lucide="map-pin" class="w-8 h-8 text-blue-600 dark:text-blue-400"></i>
+                    <i data-lucide="map-pin" class="w-6 h-6 text-blue-600 dark:text-blue-400"></i>
                 </div>
             </div>
         </div>
@@ -66,88 +88,120 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Saldo RT</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalSaldoRt)">Rp 0</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalSaldoRt)">Rp 0</p>
                     <div class="flex items-center mt-2">
                         <span class="text-sm text-purple-600 font-medium" x-text="totalRt + ' RT'">0 RT</span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">aktif</span>
                     </div>
                 </div>
                 <div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-xl">
-                    <i data-lucide="home" class="w-8 h-8 text-purple-600 dark:text-purple-400"></i>
+                    <i data-lucide="home" class="w-6 h-6 text-purple-600 dark:text-purple-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health -->
+        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">System Health</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="systemHealth.status === 'healthy' ? '100%' : '85%'">100%</p>
+                    <div class="flex items-center mt-2">
+                        <div :class="systemHealth.status === 'healthy' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'" class="px-2 py-1 rounded-full text-xs font-medium">
+                            <span x-text="systemHealth.status === 'healthy' ? 'Healthy' : 'Warning'">Healthy</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 bg-teal-100 dark:bg-teal-900 rounded-xl">
+                    <i data-lucide="activity" class="w-6 h-6 text-teal-600 dark:text-teal-400"></i>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <!-- Total Users -->
         <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Pengguna</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatNumber(totalUsers)">0</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatNumber(totalUsers)">0</p>
                     <div class="flex items-center mt-2">
-                        <span class="text-sm text-indigo-600 font-medium">+2.5%</span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">pengguna aktif</span>
+                        <span class="text-sm text-indigo-600 font-medium" x-text="usersOnline + ' Online'">0 Online</span>
                     </div>
                 </div>
                 <div class="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-xl">
-                    <i data-lucide="users" class="w-8 h-8 text-indigo-600 dark:text-indigo-400"></i>
+                    <i data-lucide="users" class="w-6 h-6 text-indigo-600 dark:text-indigo-400"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Total Kas Belum Bayar -->
+        <!-- Total Penduduk -->
+        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Penduduk</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatNumber(totalPenduduk)">0</p>
+                    <div class="flex items-center mt-2">
+                        <span class="text-sm text-green-600 font-medium" x-text="pendudukAktif + ' Aktif'">0 Aktif</span>
+                    </div>
+                </div>
+                <div class="p-3 bg-green-100 dark:bg-green-900 rounded-xl">
+                    <i data-lucide="user-check" class="w-6 h-6 text-green-600 dark:text-green-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Kas -->
+        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Terkumpul</p>
+                    <p class="text-xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalKasTerkumpul)">Rp 0</p>
+                    <div class="flex items-center mt-2">
+                        <span class="text-sm text-blue-600 font-medium" x-text="kasLunas + ' Lunas'">0 Lunas</span>
+                    </div>
+                </div>
+                <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-xl">
+                    <i data-lucide="wallet" class="w-6 h-6 text-blue-600 dark:text-blue-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kas Belum Bayar -->
         <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Belum Bayar</p>
-                    <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalKasBelumBayar)">Rp 0</p>
+                    <p class="text-xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalKasBelumBayar)">Rp 0</p>
                     <div class="flex items-center mt-2">
                         <span class="text-sm text-red-600 font-medium" x-text="jumlahKasBelumBayar + ' Tagihan'">0 Tagihan</span>
                     </div>
                 </div>
                 <div class="p-3 bg-red-100 dark:bg-red-900 rounded-xl">
-                    <i data-lucide="alert-triangle" class="w-8 h-8 text-red-600 dark:text-red-400"></i>
+                    <i data-lucide="alert-triangle" class="w-6 h-6 text-red-600 dark:text-red-400"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Bantuan Pending -->
+        <!-- Notifikasi -->
         <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Bantuan Pending</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="bantuanPending">0</p>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Notifikasi</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatNumber(totalNotifikasi)">0</p>
                     <div class="flex items-center mt-2">
-                        <span class="text-sm text-yellow-600 font-medium">Menunggu Approval</span>
+                        <span class="text-sm text-yellow-600 font-medium" x-text="notifikasiUnread + ' Unread'">0 Unread</span>
                     </div>
                 </div>
                 <div class="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-xl">
-                    <i data-lucide="clock" class="w-8 h-8 text-yellow-600 dark:text-yellow-400"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Masyarakat -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Masyarakat</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatNumber(totalMasyarakat)">0</p>
-                    <div class="flex items-center mt-2">
-                        <span class="text-sm text-teal-600 font-medium">Warga Aktif</span>
-                    </div>
-                </div>
-                <div class="p-3 bg-teal-100 dark:bg-teal-900 rounded-xl">
-                    <i data-lucide="user-check" class="w-8 h-8 text-teal-600 dark:text-teal-400"></i>
+                    <i data-lucide="bell" class="w-6 h-6 text-yellow-600 dark:text-yellow-400"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Charts and Tables -->
+    <!-- Charts and Activities -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Chart Kas Bulanan -->
         <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
@@ -167,67 +221,119 @@
             </div>
         </div>
 
-        <!-- Recent Activities -->
+        <!-- SEMUA Aktivitas Sistem -->
         <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Aktivitas Terbaru</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Log aktivitas sistem</p>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Semua Aktivitas Sistem</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Real-time system activities</p>
                 </div>
-                <button @click="loadActivities()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                    Lihat Semua
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button @click="loadActivities()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                        Refresh
+                    </button>
+                    <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                </div>
             </div>
             
-            <div class="space-y-4">
+            <div class="space-y-3 max-h-96 overflow-y-auto">
                 <template x-for="activity in activities" :key="activity.id">
-                    <div class="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                         <div :class="{
-                            'bg-green-100 text-green-600': activity.type === 'success',
-                            'bg-blue-100 text-blue-600': activity.type === 'info',
-                            'bg-yellow-100 text-yellow-600': activity.type === 'warning',
-                            'bg-red-100 text-red-600': activity.type === 'error'
-                        }" class="p-2 rounded-lg">
-                            <i :data-lucide="activity.icon" class="w-5 h-5"></i>
+                            'bg-green-100 text-green-600': activity.color === 'green',
+                            'bg-blue-100 text-blue-600': activity.color === 'blue',
+                            'bg-yellow-100 text-yellow-600': activity.color === 'yellow',
+                            'bg-red-100 text-red-600': activity.color === 'red',
+                            'bg-purple-100 text-purple-600': activity.color === 'purple'
+                        }" class="p-2 rounded-lg flex-shrink-0">
+                            <i :data-lucide="activity.icon" class="w-4 h-4"></i>
                         </div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-gray-800 dark:text-white" x-text="activity.title"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="activity.description"></p>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800 dark:text-white truncate" x-text="activity.title"></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="activity.description"></p>
+                            <div class="flex items-center mt-1 space-x-2">
+                                <span class="text-xs text-gray-400" x-text="activity.user"></span>
+                                <span x-show="activity.location" class="text-xs text-gray-400" x-text="activity.location"></span>
+                                <span x-show="activity.amount" class="text-xs font-medium text-green-600" x-text="formatCurrency(activity.amount)"></span>
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400" x-text="activity.time"></div>
+                        <div class="text-xs text-gray-400 flex-shrink-0" x-text="formatTime(activity.timestamp)"></div>
                     </div>
                 </template>
             </div>
         </div>
     </div>
 
+    <!-- System Monitoring (Admin Only) -->
+    <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">System Monitoring</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Real-time system performance</p>
+            </div>
+            <button @click="loadSystemMonitoring()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                Refresh
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-sm text-gray-600 dark:text-gray-400">Server Load</p>
+                <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="systemMonitoring.serverLoad || '0.5'">0.5</p>
+            </div>
+            <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-sm text-gray-600 dark:text-gray-400">Memory Usage</p>
+                <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="(systemMonitoring.memoryUsage || 128) + ' MB'">128 MB</p>
+            </div>
+            <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-sm text-gray-600 dark:text-gray-400">Active Sessions</p>
+                <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="systemMonitoring.activeSessions || 25">25</p>
+            </div>
+            <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p class="text-sm text-gray-600 dark:text-gray-400">DB Connections</p>
+                <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="systemMonitoring.dbConnections || 8">8</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Quick Actions -->
     <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Aksi Cepat</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
-                <i data-lucide="users" class="w-8 h-8 text-blue-600 mb-2"></i>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Admin Actions</h3>
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <a href="{{ route('users.index') }}" class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                <i data-lucide="users" class="w-6 h-6 text-blue-600 mb-2"></i>
                 <span class="text-sm font-medium text-blue-600">Kelola Users</span>
-            </button>
-            <button class="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
-                <i data-lucide="map-pin" class="w-8 h-8 text-green-600 mb-2"></i>
-                <span class="text-sm font-medium text-green-600">Kelola Wilayah</span>
-            </button>
-            <button class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
-                <i data-lucide="wallet" class="w-8 h-8 text-purple-600 mb-2"></i>
+            </a>
+            <a href="{{ route('penduduk.index') }}" class="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
+                <i data-lucide="user-check" class="w-6 h-6 text-green-600 mb-2"></i>
+                <span class="text-sm font-medium text-green-600">Data Penduduk</span>
+            </a>
+            <a href="{{ route('kas.index') }}" class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
+                <i data-lucide="wallet" class="w-6 h-6 text-purple-600 mb-2"></i>
                 <span class="text-sm font-medium text-purple-600">Kelola Kas</span>
+            </a>
+            <button @click="clearCache()" class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
+                <i data-lucide="trash-2" class="w-6 h-6 text-orange-600 mb-2"></i>
+                <span class="text-sm font-medium text-orange-600">Clear Cache</span>
             </button>
-            <button class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
-                <i data-lucide="bar-chart-3" class="w-8 h-8 text-orange-600 mb-2"></i>
-                <span class="text-sm font-medium text-orange-600">Laporan</span>
+            <button @click="exportData()" class="flex flex-col items-center p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors">
+                <i data-lucide="download" class="w-6 h-6 text-teal-600 mb-2"></i>
+                <span class="text-sm font-medium text-teal-600">Export Data</span>
+            </button>
+            <button @click="showSystemLogs()" class="flex flex-col items-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                <i data-lucide="file-text" class="w-6 h-6 text-red-600 mb-2"></i>
+                <span class="text-sm font-medium text-red-600">System Logs</span>
             </button>
         </div>
     </div>
 </div>
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 function adminDashboardData() {
     return {
+        // Data properties
         totalSaldoDesa: 0,
         totalSaldoRw: 0,
         totalSaldoRt: 0,
@@ -236,14 +342,19 @@ function adminDashboardData() {
         totalDesa: 0,
         totalRw: 0,
         totalRt: 0,
-        totalMasyarakat: 0,
+        totalPenduduk: 0,
+        pendudukAktif: 0,
+        totalKasTerkumpul: 0,
         totalKasBelumBayar: 0,
         jumlahKasBelumBayar: 0,
-        bantuanPending: 0,
+        kasLunas: 0,
+        usersOnline: 0,
+        totalNotifikasi: 0,
+        notifikasiUnread: 0,
         activities: [],
-        charts: {
-            kas: null
-        },
+        systemHealth: { status: 'healthy' },
+        systemMonitoring: {},
+        charts: { kas: null },
         
         // Settings
         cardStyle: localStorage.getItem('cardStyle') || 'default',
@@ -253,23 +364,26 @@ function adminDashboardData() {
         async initDashboard() {
             console.log('🚀 Initializing Admin Dashboard...');
             
-            // Setup event listeners
             this.setupEventListeners();
-            
-            // Load data
             await this.loadDashboardData();
+            await this.loadActivities();
+            await this.loadSystemMonitoring();
             
-            // Initialize charts
             setTimeout(() => {
                 this.initializeCharts();
                 lucide.createIcons();
             }, 100);
             
+            // Auto refresh every 30 seconds
+            setInterval(() => {
+                this.loadActivities();
+                this.loadSystemMonitoring();
+            }, 30000);
+            
             console.log('✅ Admin Dashboard initialized successfully');
         },
         
         setupEventListeners() {
-            // Listen for theme changes
             window.addEventListener('cardStyleChanged', (e) => {
                 this.cardStyle = e.detail;
             });
@@ -283,33 +397,19 @@ function adminDashboardData() {
                 this.isDarkMode = e.detail;
                 this.updateAllCharts();
             });
-            
-            // Listen for data refresh
-            window.addEventListener('dataRefresh', () => {
-                this.loadDashboardData();
-                this.loadActivities();
-            });
         },
         
         async loadDashboardData() {
             try {
                 console.log('📊 Loading admin dashboard data...');
                 
-                // Mock data - replace with actual API calls
-                this.totalSaldoDesa = 50000000;
-                this.totalSaldoRw = 25000000;
-                this.totalSaldoRt = 15000000;
-                this.totalSaldoSistem = this.totalSaldoDesa + this.totalSaldoRw + this.totalSaldoRt;
-                this.totalUsers = 1250;
-                this.totalDesa = {{ $desaCount ?? 5 }};
-                this.totalRw = 25;
-                this.totalRt = 125;
-                this.totalMasyarakat = 1200;
-                this.totalKasBelumBayar = 5500000;
-                this.jumlahKasBelumBayar = 45;
-                this.bantuanPending = 8;
-                
-                this.loadActivities();
+                const response = await fetch('/api/dashboard/stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        Object.assign(this, data.data);
+                    }
+                }
                 
                 console.log('✅ Admin data loaded successfully');
             } catch (error) {
@@ -320,12 +420,37 @@ function adminDashboardData() {
             }
         },
         
+        async loadActivities() {
+            try {
+                const response = await fetch('/api/dashboard/activities?limit=20');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        this.activities = data.data;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading activities:', error);
+            }
+        },
+        
+        async loadSystemMonitoring() {
+            try {
+                const response = await fetch('/api/dashboard/system-monitoring');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        this.systemMonitoring = data.data;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading system monitoring:', error);
+            }
+        },
+        
         async refreshSaldo() {
             try {
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 1000));
                 await this.loadDashboardData();
-                
                 if (window.showNotification) {
                     window.showNotification('Saldo berhasil diperbarui', 'success');
                 }
@@ -336,44 +461,55 @@ function adminDashboardData() {
             }
         },
         
-        loadActivities() {
-            this.activities = [
-                {
-                    id: 1,
-                    title: 'Kas Dibayar',
-                    description: 'Ahmad membayar kas minggu ke-12',
-                    type: 'success',
-                    icon: 'check-circle',
-                    time: '5 menit lalu'
-                },
-                {
-                    id: 2,
-                    title: 'Bantuan Diajukan',
-                    description: 'RW 03 mengajukan bantuan Rp 2.000.000',
-                    type: 'info',
-                    icon: 'hand-heart',
-                    time: '15 menit lalu'
-                },
-                {
-                    id: 3,
-                    title: 'User Baru',
-                    description: 'Siti Aminah mendaftar sebagai warga',
-                    type: 'info',
-                    icon: 'user-plus',
-                    time: '1 jam lalu'
-                },
-                {
-                    id: 4,
-                    title: 'Backup Data',
-                    description: 'Backup otomatis database berhasil',
-                    type: 'success',
-                    icon: 'database',
-                    time: '2 jam lalu'
+        async clearCache() {
+            try {
+                const response = await fetch('/api/dashboard/clear-cache', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (window.showNotification) {
+                        window.showNotification('Cache berhasil dibersihkan', 'success');
+                    }
+                } else {
+                    throw new Error(data.message);
                 }
-            ];
+            } catch (error) {
+                if (window.showNotification) {
+                    window.showNotification('Gagal membersihkan cache', 'error');
+                }
+            }
         },
         
-        // Get card class based on style
+        async checkSystemHealth() {
+            try {
+                const response = await fetch('/api/dashboard/system-health');
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.systemHealth = data.data;
+                    if (window.showNotification) {
+                        window.showNotification('Status sistem berhasil diperiksa', 'success');
+                    }
+                }
+            } catch (error) {
+                if (window.showNotification) {
+                    window.showNotification('Gagal memeriksa status sistem', 'error');
+                }
+            }
+        },
+        
+        exportData() {
+            if (window.showNotification) {
+                window.showNotification('Fitur export data akan segera tersedia', 'info');
+            }
+        },
+        
+        showSystemLogs() {
+            if (window.showNotification) {
+                window.showNotification('Fitur system logs akan segera tersedia', 'info');
+            }
+        },
+        
         getCardClass() {
             const baseClass = 'transition-all duration-300';
             
@@ -509,8 +645,18 @@ function adminDashboardData() {
         
         formatNumber(num) {
             return new Intl.NumberFormat('id-ID').format(num || 0);
+        },
+        
+        formatTime(timestamp) {
+            return new Date(timestamp).toLocaleString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: '2-digit',
+                month: 'short'
+            });
         }
     }
 }
 </script>
+@endpush
 @endsection

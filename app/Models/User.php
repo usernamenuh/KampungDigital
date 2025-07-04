@@ -16,6 +16,8 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
+        'last_activity',
+        'is_online',
     ];
 
     protected $hidden = [
@@ -28,40 +30,22 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'last_activity' => 'datetime',
+            'is_online' => 'boolean',
         ];
     }
 
     /**
-     * Relasi dengan Penduduk (One to One)
+     * Scope untuk user aktif - TAMBAHAN INI YANG MISSING
      */
-    public function penduduk()
+    public function scopeActive($query)
     {
-        return $this->hasOne(Penduduk::class);
+        return $query->where('status', 'active');
     }
 
     /**
-     * Check user roles
+     * Check if user is masyarakat - TAMBAHAN INI YANG MISSING
      */
-    public function isAdmin()
-    {
-        return $this->role === 'admin';
-    }
-
-    public function isKades()
-    {
-        return $this->role === 'kades';
-    }
-
-    public function isRW()
-    {
-        return $this->role === 'rw';
-    }
-
-    public function isRT()
-    {
-        return $this->role === 'rt';
-    }
-
     public function isMasyarakat()
     {
         return $this->role === 'masyarakat';
@@ -70,54 +54,79 @@ class User extends Authenticatable
     /**
      * Check if user is active
      */
-    public function isActive()
+    public function isActive(): bool
     {
         return $this->status === 'active';
     }
 
     /**
-     * Check if user has valid penduduk data (for masyarakat role)
+     * Check if user is inactive
      */
-    public function hasValidPendudukData()
+    public function isInactive(): bool
     {
-        if ($this->role !== 'masyarakat') {
-            return true; // Non-masyarakat users don't need penduduk data
-        }
-
-        return $this->penduduk && $this->penduduk->status === 'aktif';
+        return $this->status === 'inactive';
     }
 
     /**
-     * Scope untuk user aktif
+     * Check if user is online
      */
-    public function scopeActive($query)
+    public function isOnline(): bool
     {
-        return $query->where('status', 'active');
+        return $this->is_online && $this->last_activity && $this->last_activity->diffInMinutes(now()) <= 10;
     }
 
     /**
-     * Scope untuk user dengan data penduduk valid
+     * Get user's role display name
      */
-    public function scopeWithValidPenduduk($query)
+    public function getRoleDisplayAttribute(): string
     {
-        return $query->whereHas('penduduk', function ($q) {
-            $q->where('status', 'aktif');
-        });
+        return match($this->role) {
+            'admin' => 'Administrator',
+            'kades' => 'Kepala Desa',
+            'rw' => 'Ketua RW',
+            'rt' => 'Ketua RT',
+            'masyarakat' => 'Masyarakat',
+            default => 'Unknown'
+        };
     }
 
     /**
-     * Get user's full name from penduduk if available
+     * Check if user has specific role
      */
-    public function getFullNameAttribute()
+    public function hasRole(string $role): bool
     {
-        return $this->penduduk ? $this->penduduk->nama_lengkap : $this->name;
+        return $this->role === $role;
     }
 
     /**
-     * Get user's NIK from penduduk if available
+     * Check if user has any of the given roles
      */
-    public function getNikAttribute()
+    public function hasAnyRole(array $roles): bool
     {
-        return $this->penduduk ? $this->penduduk->nik : null;
+        return in_array($this->role, $roles);
+    }
+
+    /**
+     * Relationship with Penduduk
+     */
+    public function penduduk()
+    {
+        return $this->hasOne(Penduduk::class);
+    }
+
+    /**
+     * Relationship with notifications
+     */
+    public function notifikasis()
+    {
+        return $this->hasMany(Notifikasi::class);
+    }
+
+    /**
+     * Get unread notifications count
+     */
+    public function getUnreadNotificationsCountAttribute(): int
+    {
+        return $this->notifikasis()->where('dibaca', false)->count();
     }
 }

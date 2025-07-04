@@ -13,14 +13,47 @@ use App\Http\Controllers\PendudukController;
 use App\Http\Controllers\KkController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\KasController;
+use App\Http\Controllers\NotifikasiController;
+use App\Http\Controllers\PengaturanKasController;
 
-// Landing page route
+// Public routes
 Route::get('/', function () {
-    return view('landing');
+    return redirect('/login');
 });
 
-// Route untuk check NIK saat registrasi
-Route::post('/check-nik', [RegisterController::class, 'checkNik'])->name('check.nik');
+// Authentication Routes
+Auth::routes();
+
+// Protected routes
+Route::middleware(['auth', 'user.status'])->group(function () {
+    
+    // Dashboard routes
+    Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/masyarakat', [HomeController::class, 'masyarakatDashboard'])->name('dashboard.masyarakat');
+    
+    // Kas routes
+    Route::prefix('kas')->name('kas.')->group(function () {
+        Route::get('/', [KasController::class, 'index'])->name('index');
+        Route::get('/create', [KasController::class, 'create'])->name('create')->middleware('role:admin,kades,rw,rt');
+        Route::post('/', [KasController::class, 'store'])->name('store')->middleware('role:admin,kades,rw,rt');
+        Route::get('/get-resident-info', [KasController::class, 'getResidentInfo'])->name('get-resident-info');
+        Route::post('/generate-weekly', [KasController::class, 'generateWeekly'])->name('generate-weekly')->middleware('role:admin,kades,rw,rt');
+        Route::get('/{kas}', [KasController::class, 'show'])->name('show');
+        Route::get('/{kas}/edit', [KasController::class, 'edit'])->name('edit')->middleware('role:admin,kades,rw,rt');
+        Route::put('/{kas}', [KasController::class, 'update'])->name('update')->middleware('role:admin,kades,rw,rt');
+        Route::delete('/{kas}', [KasController::class, 'destroy'])->name('destroy')->middleware('role:admin');
+        Route::post('/{kas}/bayar', [KasController::class, 'bayar'])->name('bayar');
+    });
+    
+    // Notification routes
+    Route::prefix('notifikasi')->name('notifikasi.')->group(function () {
+        Route::get('/', [NotifikasiController::class, 'index'])->name('index');
+        Route::post('/{notifikasi}/mark-read', [NotifikasiController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/mark-all-read', [NotifikasiController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{notifikasi}', [NotifikasiController::class, 'destroy'])->name('destroy');
+    });
+});
 
 // Routes dengan pembatasan role
 Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
@@ -36,52 +69,20 @@ Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
     // Routes untuk Kartu Keluarga - bisa diakses admin, kades, rw, rt
     Route::resource('kk', KkController::class);
     Route::post('kk/{kk}/set-kepala-keluarga', [KkController::class, 'setKepalaKeluarga'])->name('kk.set-kepala-keluarga');
+
+    // Routes untuk Pengaturan Kas
+    Route::resource('pengaturan-kas', PengaturanKasController::class);
 });
 
 // Routes khusus admin
 Route::middleware(['auth', 'role:admin'])->group(function () {
     // Resource route untuk desa - hanya admin yang bisa akses
     Route::resource('desas', DesaController::class);
-    
+
     // User Management - hanya admin yang bisa akses
     Route::resource('users', UserController::class);
     Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::patch('users/{user}/change-role', [UserController::class, 'changeRole'])->name('users.change-role');
-});
-
-Route::middleware(['auth'])->group(function () {
-    // Main dashboard route - akan redirect berdasarkan role
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
-    Route::get('/dashboard', [HomeController::class, 'redirectToDashboard'])->name('dashboard');
-    
-    // Dashboard khusus untuk setiap role
-    Route::get('/dashboard/admin', function () { 
-        return view('dashboards.admin'); 
-    })->name('admin.dashboard')->middleware('role:admin');
-    
-    Route::get('/dashboard/kades', function () { 
-        return view('dashboards.kades'); 
-    })->name('kades.dashboard')->middleware('role:kades');
-    
-    Route::get('/dashboard/rw', function () { 
-        return view('dashboards.rw'); 
-    })->name('rw.dashboard')->middleware('role:rw');
-    
-    Route::get('/dashboard/rt', function () { 
-        return view('dashboards.rt'); 
-    })->name('rt.dashboard')->middleware('role:rt');
-    
-    Route::get('/dashboard/masyarakat', function () { 
-        return view('dashboards.masyarakat'); 
-    })->name('masyarakat.dashboard')->middleware('role:masyarakat');
-});
-
-Route::middleware(['auth', 'role:admin,kades'])->group(function () {
-    Route::get('/wisata', function () { return view('wisata.index'); })->name('wisata.index');
-    Route::get('/berita', function () { return view('berita.index'); })->name('berita.index');
-    Route::get('/program', function () { return view('program.index'); })->name('program.index');
-    Route::get('/pembangunan', function () { return view('pembangunan.index'); })->name('pembangunan.index');
-    Route::get('/keuangan', function () { return view('keuangan.index'); })->name('keuangan.index');
 });
 
 // Routes yang bisa diakses semua role yang sudah login
@@ -93,27 +94,61 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pesan', function () { return view('pesan.index'); })->name('pesan.index');
 });
 
-Auth::routes();
-
-// API Routes untuk Dashboard (Protected)
+// API Routes
 Route::prefix('api')->middleware(['auth'])->group(function () {
-    // Dashboard API routes - bisa diakses semua role yang login
+    // Dashboard API routes
     Route::get('/dashboard/test', [DashboardApiController::class, 'test'])->name('api.dashboard.test');
     Route::get('/dashboard/stats', [DashboardApiController::class, 'getStats'])->name('api.dashboard.stats');
     Route::get('/dashboard/monthly-data', [DashboardApiController::class, 'getMonthlyData'])->name('api.dashboard.monthly');
     Route::get('/dashboard/activities', [DashboardApiController::class, 'getActivities'])->name('api.dashboard.activities');
     Route::get('/dashboard/online-status', [DashboardApiController::class, 'getOnlineStatus'])->name('api.dashboard.online-status');
     Route::get('/dashboard/system-health', [DashboardApiController::class, 'getSystemHealth'])->name('api.dashboard.system-health');
-    
+    Route::post('/dashboard/update-activity', [DashboardApiController::class, 'updateActivity'])->name('api.dashboard.update-activity');
+
+    // Kas API routes
+    Route::prefix('kas')->group(function () {
+        Route::get('/stats', [\App\Http\Controllers\Api\KasApiController::class, 'getStats'])->name('api.kas.stats');
+        Route::get('/', [\App\Http\Controllers\Api\KasApiController::class, 'index'])->name('api.kas.index');
+        Route::post('/{kas}/pay', [\App\Http\Controllers\Api\KasApiController::class, 'pay'])->name('api.kas.pay');
+        Route::get('/recent-payments', [\App\Http\Controllers\Api\KasApiController::class, 'getRecentPayments'])->name('api.kas.recent-payments');
+    });
+
+    // Notification API routes
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotifikasiController::class, 'index'])->name('api.notifications.index');
+        Route::get('/recent', [NotifikasiController::class, 'getRecent'])->name('api.notifications.recent');
+        Route::get('/unread-count', [NotifikasiController::class, 'getUnreadCount'])->name('api.notifications.unread-count');
+        Route::post('/{notifikasi}/mark-read', [NotifikasiController::class, 'markAsRead'])->name('api.notifications.mark-read');
+        Route::post('/mark-all-read', [NotifikasiController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
+        Route::delete('/{notifikasi}', [NotifikasiController::class, 'destroy'])->name('api.notifications.destroy');
+        Route::delete('/', [NotifikasiController::class, 'destroyAll'])->name('api.notifications.destroy-all');
+    });
+
+    // User authentication endpoint
+    Route::get('/user', function () {
+        $user = Auth::user();
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'last_activity' => $user->last_activity,
+                'is_online' => $user->last_activity >= now()->subMinutes(5),
+                'unread_notifications' => $user->unread_notifications_count ?? 0,
+            ]
+        ]);
+    })->name('api.user');
+
     // Admin only API routes
     Route::middleware(['role:admin'])->group(function () {
         Route::post('/dashboard/clear-cache', [DashboardApiController::class, 'clearCache'])->name('api.dashboard.clear-cache');
     });
 });
 
-// Public API routes untuk data wilayah Indonesia
+// Public API routes
 Route::prefix('api')->group(function () {
-    // Get provinces
     Route::get('/provinces', function () {
         try {
             return response()->json([
@@ -128,7 +163,6 @@ Route::prefix('api')->group(function () {
         }
     });
 
-    // Get regencies by province code
     Route::get('/regencies/{province_code}', function ($province_code) {
         try {
             return response()->json([
@@ -145,7 +179,6 @@ Route::prefix('api')->group(function () {
         }
     });
 
-    // Get districts by province and regency code
     Route::get('/districts/{province_code}/{regency_code}', function ($province_code, $regency_code) {
         try {
             return response()->json([
@@ -163,7 +196,6 @@ Route::prefix('api')->group(function () {
         }
     });
 
-    // Get villages by province, regency, and district code
     Route::get('/villages/{province_code}/{regency_code}/{district_code}', function ($province_code, $regency_code, $district_code) {
         try {
             return response()->json([
@@ -181,4 +213,54 @@ Route::prefix('api')->group(function () {
             ], 500);
         }
     });
+
+    Route::get('/health', function () {
+        try {
+            $checks = [
+                'database' => DB::connection()->getPdo() ? 'ok' : 'error',
+                'cache' => cache()->put('health_check', 'ok', 60) ? 'ok' : 'error',
+                'storage' => is_writable(storage_path()) ? 'ok' : 'error'
+            ];
+            
+            $allHealthy = !in_array('error', array_values($checks));
+            
+            return response()->json([
+                'success' => true,
+                'status' => $allHealthy ? 'healthy' : 'degraded',
+                'checks' => $checks,
+                'timestamp' => now()->toISOString()
+            ], $allHealthy ? 200 : 503);
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'status' => 'unhealthy',
+                'error' => $e->getMessage(),
+                'timestamp' => now()->toISOString()
+            ], 503);
+        }
+    });
+});
+
+// Debug routes untuk development
+if (app()->environment('local')) {
+    Route::get('/debug/routes', function () {
+        $routes = collect(Route::getRoutes())->map(function ($route) {
+            return [
+                'method' => implode('|', $route->methods()),
+                'uri' => $route->uri(),
+                'name' => $route->getName(),
+                'action' => $route->getActionName(),
+            ];
+        })->filter(function($route) {
+            return str_contains($route['name'] ?? '', 'kas') || str_contains($route['uri'], 'kas');
+        });
+        
+        return response()->json($routes->values()->toArray(), 200, [], JSON_PRETTY_PRINT);
+    });
+}
+
+// Fallback route
+Route::fallback(function () {
+    return redirect('/dashboard');
 });

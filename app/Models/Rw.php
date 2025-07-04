@@ -17,6 +17,7 @@ class Rw extends Model
         'alamat',
         'no_telpon',
         'saldo',
+        'no_rw',
         'status',
         'ketua_rw'
     ];

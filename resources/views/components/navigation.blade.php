@@ -150,16 +150,18 @@ function navigationData() {
                 ]
             },
             {
+                name: 'Keuangan',
+                items: [
+                    { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '/kas' },
+                    { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '/pengaturan-kas' },
+                    { id: 'umkm', label: 'UMKM', icon: 'store', count: 3, route: '/umkm' }
+                ]
+            },
+            {
                 name: 'Sistem',
                 items: [
                     { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '/users' },
                     { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '/rt-rw' }
-                ]
-            },
-            {
-                name: 'Keuangan',
-                items: [
-                    { id: 'umkm', label: 'UMKM', icon: 'store', count: 3, route: '/umkm' }
                 ]
             },
             {
@@ -196,6 +198,11 @@ function navigationData() {
                 case 'rt-rw':
                     // Menu RT & RW hanya untuk kades dan admin
                     return this.userRole === 'admin' || this.userRole === 'kades';
+                    
+                case 'kas':
+                case 'pengaturan-kas':
+                    // Menu Kas hanya untuk admin, kades, rw, rt
+                    return ['admin', 'kades', 'rw', 'rt'].includes(this.userRole);
                     
                 case 'wisata':
                 case 'berita':
@@ -316,6 +323,8 @@ function navigationData() {
             if (path === '/desas' || path.includes('/desas')) return 'desa';
             if (path === '/rt-rw' || path.includes('/rt-rw')) return 'rt-rw';
             if (path === '/kk' || path.includes('/kk')) return 'kk';
+            if (path === '/kas' || path.includes('/kas')) return 'kas';
+            if (path === '/pengaturan-kas' || path.includes('/pengaturan-kas')) return 'pengaturan-kas';
             if (path === '/users' || path.includes('/users')) return 'users';
             if (path === '/pendidikan' || path.includes('/pendidikan')) return 'pendidikan';
             return path.substring(1) || 'dashboard';
@@ -411,7 +420,7 @@ function navigationData() {
 
 /* Ensure icons don't scroll */
 [data-lucide] {
-    flex-shrink-0;
+    flex-shrink: 0;
 }
 
 /* Ensure sidebar takes full height */

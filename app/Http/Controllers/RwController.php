@@ -31,6 +31,7 @@ class RwController extends Controller
         try {
             $validated = $request->validate([
                 'desa_id' => 'required|exists:desas,id',
+                'no_rw' => 'required|string|regex:/^\d{2,}$/',
                 'nama_rw' => 'required|string|max:255',
                 'alamat' => 'required|string|max:500',
                 'no_telpon' => 'nullable|string|max:20',
@@ -40,6 +41,7 @@ class RwController extends Controller
             ], [
                 'desa_id.required' => 'Desa harus dipilih.',
                 'desa_id.exists' => 'Desa yang dipilih tidak valid.',
+                'no_rw.required' => 'No RW harus di isi',
                 'nama_rw.required' => 'Nama RW harus diisi.',
                 'nama_rw.string' => 'Nama RW harus berupa teks.',
                 'nama_rw.max' => 'Nama RW maksimal 255 karakter.',
@@ -102,6 +104,7 @@ class RwController extends Controller
         try {
             $validated = $request->validate([
                 'desa_id' => 'required|exists:desas,id',
+                'no_rw' => 'required|string|regex:/^\d{2,}$/',
                 'nama_rw' => 'required|string|max:255',
                 'alamat' => 'required|string|max:500',
                 'no_telpon' => 'nullable|string|max:20',
@@ -112,6 +115,7 @@ class RwController extends Controller
                 'desa_id.required' => 'Desa harus dipilih.',
                 'desa_id.exists' => 'Desa yang dipilih tidak valid.',
                 'nama_rw.required' => 'Nama RW harus diisi.',
+                'no_rw.required' => 'No RW Harus di isi',
                 'nama_rw.string' => 'Nama RW harus berupa teks.',
                 'nama_rw.max' => 'Nama RW maksimal 255 karakter.',
                 'alamat.required' => 'Alamat harus diisi.',

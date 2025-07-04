@@ -1,4 +1,4 @@
-<header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-100 dark:border-gray-700 px-6 py-4">
+<header x-data="headerData()" x-init="initHeader()" class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-100 dark:border-gray-700 px-6 py-4">
     <div class="flex items-center justify-between">
         <div class="flex items-center space-x-4">
             <button x-show="isMobile" 
@@ -19,15 +19,20 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400" x-text="currentDate"></div>
             </div>
 
-            <!-- Connection Status -->
+            <!-- Connection Status - DIPERBAIKI -->
             <div class="hidden md:flex items-center space-x-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <span :class="{
                     'status-online': connectionStatus === 'online',
                     'status-offline': connectionStatus === 'offline',
                     'status-loading': connectionStatus === 'loading'
                 }" class="status-indicator"></span>
-                <span class="text-sm text-gray-600 dark:text-gray-300" x-text="connectionStatus === 'online' ? 'Online' : connectionStatus === 'offline' ? 'Offline' : 'Loading'"></span>
-                <span x-show="lastRefresh" class="text-sm text-gray-500 dark:text-gray-400">• <span x-text="lastRefresh"></span></span>
+                <span class="text-sm text-gray-600 dark:text-gray-300" x-text="connectionStatusText"></span>
+                <span x-show="onlineUsers > 0" class="text-sm text-gray-500 dark:text-gray-400">• <span x-text="onlineUsers + ' online'"></span></span>
+            </div>
+
+            <!-- Debug Info (Development Only) -->
+            <div x-show="showDebugInfo" class="hidden md:flex items-center space-x-2 px-2 py-1 bg-yellow-50 dark:bg-yellow-900 rounded text-xs">
+                <span x-text="'Last Check: ' + lastCheckTime"></span>
             </div>
 
             <!-- Refresh Button -->
@@ -150,3 +155,386 @@
         </div>
     </div>
 </header>
+
+<script>
+function headerData() {
+    return {
+        currentTime: '',
+        currentDate: '',
+        connectionStatus: 'loading',
+        connectionStatusText: 'Checking...',
+        onlineUsers: 0,
+        isLoading: false,
+        darkMode: localStorage.getItem('darkMode') === 'true',
+        isMobile: window.innerWidth < 768,
+        lastCheckTime: '',
+        showDebugInfo: false, // Set to true for debugging
+        
+        // Notifications
+        showNotificationDropdown: false,
+        notifications: [],
+        unreadCount: 0,
+        
+        // User dropdown
+        showUserDropdown: false,
+        
+        // API endpoints - DIPERBAIKI
+        apiEndpoints: {
+            onlineStatus: '/api/dashboard/online-status',
+            updateActivity: '/api/dashboard/update-activity',
+            notifications: '/api/notifications/recent',
+            test: '/api/dashboard/test'
+        },
+        
+        initHeader() {
+            console.log('🚀 Initializing Header...');
+            
+            this.updateTime();
+            this.testConnection();
+            this.checkConnectionStatus();
+            this.loadNotifications();
+            this.startPeriodicUpdates();
+            this.setupEventListeners();
+            
+            // Initialize icons
+            setTimeout(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }, 100);
+            
+            console.log('✅ Header initialized successfully');
+        },
+        
+        // Test connection first - BARU
+        async testConnection() {
+            try {
+                console.log('🔍 Testing API connection...');
+                
+                const response = await fetch(this.apiEndpoints.test, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ API Test successful:', data);
+                    return true;
+                } else {
+                    console.error('❌ API Test failed:', response.status, response.statusText);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ API Test error:', error);
+                return false;
+            }
+        },
+        
+        setupEventListeners() {
+            // Update time every second
+            setInterval(() => {
+                this.updateTime();
+            }, 1000);
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                this.isMobile = window.innerWidth < 768;
+            });
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (event) => {
+                if (!event.target.closest('.notification-dropdown')) {
+                    this.showNotificationDropdown = false;
+                }
+                if (!event.target.closest('.user-dropdown')) {
+                    this.showUserDropdown = false;
+                }
+            });
+            
+            // Listen for dark mode changes
+            window.addEventListener('darkModeChanged', (e) => {
+                this.darkMode = e.detail;
+            });
+        },
+        
+        updateTime() {
+            const now = new Date();
+            this.currentTime = now.toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            this.currentDate = now.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        },
+        
+        async checkConnectionStatus() {
+            try {
+                this.connectionStatus = 'loading';
+                this.connectionStatusText = 'Checking...';
+                
+                console.log('🔍 Checking connection status...');
+                
+                const response = await fetch(this.apiEndpoints.onlineStatus, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                console.log('📡 Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('📊 Online status data:', data);
+                    
+                    if (data.success) {
+                        this.connectionStatus = 'online';
+                        this.connectionStatusText = 'Online';
+                        this.onlineUsers = data.data.online_users || data.data.online_count || 0;
+                        this.lastCheckTime = new Date().toLocaleTimeString('id-ID');
+                        
+                        console.log('✅ Connection status: Online, Users:', this.onlineUsers);
+                        
+                        // Update user activity
+                        this.updateUserActivity();
+                    } else {
+                        throw new Error(data.message || 'API response not successful');
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('❌ Connection check failed:', error);
+                this.connectionStatus = 'offline';
+                this.connectionStatusText = 'Offline';
+                this.onlineUsers = 0;
+                this.lastCheckTime = new Date().toLocaleTimeString('id-ID');
+                
+                // Show error notification
+                if (window.showNotification) {
+                    window.showNotification('Koneksi terputus: ' + error.message, 'error');
+                }
+            }
+        },
+        
+        async updateUserActivity() {
+            try {
+                const response = await fetch(this.apiEndpoints.updateActivity, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ User activity updated:', data);
+                } else {
+                    console.warn('⚠️ Failed to update user activity:', response.status);
+                }
+            } catch (error) {
+                console.error('❌ Failed to update user activity:', error);
+            }
+        },
+        
+        async loadNotifications() {
+            try {
+                const response = await fetch(this.apiEndpoints.notifications, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        this.notifications = data.data || [];
+                        this.unreadCount = this.notifications.filter(n => !n.read).length;
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Failed to load notifications:', error);
+                this.notifications = [];
+                this.unreadCount = 0;
+            }
+        },
+        
+        startPeriodicUpdates() {
+            // Check connection status every 30 seconds
+            setInterval(() => {
+                this.checkConnectionStatus();
+            }, 30000);
+            
+            // Load notifications every 60 seconds
+            setInterval(() => {
+                this.loadNotifications();
+            }, 60000);
+        },
+        
+        async refreshAll() {
+            if (this.isLoading) return;
+            
+            this.isLoading = true;
+            
+            try {
+                await Promise.all([
+                    this.checkConnectionStatus(),
+                    this.loadNotifications()
+                ]);
+                
+                // Dispatch refresh event for other components
+                window.dispatchEvent(new CustomEvent('dataRefresh'));
+                
+                if (window.showNotification) {
+                    window.showNotification('Data berhasil diperbarui', 'success');
+                }
+            } catch (error) {
+                console.error('❌ Refresh failed:', error);
+                if (window.showNotification) {
+                    window.showNotification('Gagal memperbarui data', 'error');
+                }
+            } finally {
+                this.isLoading = false;
+            }
+        },
+        
+        toggleDarkMode() {
+            this.darkMode = !this.darkMode;
+            localStorage.setItem('darkMode', this.darkMode);
+            
+            if (this.darkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            
+            // Dispatch event for other components
+            window.dispatchEvent(new CustomEvent('darkModeChanged', { detail: this.darkMode }));
+            
+            // Reinitialize icons after theme change
+            setTimeout(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }, 100);
+        },
+        
+        toggleMobileMenu() {
+            window.dispatchEvent(new CustomEvent('toggleMobileMenu'));
+        },
+        
+        toggleNotificationDropdown() {
+            this.showNotificationDropdown = !this.showNotificationDropdown;
+            this.showUserDropdown = false;
+        },
+        
+        toggleUserDropdown() {
+            this.showUserDropdown = !this.showUserDropdown;
+            this.showNotificationDropdown = false;
+        },
+        
+        async clearNotifications() {
+            try {
+                const response = await fetch('/api/notifications', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    this.notifications = [];
+                    this.unreadCount = 0;
+                    this.showNotificationDropdown = false;
+                    
+                    if (window.showNotification) {
+                        window.showNotification('Semua notifikasi telah dihapus', 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Failed to clear notifications:', error);
+                if (window.showNotification) {
+                    window.showNotification('Gagal menghapus notifikasi', 'error');
+                }
+            }
+        },
+        
+        openSettings() {
+            window.dispatchEvent(new CustomEvent('openSettings'));
+            this.showUserDropdown = false;
+        }
+    }
+}
+</script>
+
+<style>
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-online {
+    background-color: #10B981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+}
+
+.status-offline {
+    background-color: #EF4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
+.status-loading {
+    background-color: #F59E0B;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+    animation: pulse 2s infinite;
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.notification-dropdown {
+    max-height: 400px;
+}
+
+.user-dropdown {
+    min-width: 200px;
+}
+</style>
