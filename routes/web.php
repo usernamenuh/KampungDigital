@@ -63,6 +63,7 @@ Route::middleware(['auth', 'user.status'])->group(function () {
     Route::prefix('ajax/dashboard')->name('ajax.dashboard.')->group(function () {
         Route::get('/stats', [HomeController::class, 'getDashboardStats'])->name('stats');
         Route::get('/activities', [HomeController::class, 'getDashboardActivities'])->name('activities');
+        Route::get('/monthly-kas', [HomeController::class, 'getMonthlyKasData'])->name('monthly-kas');
         Route::get('/system-monitoring', [HomeController::class, 'getSystemMonitoring'])->name('monitoring');
         Route::post('/clear-cache', [HomeController::class, 'clearCache'])->name('clear-cache');
         Route::get('/system-health', [HomeController::class, 'getSystemHealth'])->name('health');

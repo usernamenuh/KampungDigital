@@ -1,9 +1,9 @@
 <header x-data="headerData()" x-init="initHeader()" class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-100 dark:border-gray-700 px-6 py-4">
-    <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-            <button x-show="isMobile" 
-                    @click="toggleMobileMenu()"
-                    class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+    <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-4">
+            <!-- Sidebar Trigger (Hamburger Icon) -->
+            <button @click="toggleSidebar()" 
+                    class="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <i data-lucide="menu" class="w-5 h-5 text-gray-600 dark:text-gray-300"></i>
             </button>
             <div>
@@ -12,15 +12,15 @@
             </div>
         </div>
 
-        <div class="flex items-center space-x-4">
-            <!-- Current Time and Date -->
+        <div class="flex items-center gap-3 md:gap-4">
+            <!-- Current Time and Date (Hidden on small screens) -->
             <div class="hidden md:flex flex-col items-end text-right">
                 <div class="text-lg font-bold text-gray-800 dark:text-white" x-text="currentTime"></div>
                 <div class="text-xs text-gray-500 dark:text-gray-400" x-text="currentDate"></div>
             </div>
 
-            <!-- Connection Status -->
-            <div class="hidden md:flex items-center space-x-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <!-- Connection Status (Hidden on small screens) -->
+            <div class="hidden md:flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <span :class="{
                     'status-online': connectionStatus === 'online',
                     'status-offline': connectionStatus === 'offline',
@@ -28,11 +28,6 @@
                 }" class="status-indicator"></span>
                 <span class="text-sm text-gray-600 dark:text-gray-300" x-text="connectionStatusText"></span>
                 <span x-show="onlineUsers > 0" class="text-sm text-gray-500 dark:text-gray-400">• <span x-text="onlineUsers + ' online'"></span></span>
-            </div>
-
-            <!-- Debug Info (Development Only) -->
-            <div x-show="showDebugInfo" class="hidden md:flex items-center space-x-2 px-2 py-1 bg-yellow-50 dark:bg-yellow-900 rounded text-xs">
-                <span x-text="'Last Check: ' + lastCheckTime"></span>
             </div>
 
             <!-- Refresh Button -->
@@ -109,7 +104,7 @@
             <!-- User Dropdown -->
             <div class="relative user-dropdown">
                 <button @click="toggleUserDropdown()" 
-                        class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600">
+                        class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600">
                     <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
                         <span class="text-white font-semibold text-sm">{{ substr(auth()->user()->name ?? 'A', 0, 1) }}</span>
                     </div>
@@ -161,14 +156,11 @@ function headerData() {
     return {
         currentTime: '',
         currentDate: '',
-        connectionStatus: 'online', // Default to online
-        connectionStatusText: 'Online',
-        onlineUsers: 1, // Default to 1 (current user)
+        connectionStatus: 'online',
+        connectionStatusText: 'System Online',
+        onlineUsers: 1,
         isLoading: false,
         darkMode: localStorage.getItem('darkMode') === 'true',
-        isMobile: window.innerWidth < 768,
-        lastCheckTime: '',
-        showDebugInfo: false,
         
         // Notifications
         showNotificationDropdown: false,
@@ -203,11 +195,6 @@ function headerData() {
                 this.updateTime();
             }, 1000);
             
-            // Handle window resize
-            window.addEventListener('resize', () => {
-                this.isMobile = window.innerWidth < 768;
-            });
-            
             // Close dropdowns when clicking outside
             document.addEventListener('click', (event) => {
                 if (!event.target.closest('.notification-dropdown')) {
@@ -221,12 +208,6 @@ function headerData() {
             // Listen for dark mode changes
             window.addEventListener('darkModeChanged', (e) => {
                 this.darkMode = e.detail;
-            });
-
-            // Listen for data refresh events
-            window.addEventListener('dataRefresh', () => {
-                this.checkConnectionStatus();
-                this.loadNotifications();
             });
         },
         
@@ -247,14 +228,8 @@ function headerData() {
         
         async checkConnectionStatus() {
             try {
-                this.connectionStatus = 'loading';
-                this.connectionStatusText = 'Checking...';
-                
-                console.log('🔍 Checking connection status...');
-                
-                // Use web-based AJAX endpoint instead of API
                 const response = await fetch('/ajax/dashboard/stats', {
-                    method: 'HEAD', // Just check if endpoint is accessible
+                    method: 'HEAD',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
@@ -262,34 +237,27 @@ function headerData() {
                     credentials: 'same-origin'
                 });
                 
-                console.log('📡 Response status:', response.status);
-                
                 if (response.ok) {
                     this.connectionStatus = 'online';
-                    this.connectionStatusText = 'Online';
-                    this.onlineUsers = 1; // At least current user is online
-                    this.lastCheckTime = new Date().toLocaleTimeString('id-ID');
-                    
-                    console.log('✅ Connection status: Online');
+                    this.connectionStatusText = 'System Online';
+                    this.onlineUsers = Math.max(1, this.onlineUsers);
                     
                     // Update user activity
                     this.updateUserActivity();
                 } else {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(`HTTP ${response.status}`);
                 }
             } catch (error) {
-                console.error('❌ Connection check failed:', error);
+                console.warn('Connection check failed:', error);
                 this.connectionStatus = 'offline';
-                this.connectionStatusText = 'Offline';
+                this.connectionStatusText = 'System Offline';
                 this.onlineUsers = 0;
-                this.lastCheckTime = new Date().toLocaleTimeString('id-ID');
             }
         },
         
         async updateUserActivity() {
             try {
-                // Use web-based AJAX endpoint
-                const response = await fetch('/ajax/dashboard/update-activity', {
+                await fetch('/ajax/dashboard/update-activity', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -301,26 +269,19 @@ function headerData() {
                         timestamp: new Date().toISOString()
                     })
                 });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('✅ User activity updated:', data);
-                } else {
-                    console.warn('⚠️ Failed to update user activity:', response.status);
-                }
             } catch (error) {
-                console.error('❌ Failed to update user activity:', error);
+                // Silent fail for activity updates
+                console.debug('Activity update failed:', error);
             }
         },
         
         async loadNotifications() {
             try {
-                // Use web-based notification endpoint
                 const response = await fetch('/notifikasi/recent', {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                     },
                     credentials: 'same-origin'
                 });
@@ -331,13 +292,10 @@ function headerData() {
                         this.notifications = data.data || [];
                         this.unreadCount = this.notifications.filter(n => !n.read).length;
                     }
-                } else {
-                    // If endpoint doesn't exist, just set empty notifications
-                    this.notifications = [];
-                    this.unreadCount = 0;
                 }
             } catch (error) {
-                console.error('❌ Failed to load notifications:', error);
+                // Silent fail for notifications
+                console.debug('Failed to load notifications:', error);
                 this.notifications = [];
                 this.unreadCount = 0;
             }
@@ -373,7 +331,7 @@ function headerData() {
                     window.showNotification('Data berhasil diperbarui', 'success');
                 }
             } catch (error) {
-                console.error('❌ Refresh failed:', error);
+                console.error('Refresh failed:', error);
                 if (window.showNotification) {
                     window.showNotification('Gagal memperbarui data', 'error');
                 }
@@ -403,8 +361,9 @@ function headerData() {
             }, 100);
         },
         
-        toggleMobileMenu() {
-            window.dispatchEvent(new CustomEvent('toggleMobileMenu'));
+        toggleSidebar() {
+            // Dispatch event to the SidebarProvider in layouts/app.blade.php
+            window.dispatchEvent(new CustomEvent('toggleSidebar'));
         },
         
         toggleNotificationDropdown() {
@@ -419,7 +378,6 @@ function headerData() {
         
         async clearNotifications() {
             try {
-                // Use web-based notification endpoint
                 const response = await fetch('/notifikasi/delete-all', {
                     method: 'DELETE',
                     headers: {
@@ -440,7 +398,7 @@ function headerData() {
                     }
                 }
             } catch (error) {
-                console.error('❌ Failed to clear notifications:', error);
+                console.error('Failed to clear notifications:', error);
                 if (window.showNotification) {
                     window.showNotification('Gagal menghapus notifikasi', 'error');
                 }
@@ -454,50 +412,3 @@ function headerData() {
     }
 }
 </script>
-
-<style>
-.status-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.status-online {
-    background-color: #10B981;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
-}
-
-.status-offline {
-    background-color: #EF4444;
-    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
-}
-
-.status-loading {
-    background-color: #F59E0B;
-    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
-    animation: pulse 2s infinite;
-}
-
-.loading-spinner {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-.notification-dropdown {
-    max-height: 400px;
-}
-
-.user-dropdown {
-    min-width: 200px;
-}
-</style>

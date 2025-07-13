@@ -216,7 +216,7 @@
                   </button>
               </div>
           </div>
-          <div class="chart-container">
+          <div class="chart-container" style="height: 300px;">
               <canvas id="kasChart"></canvas>
           </div>
       </div>
@@ -315,7 +315,7 @@
           <button @click="clearCache()" class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
               <i data-lucide="trash-2" class="w-6 h-6 text-orange-600 mb-2"></i>
               <span class="text-sm font-medium text-orange-600">Clear Cache</span>
-          </a>
+          </button>
           <button @click="exportData()" class="flex flex-col items-center p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors">
               <i data-lucide="download" class="w-6 h-6 text-teal-600 mb-2"></i>
               <span class="text-sm font-medium text-teal-600">Export Data</span>
@@ -358,6 +358,12 @@ function adminDashboardData() {
       isOnline: true,
       connectionStatus: 'online',
       
+      // Chart data
+      chartData: {
+          labels: [],
+          values: []
+      },
+      
       // Settings
       cardStyle: localStorage.getItem('cardStyle') || 'default',
       chartTheme: localStorage.getItem('chartTheme') || 'default',
@@ -368,6 +374,7 @@ function adminDashboardData() {
           
           this.setupEventListeners();
           await this.loadDashboardData();
+          await this.loadMonthlyKasData();
           await this.loadActivities();
           await this.loadSystemMonitoring();
           this.startConnectionMonitoring();
@@ -516,6 +523,44 @@ function adminDashboardData() {
               this.showConnectionError('Gagal memuat data dashboard');
           }
       },
+
+      async loadMonthlyKasData() {
+          try {
+              console.log('📈 Loading monthly kas data...');
+              
+              const response = await fetch('/ajax/dashboard/monthly-kas', {
+                  method: 'GET',
+                  headers: {
+                      'X-Requested-With': 'XMLHttpRequest',
+                      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                  }
+              });
+              
+              if (response.ok) {
+                  const data = await response.json();
+                  if (data.success) {
+                      this.chartData = {
+                          labels: data.data.labels,
+                          values: data.data.values
+                      };
+                      
+                      // Update chart if it exists
+                      if (this.charts.kas) {
+                          this.updateKasChart();
+                      }
+                  }
+              }
+              
+              console.log('✅ Monthly kas data loaded successfully');
+          } catch (error) {
+              console.error('❌ Error loading monthly kas data:', error);
+              // Use fallback data
+              this.chartData = {
+                  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                  values: [0, 0, 0, 0, 0, 0]
+              };
+          }
+      },
       
       async loadActivities() {
           try {
@@ -652,10 +697,10 @@ function adminDashboardData() {
           this.charts.kas = new Chart(ctx, {
               type: 'line',
               data: {
-                  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                  labels: this.chartData.labels.length > 0 ? this.chartData.labels : ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
                   datasets: [{
                       label: 'Total Kas (Rp)',
-                      data: [12000000, 15000000, 13000000, 18000000, 16000000, 20000000],
+                      data: this.chartData.values.length > 0 ? this.chartData.values : [0, 0, 0, 0, 0, 0],
                       borderColor: this.getChartColors().primary,
                       backgroundColor: this.getChartColors().primaryAlpha,
                       borderWidth: 2,
@@ -665,6 +710,14 @@ function adminDashboardData() {
               },
               options: this.getChartOptions()
           });
+      },
+
+      updateKasChart() {
+          if (this.charts.kas && this.chartData.labels.length > 0) {
+              this.charts.kas.data.labels = this.chartData.labels;
+              this.charts.kas.data.datasets[0].data = this.chartData.values;
+              this.charts.kas.update();
+          }
       },
       
       getChartColors() {
@@ -704,7 +757,12 @@ function adminDashboardData() {
                       beginAtZero: true,
                       ticks: {
                           callback: function(value) {
-                              return 'Rp ' + (value / 1000000) + 'M';
+                              if (value >= 1000000) {
+                                  return 'Rp ' + (value / 1000000) + 'M';
+                              } else if (value >= 1000) {
+                                  return 'Rp ' + (value / 1000) + 'K';
+                              }
+                              return 'Rp ' + value;
                           },
                           color: this.isDarkMode ? '#9CA3AF' : '#6B7280'
                       },
@@ -738,7 +796,7 @@ function adminDashboardData() {
       
       async refreshChart(chartType) {
           try {
-              await new Promise(resolve => setTimeout(resolve, 500));
+              await this.loadMonthlyKasData();
               this.initKasChart();
               
               if (window.showNotification) {

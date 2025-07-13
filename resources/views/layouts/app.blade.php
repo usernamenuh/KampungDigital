@@ -172,7 +172,7 @@
     
     @stack('styles')
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300" x-data="appData()" x-init="initApp()">
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300" x-data x-init="$store.app.initApp()">
     <div class="flex h-screen overflow-hidden">
         @include('components.navigation')
         
@@ -207,8 +207,8 @@
 
     <!-- Global Alpine.js Data -->
     <script>
-        function appData() {
-            return {
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('app', {
                 // Global state
                 isMobileMenuOpen: false,
                 isMobile: window.innerWidth < 768,
@@ -364,7 +364,7 @@
                     window.addEventListener('resize', () => {
                         this.isMobile = window.innerWidth < 768;
                         if (window.innerWidth >= 768) {
-                            this.isMobileMenuOpen = false;
+                            this.isMobileMenuOpen = false; // Close mobile menu on desktop
                         }
                     });
                     
@@ -530,14 +530,13 @@
                     if (this.refreshInterval) clearInterval(this.refreshInterval);
                     if (this.timeInterval) clearInterval(this.timeInterval);
                 }
-            }
-        }
+            });
+        });
         
         // Global function for notification removal
         function removeNotification(id) {
-            const app = Alpine.store ? Alpine.store('app') : window.Alpine.data('appData')();
-            if (app && app.removeNotification) {
-                app.removeNotification(id);
+            if (Alpine.store('app') && Alpine.store('app').removeNotification) {
+                Alpine.store('app').removeNotification(id);
             }
         }
     </script>

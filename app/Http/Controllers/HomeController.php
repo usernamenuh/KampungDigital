@@ -141,6 +141,105 @@ class HomeController extends Controller
     }
 
     /**
+     * Get Monthly Kas Chart Data (AJAX)
+     */
+    public function getMonthlyKasData(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $months = [];
+            $data = [];
+            
+            // Get last 6 months
+            for ($i = 5; $i >= 0; $i--) {
+                $date = Carbon::now()->subMonths($i);
+                $months[] = $date->format('M');
+                
+                // Get kas data for this month based on user role
+                $monthlyTotal = 0;
+                
+                switch ($user->role) {
+                    case 'admin':
+                        $monthlyTotal = Kas::whereMonth('tanggal_bayar', $date->month)
+                            ->whereYear('tanggal_bayar', $date->year)
+                            ->where('status', 'lunas')
+                            ->sum('jumlah');
+                        break;
+                        
+                    case 'kades':
+                        // All kas in the village
+                        $monthlyTotal = Kas::whereMonth('tanggal_bayar', $date->month)
+                            ->whereYear('tanggal_bayar', $date->year)
+                            ->where('status', 'lunas')
+                            ->sum('jumlah');
+                        break;
+                        
+                    case 'rw':
+                        $rwId = $this->getUserRwId($user);
+                        if ($rwId) {
+                            $monthlyTotal = Kas::whereHas('rt', function($q) use ($rwId) {
+                                $q->where('rw_id', $rwId);
+                            })
+                            ->whereMonth('tanggal_bayar', $date->month)
+                            ->whereYear('tanggal_bayar', $date->year)
+                            ->where('status', 'lunas')
+                            ->sum('jumlah');
+                        }
+                        break;
+                        
+                    case 'rt':
+                        $rtId = $this->getUserRtId($user);
+                        if ($rtId) {
+                            $monthlyTotal = Kas::where('rt_id', $rtId)
+                                ->whereMonth('tanggal_bayar', $date->month)
+                                ->whereYear('tanggal_bayar', $date->year)
+                                ->where('status', 'lunas')
+                                ->sum('jumlah');
+                        }
+                        break;
+                        
+                    case 'masyarakat':
+                        if ($user->penduduk) {
+                            $monthlyTotal = Kas::where('penduduk_id', $user->penduduk->id)
+                                ->whereMonth('tanggal_bayar', $date->month)
+                                ->whereYear('tanggal_bayar', $date->year)
+                                ->where('status', 'lunas')
+                                ->sum('jumlah');
+                        }
+                        break;
+                }
+                
+                $data[] = $monthlyTotal;
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'labels' => $months,
+                    'values' => $data,
+                    'total' => array_sum($data)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting monthly kas data', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            // Return fallback data
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                    'values' => [0, 0, 0, 0, 0, 0],
+                    'total' => 0
+                ]
+            ]);
+        }
+    }
+
+    /**
      * Get Dashboard Activities (AJAX)
      */
     public function getDashboardActivities(Request $request)

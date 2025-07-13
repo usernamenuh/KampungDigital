@@ -1,23 +1,23 @@
-<div x-data="navigationData()" x-init="initNavigation()" class="flex flex-col h-full min-h-screen">
+<div x-data="navigationData($store.app)" x-init="initNavigation()" class="flex flex-col h-full min-h-screen">
     <!-- Mobile Overlay -->
-    <div x-show="isMobileMenuOpen" 
+    <div x-show="$store.app.isMobileMenuOpen" 
          x-transition:enter="transition-opacity ease-linear duration-300"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
          x-transition:leave="transition-opacity ease-linear duration-300"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         @click="closeMobileMenu()"
+         @click="$store.app.toggleMobileMenu()"
          class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
          x-cloak>
     </div>
 
     <!-- Sidebar -->
     <div :class="{
-            'fixed inset-y-0 left-0 w-64 transform': isMobile,
-            'translate-x-0': isMobile && isMobileMenuOpen,
-            '-translate-x-full': isMobile && !isMobileMenuOpen,
-            'w-48': !isMobile
+            'fixed inset-y-0 left-0 w-64 transform': $store.app.isMobile,
+            'translate-x-0': $store.app.isMobile && $store.app.isMobileMenuOpen,
+            '-translate-x-full': $store.app.isMobile && !$store.app.isMobileMenuOpen,
+            'w-48': !$store.app.isMobile
          }"
          class="bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out flex flex-col z-50 md:relative md:translate-x-0 border-r border-gray-200 dark:border-gray-700 min-h-screen">
          
@@ -71,7 +71,7 @@
                                             @mouseleave="removeHoverEffect($event, item)">
                                     
                                         <div class="flex items-center space-x-2">
-                                            <i x-show="showIcons" 
+                                            <i x-show="appStore.showIcons" 
                                                :data-lucide="item.icon" 
                                                :style="getIconStyle(item)"
                                                class="w-4 h-4 transition-colors flex-shrink-0"></i>
@@ -109,7 +109,7 @@
                     @mouseenter="applyHoverEffect($event, { id: 'settings' })"
                     @mouseleave="removeHoverEffect($event, { id: 'settings' })">
                 
-                <i x-show="showIcons"
+                <i x-show="appStore.showIcons"
                    data-lucide="settings" 
                    :style="getSettingsIconStyle()"
                    class="w-4 h-4 transition-colors flex-shrink-0"></i>
@@ -121,17 +121,11 @@
 </div>
 
 <script>
-function navigationData() {
+function navigationData(appStore) {
     return {
+        appStore: appStore, // Reference to the global app store
         searchQuery: '',
         activeItem: 'dashboard',
-        activeColor: localStorage.getItem('activeColor') || '#6366F1',
-        hoverColor: localStorage.getItem('hoverColor') || 'rgba(99, 102, 241, 0.08)',
-        showIcons: localStorage.getItem('showIcons') !== 'false',
-        showIconColors: localStorage.getItem('showIconColors') === 'true',
-        iconColor: localStorage.getItem('iconColor') || '#6366F1',
-        isMobile: window.innerWidth < 768,
-        isMobileMenuOpen: false,
         userRole: '{{ Auth::user()->role ?? "guest" }}', // Ambil role user dari Laravel
         
         menuCategories: [
@@ -235,35 +229,31 @@ function navigationData() {
             this.filterMenuItems(); // Filter menu items berdasarkan role
             this.activeItem = this.getCurrentRoute();
             
-            // Listen for color changes from settings modal
-            window.addEventListener('activeColorChanged', (e) => {
-                this.activeColor = e.detail;
+            // Listen for color changes from settings modal (dispatched from app store)
+            window.addEventListener('activeColorChanged', () => {
                 this.updateStyles();
             });
             
-            window.addEventListener('hoverColorChanged', (e) => {
-                this.hoverColor = e.detail;
+            window.addEventListener('hoverColorChanged', () => {
                 this.updateStyles();
             });
             
-            window.addEventListener('showIconsChanged', (e) => {
-                this.showIcons = e.detail;
+            window.addEventListener('showIconsChanged', () => {
                 this.reinitializeIcons();
             });
             
-            window.addEventListener('showIconColorsChanged', (e) => {
-                this.showIconColors = e.detail;
+            window.addEventListener('showIconColorsChanged', () => {
                 this.updateStyles();
             });
             
-            window.addEventListener('iconColorChanged', (e) => {
-                this.iconColor = e.detail;
+            window.addEventListener('iconColorChanged', () => {
                 this.updateStyles();
             });
 
-            // Handle window resize
+            // Handle window resize (handled by app store now, but good to have a listener here too if needed for specific navigation logic)
             window.addEventListener('resize', () => {
-                this.isMobile = window.innerWidth < 768;
+                // This component's responsiveness is primarily driven by $store.app.isMobile
+                // No direct action needed here unless specific navigation layout changes based on resize
             });
 
             // Initialize icons and styles
@@ -272,39 +262,37 @@ function navigationData() {
         },
 
         updateStyles() {
-            // Force Alpine to re-evaluate styles
+            // Force Alpine to re-evaluate styles by touching reactive properties
             this.$nextTick(() => {
-                // Trigger reactivity
-                this.activeColor = this.activeColor;
-                this.hoverColor = this.hoverColor;
-                this.iconColor = this.iconColor;
+                // No direct properties to update here, styles are bound to appStore properties
+                // The reactivity comes from the :style bindings directly using appStore.activeColor etc.
             });
         },
 
         getMenuItemStyle(item) {
             if (this.isActiveMenuItem(item)) {
-                return `background-color: ${this.activeColor}15; border-left-color: ${this.activeColor};`;
+                return `background-color: ${this.appStore.activeColor}15; border-left-color: ${this.appStore.activeColor};`;
             }
             return '';
         },
 
         getIconStyle(item) {
             if (this.isActiveMenuItem(item)) {
-                return this.showIconColors ? `color: ${this.iconColor};` : `color: ${this.activeColor};`;
+                return this.appStore.showIconColors ? `color: ${this.appStore.iconColor};` : `color: ${this.appStore.activeColor};`;
             }
             return '';
         },
 
         getSettingsStyle() {
             if (this.activeItem === 'settings') {
-                return `background-color: ${this.activeColor}15; border-left-color: ${this.activeColor};`;
+                return `background-color: ${this.appStore.activeColor}15; border-left-color: ${this.appStore.activeColor};`;
             }
             return '';
         },
 
         getSettingsIconStyle() {
             if (this.activeItem === 'settings') {
-                return this.showIconColors ? `color: ${this.iconColor};` : `color: ${this.activeColor};`;
+                return this.appStore.showIconColors ? `color: ${this.appStore.iconColor};` : `color: ${this.appStore.activeColor};`;
             }
             return '';
         },
@@ -374,7 +362,7 @@ function navigationData() {
         
         applyHoverEffect(event, item) {
             if (!this.isActiveMenuItem(item)) {
-                event.target.style.backgroundColor = this.hoverColor;
+                event.target.style.backgroundColor = this.appStore.hoverColor;
             }
         },
         
@@ -383,13 +371,9 @@ function navigationData() {
                 event.target.style.backgroundColor = '';
             }
         },
-
-        closeMobileMenu() {
-            this.isMobileMenuOpen = false;
-        },
         
         openSettings() {
-            window.dispatchEvent(new CustomEvent('openSettings'));
+            this.appStore.openSettings(); // Call the global openSettings method
         }
     }
 }
