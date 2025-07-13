@@ -34,6 +34,35 @@
 @section('content')
 <div class="p-6 animate-fade-in" x-data="desaEdit()" x-init="init()">
     <div class="max-w-4xl mx-auto">
+        <!-- Success/Error Alert -->
+        @if(session('success'))
+            <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center">
+                <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i>
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center">
+                <i data-lucide="alert-circle" class="w-5 h-5 mr-2"></i>
+                {{ session('error') }}
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <div class="flex items-center mb-2">
+                    <i data-lucide="alert-triangle" class="w-5 h-5 mr-2"></i>
+                    <strong>Terjadi kesalahan:</strong>
+                </div>
+                <ul class="list-disc list-inside">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">
             <div class="space-y-2">
@@ -79,23 +108,6 @@
                     <span class="text-gray-600 dark:text-gray-400 font-medium">Memproses perubahan<span class="loading-dots"></span></span>
                 </div>
             </div>
-
-            <!-- Error Messages -->
-            @if ($errors->any())
-                <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/10">
-                    <div class="bg-red-100 dark:bg-red-900/20 border-l-4 border-red-400 text-red-800 dark:text-red-200 px-4 py-3 rounded-r-lg">
-                        <div class="flex items-center mb-2">
-                            <i data-lucide="alert-triangle" class="w-5 h-5 mr-2"></i>
-                            <span class="font-medium">Terdapat kesalahan pada form:</span>
-                        </div>
-                        <ul class="list-disc list-inside space-y-1 text-sm">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-            @endif
 
             <form action="{{ route('desas.update', $desa->id) }}" method="POST" enctype="multipart/form-data" @submit="handleSubmit">
                 @csrf
@@ -282,6 +294,35 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Kepala Desa Information -->
+                    <div class="form-section p-6 rounded-xl">
+                        <div class="flex items-center space-x-3 mb-6">
+                            <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-teal-500 rounded-xl flex items-center justify-center">
+                                <i data-lucide="user-check" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Kepala Desa</h2>
+                                <p class="text-gray-600 dark:text-gray-400">Informasi tentang kepala desa</p>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label for="kepala_desa_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                <i data-lucide="user-check" class="w-4 h-4 inline mr-2"></i>
+                                Kepala Desa
+                            </label>
+                            <select name="kepala_desa_id" id="kepala_desa_id" 
+                                    class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-yellow-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200">
+                                <option value="">-- Pilih Kepala Desa --</option>
+                                @foreach($penduduks as $penduduk)
+                                    <option value="{{ $penduduk->id }}" {{ old('kepala_desa_id', $desa->kepala_desa_id ?? '') == $penduduk->id ? 'selected' : '' }}>
+                                        {{ $penduduk->nik }} - {{$penduduk->nama_lengkap }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Action Buttons -->
@@ -368,7 +409,7 @@ function desaEdit() {
             } catch (error) {
                 console.error('Error loading regencies:', error);
                 regencySelect.innerHTML = '<option value="">-- Pilih Kabupaten/Kota --</option>';
-                window.showNotification('Gagal mengambil data kabupaten/kota', 'error');
+                alert('Gagal mengambil data kabupaten/kota');
             }
         },
 
@@ -398,7 +439,7 @@ function desaEdit() {
             } catch (error) {
                 console.error('Error loading districts:', error);
                 districtSelect.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
-                window.showNotification('Gagal mengambil data kecamatan', 'error');
+                alert('Gagal mengambil data kecamatan');
             }
         },
 
@@ -427,7 +468,7 @@ function desaEdit() {
             } catch (error) {
                 console.error('Error loading villages:', error);
                 villageSelect.innerHTML = '<option value="">-- Pilih Desa --</option>';
-                window.showNotification('Gagal mengambil data desa', 'error');
+                alert('Gagal mengambil data desa');
             }
         },
 

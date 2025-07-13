@@ -15,27 +15,26 @@ return new class extends Migration
             $table->id();
             $table->foreignId('penduduk_id')->constrained('penduduks')->onDelete('cascade');
             $table->foreignId('rt_id')->constrained('rts')->onDelete('cascade');
-            $table->foreignId('rw_id')->constrained('rws')->onDelete('cascade');
-            $table->integer('minggu_ke');
-            $table->integer('tahun');
-            $table->decimal('jumlah', 12, 2); // Increased precision
+            $table->integer('minggu_ke'); // Minggu ke berapa dalam tahun
+            $table->year('tahun');
+            $table->decimal('jumlah', 15, 2); // Jumlah kas yang harus dibayar
+            $table->decimal('denda', 15, 2)->default(0); // Denda jika terlambat (2%)
             $table->date('tanggal_jatuh_tempo');
-            $table->datetime('tanggal_bayar')->nullable(); // Changed to datetime
-            $table->enum('status', ['belum_bayar', 'lunas', 'terlambat'])->default('belum_bayar');
-            $table->enum('metode_bayar', ['tunai', 'transfer', 'digital', 'e_wallet'])->nullable(); // Added e_wallet
-            $table->text('bukti_bayar')->nullable(); // Changed to text for longer content
-            $table->text('keterangan')->nullable();
+            $table->date('tanggal_bayar')->nullable();
+            $table->enum('status', ['belum_bayar', 'menunggu_konfirmasi', 'lunas', 'terlambat'])->default('belum_bayar');
+            $table->enum('metode_bayar', ['tunai', 'bank_transfer', 'e_wallet', 'qr_code'])->nullable();
+            $table->string('bukti_bayar_file')->nullable(); // Path file bukti pembayaran
+            $table->text('bukti_bayar_notes')->nullable(); // Catatan dari pembayar
+            $table->timestamp('bukti_bayar_uploaded_at')->nullable();
+            $table->foreignId('confirmed_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->timestamp('confirmed_at')->nullable();
+            $table->text('confirmation_notes')->nullable(); // Catatan konfirmasi dari RT/RW
             $table->timestamps();
             
-            // Indexes for better performance
-            $table->index(['penduduk_id', 'status']);
+            // Index untuk performa
+            $table->index(['penduduk_id', 'tahun', 'minggu_ke']);
             $table->index(['rt_id', 'status']);
-            $table->index(['rw_id', 'status']);
-            $table->index(['tanggal_jatuh_tempo', 'status']);
-            $table->index(['minggu_ke', 'tahun']);
-            
-            // Unique constraint to prevent duplicate kas for same period
-            $table->unique(['penduduk_id', 'minggu_ke', 'tahun'], 'unique_kas_per_period');
+            $table->index(['status', 'tanggal_jatuh_tempo']);
         });
     }
 

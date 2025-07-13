@@ -15,11 +15,11 @@ class Rw extends Model
         'desa_id',
         'nama_rw',
         'alamat',
+        'ketua_rw_id',
         'no_telpon',
         'saldo',
         'no_rw',
-        'status',
-        'ketua_rw'
+        'status'
     ];
 
     protected $casts = [
@@ -36,10 +36,19 @@ class Rw extends Model
         return $this->hasMany(Rt::class);
     }
 
+    /**
+     * Relationship with Ketua RW (Penduduk)
+     */
+    public function ketua(): BelongsTo
+    {
+        return $this->belongsTo(Penduduk::class, 'ketua_rw_id');
+    }
+
     public function getTotalSaldoAttribute()
     {
         return $this->saldo + $this->rts->sum('saldo');
     }
+
     /**
      * Get total RT count
      */

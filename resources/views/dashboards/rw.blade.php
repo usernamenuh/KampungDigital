@@ -7,7 +7,7 @@
 @section('content')
 <div x-data="rwDashboardData()" x-init="initDashboard()" class="p-6 space-y-6">
     <!-- RW Info Header -->
-    <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+    <div class="p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 transition-all hover:shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white">
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-2xl font-bold" x-text="rwName">RW 01</h2>
@@ -27,7 +27,7 @@
     <!-- Saldo Management Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Saldo RW -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Saldo Kas RW</p>
@@ -44,7 +44,7 @@
         </div>
 
         <!-- Kas Masuk Bulan Ini -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Masuk Bulan Ini</p>
@@ -60,7 +60,7 @@
         </div>
 
         <!-- Bantuan Diterima -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Bantuan Diterima</p>
@@ -79,7 +79,7 @@
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Total RT -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total RT</p>
@@ -95,7 +95,7 @@
         </div>
 
         <!-- Total KK -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total KK</p>
@@ -111,7 +111,7 @@
         </div>
 
         <!-- Total Population -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Penduduk</p>
@@ -128,7 +128,7 @@
         </div>
 
         <!-- Bantuan Pending -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Bantuan Pending</p>
@@ -147,7 +147,7 @@
     <!-- Charts and Activities -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Population Chart -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Distribusi Penduduk per RT</h3>
@@ -165,7 +165,7 @@
         </div>
 
         <!-- Recent Activities -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Aktivitas Terbaru</h3>
@@ -199,7 +199,7 @@
     </div>
 
     <!-- Quick Actions -->
-    <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Aksi Cepat</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <button class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
@@ -214,10 +214,10 @@
                 <i data-lucide="map-pin" class="w-8 h-8 text-purple-600 mb-2"></i>
                 <span class="text-sm font-medium text-purple-600">Kelola RT</span>
             </a>
-            <button class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
-                <i data-lucide="bar-chart-3" class="w-8 h-8 text-orange-600 mb-2"></i>
-                <span class="text-sm font-medium text-orange-600">Laporan</span>
-            </button>
+            <a href="{{ route('payment-info.index') }}" class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
+                <i data-lucide="credit-card" class="w-8 h-8 text-orange-600 mb-2"></i>
+                <span class="text-sm font-medium text-orange-600">Kelola Info Bayar</span>
+            </a>
         </div>
     </div>
 </div>

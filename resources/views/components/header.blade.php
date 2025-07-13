@@ -19,7 +19,7 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400" x-text="currentDate"></div>
             </div>
 
-            <!-- Connection Status - DIPERBAIKI -->
+            <!-- Connection Status -->
             <div class="hidden md:flex items-center space-x-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <span :class="{
                     'status-online': connectionStatus === 'online',
@@ -161,14 +161,14 @@ function headerData() {
     return {
         currentTime: '',
         currentDate: '',
-        connectionStatus: 'loading',
-        connectionStatusText: 'Checking...',
-        onlineUsers: 0,
+        connectionStatus: 'online', // Default to online
+        connectionStatusText: 'Online',
+        onlineUsers: 1, // Default to 1 (current user)
         isLoading: false,
         darkMode: localStorage.getItem('darkMode') === 'true',
         isMobile: window.innerWidth < 768,
         lastCheckTime: '',
-        showDebugInfo: false, // Set to true for debugging
+        showDebugInfo: false,
         
         // Notifications
         showNotificationDropdown: false,
@@ -178,19 +178,10 @@ function headerData() {
         // User dropdown
         showUserDropdown: false,
         
-        // API endpoints - DIPERBAIKI
-        apiEndpoints: {
-            onlineStatus: '/api/dashboard/online-status',
-            updateActivity: '/api/dashboard/update-activity',
-            notifications: '/api/notifications/recent',
-            test: '/api/dashboard/test'
-        },
-        
         initHeader() {
             console.log('🚀 Initializing Header...');
             
             this.updateTime();
-            this.testConnection();
             this.checkConnectionStatus();
             this.loadNotifications();
             this.startPeriodicUpdates();
@@ -204,35 +195,6 @@ function headerData() {
             }, 100);
             
             console.log('✅ Header initialized successfully');
-        },
-        
-        // Test connection first - BARU
-        async testConnection() {
-            try {
-                console.log('🔍 Testing API connection...');
-                
-                const response = await fetch(this.apiEndpoints.test, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                    },
-                    credentials: 'same-origin'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('✅ API Test successful:', data);
-                    return true;
-                } else {
-                    console.error('❌ API Test failed:', response.status, response.statusText);
-                    return false;
-                }
-            } catch (error) {
-                console.error('❌ API Test error:', error);
-                return false;
-            }
         },
         
         setupEventListeners() {
@@ -260,6 +222,12 @@ function headerData() {
             window.addEventListener('darkModeChanged', (e) => {
                 this.darkMode = e.detail;
             });
+
+            // Listen for data refresh events
+            window.addEventListener('dataRefresh', () => {
+                this.checkConnectionStatus();
+                this.loadNotifications();
+            });
         },
         
         updateTime() {
@@ -284,10 +252,10 @@ function headerData() {
                 
                 console.log('🔍 Checking connection status...');
                 
-                const response = await fetch(this.apiEndpoints.onlineStatus, {
-                    method: 'GET',
+                // Use web-based AJAX endpoint instead of API
+                const response = await fetch('/ajax/dashboard/stats', {
+                    method: 'HEAD', // Just check if endpoint is accessible
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                     },
@@ -297,22 +265,15 @@ function headerData() {
                 console.log('📡 Response status:', response.status);
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    console.log('📊 Online status data:', data);
+                    this.connectionStatus = 'online';
+                    this.connectionStatusText = 'Online';
+                    this.onlineUsers = 1; // At least current user is online
+                    this.lastCheckTime = new Date().toLocaleTimeString('id-ID');
                     
-                    if (data.success) {
-                        this.connectionStatus = 'online';
-                        this.connectionStatusText = 'Online';
-                        this.onlineUsers = data.data.online_users || data.data.online_count || 0;
-                        this.lastCheckTime = new Date().toLocaleTimeString('id-ID');
-                        
-                        console.log('✅ Connection status: Online, Users:', this.onlineUsers);
-                        
-                        // Update user activity
-                        this.updateUserActivity();
-                    } else {
-                        throw new Error(data.message || 'API response not successful');
-                    }
+                    console.log('✅ Connection status: Online');
+                    
+                    // Update user activity
+                    this.updateUserActivity();
                 } else {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
@@ -322,17 +283,13 @@ function headerData() {
                 this.connectionStatusText = 'Offline';
                 this.onlineUsers = 0;
                 this.lastCheckTime = new Date().toLocaleTimeString('id-ID');
-                
-                // Show error notification
-                if (window.showNotification) {
-                    window.showNotification('Koneksi terputus: ' + error.message, 'error');
-                }
             }
         },
         
         async updateUserActivity() {
             try {
-                const response = await fetch(this.apiEndpoints.updateActivity, {
+                // Use web-based AJAX endpoint
+                const response = await fetch('/ajax/dashboard/update-activity', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -358,7 +315,8 @@ function headerData() {
         
         async loadNotifications() {
             try {
-                const response = await fetch(this.apiEndpoints.notifications, {
+                // Use web-based notification endpoint
+                const response = await fetch('/notifikasi/recent', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -373,6 +331,10 @@ function headerData() {
                         this.notifications = data.data || [];
                         this.unreadCount = this.notifications.filter(n => !n.read).length;
                     }
+                } else {
+                    // If endpoint doesn't exist, just set empty notifications
+                    this.notifications = [];
+                    this.unreadCount = 0;
                 }
             } catch (error) {
                 console.error('❌ Failed to load notifications:', error);
@@ -457,7 +419,8 @@ function headerData() {
         
         async clearNotifications() {
             try {
-                const response = await fetch('/api/notifications', {
+                // Use web-based notification endpoint
+                const response = await fetch('/notifikasi/delete-all', {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',

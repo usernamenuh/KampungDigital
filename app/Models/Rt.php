@@ -16,7 +16,7 @@ class Rt extends Model
         'rw_id',
         'nama_rt',
         'alamat',
-        'ketua_rt',
+        'ketua_rt_id',
         'no_telpon',
         'jumlah_kk',
         'saldo',
@@ -59,6 +59,14 @@ class Rt extends Model
     public function kas(): HasMany
     {
         return $this->hasMany(Kas::class);
+    }
+
+    /**
+     * Relationship with Ketua RT (Penduduk)
+     */
+    public function ketua(): BelongsTo
+    {
+        return $this->belongsTo(Penduduk::class, 'ketua_rt_id');
     }
 
     /**

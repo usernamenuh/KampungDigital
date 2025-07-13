@@ -232,7 +232,7 @@
             <a href="{{ route('kas.index') }}" class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
                 <i data-lucide="wallet" class="w-8 h-8 text-purple-600 mb-2"></i>
                 <span class="text-sm font-medium text-purple-600">Kelola Kas</span>
-            </a>
+            </a
             <button class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
                 <i data-lucide="bar-chart-3" class="w-8 h-8 text-orange-600 mb-2"></i>
                 <span class="text-sm font-medium text-orange-600">Laporan</span>

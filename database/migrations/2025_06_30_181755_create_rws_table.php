@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('no_telpon')->nullable();
             $table->decimal('saldo', 15, 2)->default(0.00);
             $table->enum('status', ['aktif', 'tidak_aktif'])->default('aktif');
-            $table->string('ketua_rw')->nullable();
             $table->timestamps();
         });
     }

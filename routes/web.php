@@ -8,18 +8,24 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\RwController;
 use App\Http\Controllers\RtController;
 use App\Http\Controllers\RtRwController;
-use App\Http\Controllers\Api\DashboardApiController;
 use App\Http\Controllers\PendudukController;
 use App\Http\Controllers\KkController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\KasController;
 use App\Http\Controllers\NotifikasiController;
 use App\Http\Controllers\PengaturanKasController;
+use App\Http\Controllers\PaymentInfoController;
+use App\Http\Controllers\KasPaymentController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
 
 // Public routes
 Route::get('/', function () {
-    return redirect('/login');
+    return view('welcome');
 });
 
 // Authentication Routes
@@ -29,64 +35,147 @@ Auth::routes();
 Route::middleware(['auth', 'user.status'])->group(function () {
     
     // Dashboard routes
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/masyarakat', [HomeController::class, 'masyarakatDashboard'])->name('dashboard.masyarakat');
     
-    // Kas routes
+    // Role-specific dashboard routes
+    Route::get('/dashboard/masyarakat', [HomeController::class, 'masyarakatDashboard'])
+        ->name('dashboard.masyarakat')
+        ->middleware('role:masyarakat');
+    
+    Route::get('/dashboard/rt', [HomeController::class, 'rtDashboard'])
+        ->name('dashboard.rt')
+        ->middleware('role:rt');
+    
+    Route::get('/dashboard/rw', [HomeController::class, 'rwDashboard'])
+        ->name('dashboard.rw')
+        ->middleware('role:rw');
+    
+    Route::get('/dashboard/kades', [HomeController::class, 'kadesDashboard'])
+        ->name('dashboard.kades')
+        ->middleware('role:kades');
+    
+    Route::get('/dashboard/admin', [HomeController::class, 'adminDashboard'])
+        ->name('dashboard.admin')
+        ->middleware('role:admin');
+
+    // AJAX Dashboard Data Routes (Web-based, not API)
+    Route::prefix('ajax/dashboard')->name('ajax.dashboard.')->group(function () {
+        Route::get('/stats', [HomeController::class, 'getDashboardStats'])->name('stats');
+        Route::get('/activities', [HomeController::class, 'getDashboardActivities'])->name('activities');
+        Route::get('/system-monitoring', [HomeController::class, 'getSystemMonitoring'])->name('monitoring');
+        Route::post('/clear-cache', [HomeController::class, 'clearCache'])->name('clear-cache');
+        Route::get('/system-health', [HomeController::class, 'getSystemHealth'])->name('health');
+        Route::post('/update-activity', [HomeController::class, 'updateActivity'])->name('update-activity');
+    });
+
+    // Kas Management Routes
     Route::prefix('kas')->name('kas.')->group(function () {
         Route::get('/', [KasController::class, 'index'])->name('index');
-        Route::get('/create', [KasController::class, 'create'])->name('create')->middleware('role:admin,kades,rw,rt');
-        Route::post('/', [KasController::class, 'store'])->name('store')->middleware('role:admin,kades,rw,rt');
-        Route::get('/get-resident-info', [KasController::class, 'getResidentInfo'])->name('get-resident-info');
-        Route::post('/generate-weekly', [KasController::class, 'generateWeekly'])->name('generate-weekly')->middleware('role:admin,kades,rw,rt');
         Route::get('/{kas}', [KasController::class, 'show'])->name('show');
-        Route::get('/{kas}/edit', [KasController::class, 'edit'])->name('edit')->middleware('role:admin,kades,rw,rt');
-        Route::put('/{kas}', [KasController::class, 'update'])->name('update')->middleware('role:admin,kades,rw,rt');
-        Route::delete('/{kas}', [KasController::class, 'destroy'])->name('destroy')->middleware('role:admin');
-        Route::post('/{kas}/bayar', [KasController::class, 'bayar'])->name('bayar');
+        
+        // Masyarakat specific routes
+        Route::middleware('role:masyarakat')->group(function () {
+            Route::get('/{kas}/payment-form', [KasController::class, 'paymentForm'])->name('payment.form');
+            Route::post('/{kas}/submit-payment', [KasPaymentController::class, 'submitPayment'])->name('payment.submit');
+            Route::get('/{kas}/payment-success', [KasPaymentController::class, 'paymentSuccess'])->name('payment.success');
+        });
+        
+        // RT/RW/Kades/Admin routes
+        Route::middleware('role:rt,rw,kades,admin')->group(function () {
+            Route::get('/create', [KasController::class, 'create'])->name('create');
+            Route::post('/', [KasController::class, 'store'])->name('store');
+            Route::get('/get-resident-info', [KasController::class, 'getResidentInfo'])->name('get-resident-info');
+            Route::post('/generate-weekly', [KasController::class, 'generateWeekly'])->name('generate-weekly');
+            Route::get('/{kas}/edit', [KasController::class, 'edit'])->name('edit');
+            Route::put('/{kas}', [KasController::class, 'update'])->name('update');
+            Route::delete('/{kas}', [KasController::class, 'destroy'])->name('destroy');
+            Route::post('/{kas}/bayar', [KasController::class, 'bayar'])->name('bayar');
+            
+            Route::post('/bulk-create', [KasController::class, 'bulkCreate'])->name('bulk.create');
+            Route::post('/bulk-update', [KasController::class, 'bulkUpdate'])->name('bulk.update');
+            Route::post('/bulk-delete', [KasController::class, 'bulkDelete'])->name('bulk.delete');
+        });
     });
-    
-    // Notification routes
+
+    // Payment Management Routes
+    Route::prefix('payments')->name('payments.')->middleware('role:rt,rw,kades,admin')->group(function () {
+        Route::get('/list', [KasPaymentController::class, 'paymentsList'])->name('list');
+        Route::post('/{kas}/confirm', [KasPaymentController::class, 'confirmPayment'])->name('confirm');
+        Route::get('/{kas}/proof', [KasPaymentController::class, 'showProof'])->name('proof');
+        Route::get('/{kas}/download-proof', [KasPaymentController::class, 'downloadProof'])->name('download.proof');
+    });
+
+    Route::get('/payments/{kas}/success', [KasPaymentController::class, 'paymentSuccess'])
+        ->name('payments.success')
+        ->middleware('role:masyarakat');
+
+    // Payment Info Management Routes
+    Route::prefix('payment-info')->name('payment-info.')->middleware('role:rt,rw,kades,admin')->group(function () {
+        Route::get('/', [PaymentInfoController::class, 'index'])->name('index');
+        Route::get('/create', [PaymentInfoController::class, 'create'])->name('create');
+        Route::post('/', [PaymentInfoController::class, 'store'])->name('store');
+        Route::get('/{paymentInfo}/edit', [PaymentInfoController::class, 'edit'])->name('edit');
+        Route::put('/{paymentInfo}', [PaymentInfoController::class, 'update'])->name('update');
+        Route::delete('/{paymentInfo}', [PaymentInfoController::class, 'destroy'])->name('destroy');
+    });
+
+    // Notification Routes
     Route::prefix('notifikasi')->name('notifikasi.')->group(function () {
         Route::get('/', [NotifikasiController::class, 'index'])->name('index');
-        Route::post('/{notifikasi}/mark-read', [NotifikasiController::class, 'markAsRead'])->name('mark-read');
-        Route::post('/mark-all-read', [NotifikasiController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::post('/{notifikasi}/mark-read', [NotifikasiController::class, 'markAsRead'])->name('mark.read');
+        Route::post('/mark-all-read', [NotifikasiController::class, 'markAllAsRead'])->name('mark.all.read');
         Route::delete('/{notifikasi}', [NotifikasiController::class, 'destroy'])->name('destroy');
+        Route::delete('/delete-all', [NotifikasiController::class, 'destroyAll'])->name('destroy.all');
+        
+        Route::get('/recent', [NotifikasiController::class, 'getRecent'])->name('recent');
+        Route::get('/unread-count', [NotifikasiController::class, 'getUnreadCount'])->name('unread.count');
     });
-});
 
-// Routes dengan pembatasan role
-Route::middleware(['auth', 'role:admin,kades,rw,rt'])->group(function () {
-    // Route untuk halaman gabungan RT & RW
-    Route::get('/rt-rw', [RtRwController::class, 'index'])->name('rt-rw.index');
-    // Route untuk CRUD RW
-    Route::resource('rw', RwController::class)->except(['index', 'show']);
-    // Route untuk CRUD RT  
-    Route::resource('rt', RtController::class)->except(['index', 'show']);
-    // Routes untuk Penduduk - bisa diakses admin, kades, rw, rt
-    Route::resource('penduduk', PendudukController::class);
-    Route::get('penduduk-statistics', [PendudukController::class, 'statistics'])->name('penduduk.statistics');
-    // Routes untuk Kartu Keluarga - bisa diakses admin, kades, rw, rt
-    Route::resource('kk', KkController::class);
-    Route::post('kk/{kk}/set-kepala-keluarga', [KkController::class, 'setKepalaKeluarga'])->name('kk.set-kepala-keluarga');
+    // Profile and Settings Routes
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [HomeController::class, 'profile'])->name('index');
+        Route::put('/', [HomeController::class, 'updateProfile'])->name('update');
+        Route::put('/password', [HomeController::class, 'updatePassword'])->name('password.update');
+    });
 
-    // Routes untuk Pengaturan Kas
-    Route::resource('pengaturan-kas', PengaturanKasController::class);
-});
+    // Admin specific routes
+    Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/users', [HomeController::class, 'users'])->name('users');
+        Route::get('/users/{user}/edit', [HomeController::class, 'editUser'])->name('users.edit');
+        Route::put('/users/{user}', [HomeController::class, 'updateUser'])->name('users.update');
+        Route::delete('/users/{user}', [HomeController::class, 'deleteUser'])->name('users.delete');
+        
+        Route::get('/settings', [HomeController::class, 'settings'])->name('settings');
+        Route::put('/settings', [HomeController::class, 'updateSettings'])->name('settings.update');
+        
+        Route::get('/reports', [HomeController::class, 'reports'])->name('reports');
+        Route::get('/reports/kas', [HomeController::class, 'kasReports'])->name('reports.kas');
+        Route::get('/reports/payments', [HomeController::class, 'paymentReports'])->name('reports.payments');
+        Route::get('/reports/export', [HomeController::class, 'exportReports'])->name('reports.export');
+    });
 
-// Routes khusus admin
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    // Resource route untuk desa - hanya admin yang bisa akses
-    Route::resource('desas', DesaController::class);
+    // Existing routes with role-based middleware
+    Route::middleware(['role:admin,kades,rw,rt'])->group(function () {
+        Route::get('/rt-rw', [RtRwController::class, 'index'])->name('rt-rw.index');
+        Route::resource('rw', RwController::class)->except(['index', 'show']);
+        Route::resource('rt', RtController::class)->except(['index', 'show']);
+        Route::resource('penduduk', PendudukController::class);
+        Route::get('penduduk-statistics', [PendudukController::class, 'statistics'])->name('penduduk.statistics');
+        Route::resource('kk', KkController::class);
+        Route::post('kk/{kk}/set-kepala-keluarga', [KkController::class, 'setKepalaKeluarga'])->name('kk.set-kepala-keluarga');
+        Route::resource('pengaturan-kas', PengaturanKasController::class);
+    });
 
-    // User Management - hanya admin yang bisa akses
-    Route::resource('users', UserController::class);
-    Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
-    Route::patch('users/{user}/change-role', [UserController::class, 'changeRole'])->name('users.change-role');
-});
+    // Routes khusus admin
+    Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('desas', DesaController::class);
+        Route::resource('users', UserController::class);
+        Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+        Route::patch('users/{user}/change-role', [UserController::class, 'changeRole'])->name('users.change-role');
+    });
 
-// Routes yang bisa diakses semua role yang sudah login
-Route::middleware(['auth'])->group(function () {
+    // Routes yang bisa diakses semua role
     Route::get('/laporan', function () { return view('laporan.index'); })->name('laporan.index');
     Route::get('/agenda', function () { return view('agenda.index'); })->name('agenda.index');
     Route::get('/media', function () { return view('media.index'); })->name('media.index');
@@ -94,60 +183,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pesan', function () { return view('pesan.index'); })->name('pesan.index');
 });
 
-// API Routes
-Route::prefix('api')->middleware(['auth'])->group(function () {
-    // Dashboard API routes
-    Route::get('/dashboard/test', [DashboardApiController::class, 'test'])->name('api.dashboard.test');
-    Route::get('/dashboard/stats', [DashboardApiController::class, 'getStats'])->name('api.dashboard.stats');
-    Route::get('/dashboard/monthly-data', [DashboardApiController::class, 'getMonthlyData'])->name('api.dashboard.monthly');
-    Route::get('/dashboard/activities', [DashboardApiController::class, 'getActivities'])->name('api.dashboard.activities');
-    Route::get('/dashboard/online-status', [DashboardApiController::class, 'getOnlineStatus'])->name('api.dashboard.online-status');
-    Route::get('/dashboard/system-health', [DashboardApiController::class, 'getSystemHealth'])->name('api.dashboard.system-health');
-    Route::post('/dashboard/update-activity', [DashboardApiController::class, 'updateActivity'])->name('api.dashboard.update-activity');
+// Public routes
+Route::get('/about', function () {
+    return view('about');
+})->name('about');
 
-    // Kas API routes
-    Route::prefix('kas')->group(function () {
-        Route::get('/stats', [\App\Http\Controllers\Api\KasApiController::class, 'getStats'])->name('api.kas.stats');
-        Route::get('/', [\App\Http\Controllers\Api\KasApiController::class, 'index'])->name('api.kas.index');
-        Route::post('/{kas}/pay', [\App\Http\Controllers\Api\KasApiController::class, 'pay'])->name('api.kas.pay');
-        Route::get('/recent-payments', [\App\Http\Controllers\Api\KasApiController::class, 'getRecentPayments'])->name('api.kas.recent-payments');
-    });
+Route::get('/contact', function () {
+    return view('contact');
+})->name('contact');
 
-    // Notification API routes
-    Route::prefix('notifications')->group(function () {
-        Route::get('/', [NotifikasiController::class, 'index'])->name('api.notifications.index');
-        Route::get('/recent', [NotifikasiController::class, 'getRecent'])->name('api.notifications.recent');
-        Route::get('/unread-count', [NotifikasiController::class, 'getUnreadCount'])->name('api.notifications.unread-count');
-        Route::post('/{notifikasi}/mark-read', [NotifikasiController::class, 'markAsRead'])->name('api.notifications.mark-read');
-        Route::post('/mark-all-read', [NotifikasiController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
-        Route::delete('/{notifikasi}', [NotifikasiController::class, 'destroy'])->name('api.notifications.destroy');
-        Route::delete('/', [NotifikasiController::class, 'destroyAll'])->name('api.notifications.destroy-all');
-    });
-
-    // User authentication endpoint
-    Route::get('/user', function () {
-        $user = Auth::user();
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'last_activity' => $user->last_activity,
-                'is_online' => $user->last_activity >= now()->subMinutes(5),
-                'unread_notifications' => $user->unread_notifications_count ?? 0,
-            ]
-        ]);
-    })->name('api.user');
-
-    // Admin only API routes
-    Route::middleware(['role:admin'])->group(function () {
-        Route::post('/dashboard/clear-cache', [DashboardApiController::class, 'clearCache'])->name('api.dashboard.clear-cache');
-    });
-});
-
-// Public API routes
+// Public API routes for location data
 Route::prefix('api')->group(function () {
     Route::get('/provinces', function () {
         try {
@@ -253,7 +298,7 @@ if (app()->environment('local')) {
                 'action' => $route->getActionName(),
             ];
         })->filter(function($route) {
-            return str_contains($route['name'] ?? '', 'kas') || str_contains($route['uri'], 'kas');
+            return str_contains($route['name'] ?? '', 'kas') || str_contains($route['uri'], 'kas') || str_contains($route['name'] ?? '', 'payment');
         });
         
         return response()->json($routes->values()->toArray(), 200, [], JSON_PRETTY_PRINT);

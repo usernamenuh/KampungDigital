@@ -1,5 +1,4 @@
 <?php
-// filepath: app/Models/Desa.php
 
 namespace App\Models;
 
@@ -12,10 +11,11 @@ use Vermaysha\Territory\Models\Province;
 class Desa extends Model
 {
     protected $table = 'desas';
-   protected $fillable = [
-    'alamat', 'kode_pos', 'saldo', 'status', 'no_telpon', 'gmail',
-    'province_code', 'regency_code', 'district_code', 'village_code', 'foto'
-];
+    protected $fillable = [
+        'alamat', 'kode_pos', 'saldo', 'status', 'no_telpon', 'gmail',
+        'province_code', 'regency_code', 'district_code', 'village_code', 'foto',
+        'kepala_desa_id'
+    ];
 
     public function village()
     {
@@ -36,8 +36,14 @@ class Desa extends Model
     {
         return $this->belongsTo(Province::class, 'province_code', 'province_code');
     }
+    
     public function rws()
     {
         return $this->hasMany(Rw::class, 'desa_id', 'id');
+    }
+    
+    public function kepala()
+    {
+        return $this->belongsTo(Penduduk::class, 'kepala_desa_id');
     }
 }

@@ -15,22 +15,29 @@ class Kas extends Model
     protected $fillable = [
         'penduduk_id',
         'rt_id',
-        'rw_id',
         'minggu_ke',
         'tahun',
         'jumlah',
+        'denda',
         'tanggal_jatuh_tempo',
         'tanggal_bayar',
         'status',
         'metode_bayar',
-        'bukti_bayar',
-        'keterangan',
+        'bukti_bayar_file',
+        'bukti_bayar_notes',
+        'bukti_bayar_uploaded_at',
+        'confirmed_by',
+        'confirmed_at',
+        'confirmation_notes',
     ];
 
     protected $casts = [
         'tanggal_jatuh_tempo' => 'date',
-        'tanggal_bayar' => 'datetime',
+        'tanggal_bayar' => 'date',
+        'bukti_bayar_uploaded_at' => 'datetime',
+        'confirmed_at' => 'datetime',
         'jumlah' => 'decimal:2',
+        'denda' => 'decimal:2',
     ];
 
     // Relationships
@@ -44,28 +51,77 @@ class Kas extends Model
         return $this->belongsTo(Rt::class);
     }
 
-    public function rw()
+    public function confirmedBy()
     {
-        return $this->belongsTo(Rw::class);
+        return $this->belongsTo(User::class, 'confirmed_by');
     }
 
-    // Get user through penduduk relationship
-    public function user()
+    // Accessors
+    public function getStatusTextAttribute()
     {
-        return $this->hasOneThrough(User::class, Penduduk::class, 'id', 'id', 'penduduk_id', 'user_id');
+        $statusTexts = [
+            'belum_bayar' => 'Belum Bayar',
+            'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
+            'lunas' => 'Lunas',
+            'terlambat' => 'Terlambat'
+        ];
+
+        return $statusTexts[$this->status] ?? $this->status;
+    }
+
+    public function getIsOverdueAttribute()
+    {
+        return $this->status === 'belum_bayar' && 
+               $this->tanggal_jatuh_tempo && 
+               $this->tanggal_jatuh_tempo->isPast();
+    }
+
+    public function getTotalBayarAttribute()
+    {
+        return $this->jumlah + $this->denda;
+    }
+
+    public function getFormattedAmountAttribute()
+    {
+        return 'Rp ' . number_format($this->total_bayar, 0, ',', '.');
+    }
+
+    public function getTanggalJatuhTempoFormattedAttribute()
+    {
+        return $this->tanggal_jatuh_tempo ? $this->tanggal_jatuh_tempo->format('d M Y') : '-';
+    }
+
+    public function getTanggalBayarFormattedAttribute()
+    {
+        return $this->tanggal_bayar ? $this->tanggal_bayar->format('d M Y') : '-';
+    }
+
+    public function getMetodeBayarFormattedAttribute()
+    {
+        $methods = [
+            'tunai' => 'Tunai',
+            'bank_transfer' => 'Transfer Bank',
+            'e_wallet' => 'E-Wallet',
+            'qr_code' => 'QR Code',
+        ];
+        return $this->metode_bayar ? ($methods[$this->metode_bayar] ?? ucfirst(str_replace('_', ' ', $this->metode_bayar))) : '-';
     }
 
     // Scopes
-    public function scopeForUser($query, $userId)
-    {
-        return $query->whereHas('penduduk', function($q) use ($userId) {
-            $q->where('user_id', $userId);
-        });
-    }
-
     public function scopeBelumBayar($query)
     {
         return $query->where('status', 'belum_bayar');
+    }
+
+    public function scopeTerlambat($query)
+    {
+        return $query->where('status', 'belum_bayar')
+                    ->where('tanggal_jatuh_tempo', '<', Carbon::now());
+    }
+
+    public function scopeMenungguKonfirmasi($query)
+    {
+        return $query->where('status', 'menunggu_konfirmasi');
     }
 
     public function scopeLunas($query)
@@ -73,46 +129,36 @@ class Kas extends Model
         return $query->where('status', 'lunas');
     }
 
-    public function scopeTerlambat($query)
+    public function scopeForRt($query, $rtId)
     {
-        return $query->where('status', 'belum_bayar')
-                    ->where('tanggal_jatuh_tempo', '<', now());
+        return $query->where('rt_id', $rtId);
     }
 
-    public function scopeCurrentYear($query)
+    public function scopeForPenduduk($query, $pendudukId)
     {
-        return $query->where('tahun', now()->year);
+        return $query->where('penduduk_id', $pendudukId);
     }
 
-    // Accessors
-    public function getIsOverdueAttribute()
+    // Methods
+    public function hitungDenda()
     {
-        return $this->status === 'belum_bayar' && 
-               $this->tanggal_jatuh_tempo < now();
-    }
-
-    public function getStatusTextAttribute()
-    {
-        if ($this->status === 'lunas') {
-            return 'Lunas';
+        if ($this->is_overdue && $this->status === 'belum_bayar') {
+            $pengaturan = PengaturanKas::first();
+            $persentaseDenda = $pengaturan ? $pengaturan->persentase_denda : 2.00;
+            $this->denda = ($this->jumlah * $persentaseDenda) / 100;
+            $this->status = 'terlambat';
+            $this->save();
         }
-        
-        if ($this->is_overdue) {
-            return 'Terlambat';
-        }
-        
-        return 'Belum Bayar';
     }
 
-    public function getStatusColorAttribute()
+    public function markAsLunas($confirmedBy, $notes = null)
     {
-        switch ($this->status) {
-            case 'lunas':
-                return 'green';
-            case 'belum_bayar':
-                return $this->is_overdue ? 'red' : 'yellow';
-            default:
-                return 'gray';
-        }
+        $this->update([
+            'status' => 'lunas',
+            'tanggal_bayar' => Carbon::now(),
+            'confirmed_by' => $confirmedBy,
+            'confirmed_at' => Carbon::now(),
+            'confirmation_notes' => $notes,
+        ]);
     }
 }

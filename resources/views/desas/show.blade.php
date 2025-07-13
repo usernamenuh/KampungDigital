@@ -139,6 +139,22 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Kepala Desa Info -->
+                            @if($desa->kepala)
+                                <div class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl p-4 border border-green-200 dark:border-green-800">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                                            <i data-lucide="user-check" class="w-5 h-5 text-green-600 dark:text-green-400"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-green-600 dark:text-green-400">Kepala Desa</p>
+                                            <p class="text-lg font-semibold text-green-700 dark:text-green-300">{{ $desa->kepala->nama_lengkap }}</p>
+                                            <p class="text-sm text-green-600 dark:text-green-400">NIK: {{ $desa->kepala->nik }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>

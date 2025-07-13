@@ -177,4 +177,19 @@ class Penduduk extends Model
         
         return $query;
     }
+    public function rwKetua()
+{
+    return $this->hasOne(Rw::class, 'ketua_rw_id');
+}
+
+public function rtKetua()
+{
+    return $this->hasOne(Rt::class, 'ketua_rt_id');
+}
+
+public function kepalaDesa()
+{
+    return $this->hasOne(Desa::class, 'kepala_desa_id');
+}
+
 }

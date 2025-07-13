@@ -7,7 +7,7 @@
 @section('content')
 <div x-data="rtDashboardData()" x-init="initDashboard()" class="p-6 space-y-6">
     <!-- RT Info Header -->
-    <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md bg-gradient-to-r from-emerald-600 to-cyan-600 text-white">
+    <div class="p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 transition-all hover:shadow-lg bg-gradient-to-r from-emerald-600 to-cyan-600 text-white">
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-2xl font-bold" x-text="rtName">RT 001</h2>
@@ -27,7 +27,7 @@
     <!-- Saldo Management Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Saldo RT -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Saldo Kas RT</p>
@@ -44,7 +44,7 @@
         </div>
 
         <!-- Kas Masuk Bulan Ini -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Masuk Bulan Ini</p>
@@ -60,7 +60,7 @@
         </div>
 
         <!-- Iuran Mingguan -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Iuran Mingguan</p>
@@ -79,7 +79,7 @@
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Total Warga -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Warga</p>
@@ -95,7 +95,7 @@
         </div>
 
         <!-- Kas Belum Bayar -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Belum Bayar</p>
@@ -111,7 +111,7 @@
         </div>
 
         <!-- Kas Terlambat -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Terlambat</p>
@@ -127,7 +127,7 @@
         </div>
 
         <!-- Kas Lunas -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Lunas</p>
@@ -144,7 +144,7 @@
     </div>
 
     <!-- Alert Kas Terlambat -->
-    <div x-show="kasTerlambat > 0" :class="getCardClass()" class="p-4 rounded-xl shadow-sm border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+    <div x-show="kasTerlambat > 0" class="p-4 rounded-xl shadow-sm border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
         <div class="flex items-center">
             <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600 mr-3"></i>
             <div>
@@ -160,7 +160,7 @@
     <!-- Charts and Tables -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Daftar Warga -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Daftar Warga RT</h3>
@@ -196,7 +196,7 @@
         </div>
 
         <!-- Chart Kas Bulanan -->
-        <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Kas Bulanan</h3>
@@ -215,24 +215,24 @@
     </div>
 
     <!-- Quick Actions -->
-    <div :class="getCardClass()" class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Aksi Cepat</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <a href="{{ route('kas.create') }}" class="flex flex-col items-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
                 <i data-lucide="plus" class="w-8 h-8 text-emerald-600 mb-2"></i>
                 <span class="text-sm font-medium text-emerald-600">Buat Tagihan</span>
             </a>
-            <button class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
-                <i data-lucide="calendar-plus" class="w-8 h-8 text-blue-600 mb-2"></i>
-                <span class="text-sm font-medium text-blue-600">Generate Kas</span>
-            </button>
+            <a href="{{ route('payments.list') }}" class="flex flex-col items-center p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors">
+                <i data-lucide="check-square" class="w-8 h-8 text-cyan-600 mb-2"></i>
+                <span class="text-sm font-medium text-cyan-600">Konfirmasi Bayar</span>
+            </a>
+            <a href="{{ route('payment-info.index') }}" class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                <i data-lucide="credit-card" class="w-8 h-8 text-blue-600 mb-2"></i>
+                <span class="text-sm font-medium text-blue-600">Kelola Info Bayar</span>
+            </a>
             <button class="flex flex-col items-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors">
                 <i data-lucide="bell" class="w-8 h-8 text-yellow-600 mb-2"></i>
                 <span class="text-sm font-medium text-yellow-600">Kirim Pengingat</span>
-            </button>
-            <button class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
-                <i data-lucide="bar-chart-3" class="w-8 h-8 text-purple-600 mb-2"></i>
-                <span class="text-sm font-medium text-purple-600">Laporan</span>
             </button>
         </div>
     </div>

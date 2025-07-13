@@ -4,212 +4,166 @@ namespace App\Http\Controllers;
 
 use App\Models\Notifikasi;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class NotifikasiController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+
     /**
-     * Display a listing of the resource.
+     * Display a listing of notifications
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        $perPage = $request->get('per_page', 15);
         
-        $notifikasi = $user->notifikasi()
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
-        
-        if ($request->expectsJson()) {
+        $query = Notifikasi::where('user_id', $user->id);
+
+        // Filter berdasarkan status
+        if ($request->filled('status')) {
+            if ($request->status === 'unread') {
+                $query->where('dibaca', false);
+            } elseif ($request->status === 'read') {
+                $query->where('dibaca', true);
+            }
+        }
+
+        // Filter berdasarkan kategori
+        if ($request->filled('kategori')) {
+            $query->where('kategori', $request->kategori);
+        }
+
+        // Filter berdasarkan tipe
+        if ($request->filled('tipe')) {
+            $query->where('tipe', $request->tipe);
+        }
+
+        $notifikasi = $query->orderBy('created_at', 'desc')->paginate(20);
+
+        // Mark notifications as read when viewed
+        if ($request->ajax()) {
             return response()->json([
                 'success' => true,
                 'data' => $notifikasi->items(),
                 'pagination' => [
-                    'current_page' => $notifikasi->currentPage(),
-                    'per_page' => $notifikasi->perPage(),
                     'total' => $notifikasi->total(),
+                    'per_page' => $notifikasi->perPage(),
+                    'current_page' => $notifikasi->currentPage(),
                     'last_page' => $notifikasi->lastPage(),
+                    'has_more' => $notifikasi->hasMorePages(),
                 ]
             ]);
         }
-        
+
         return view('notifikasi.index', compact('notifikasi'));
     }
 
     /**
      * Mark notification as read
      */
-    public function markAsRead(Notifikasi $notifikasi): JsonResponse
+    public function markAsRead(Notifikasi $notifikasi)
     {
-        try {
-            // Check if notification belongs to current user
-            if ($notifikasi->user_id !== Auth::id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized'
-                ], 403);
-            }
-            
-            $notifikasi->markAsRead();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Notifikasi berhasil ditandai sebagai dibaca'
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error marking notification as read: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menandai notifikasi sebagai dibaca'
-            ], 500);
+        $user = Auth::user();
+        
+        if ($notifikasi->user_id !== $user->id) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
         }
+
+        $notifikasi->update(['dibaca' => true]);
+
+        return response()->json(['success' => true, 'message' => 'Notifikasi ditandai sudah dibaca.']);
     }
 
     /**
      * Mark all notifications as read
      */
-    public function markAllAsRead(): JsonResponse
+    public function markAllAsRead()
     {
-        try {
-            $user = Auth::user();
-            $count = $user->notifikasi()->where('dibaca', false)->count();
-            
-            $user->notifikasi()->where('dibaca', false)->update([
-                'dibaca' => true,
-                'dibaca_pada' => now()
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => "Berhasil menandai {$count} notifikasi sebagai dibaca"
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error marking all notifications as read: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menandai semua notifikasi sebagai dibaca'
-            ], 500);
-        }
+        $user = Auth::user();
+        
+        Notifikasi::where('user_id', $user->id)
+                  ->where('dibaca', false)
+                  ->update(['dibaca' => true]);
+
+        return response()->json(['success' => true, 'message' => 'Semua notifikasi ditandai sudah dibaca.']);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Delete notification
      */
-    public function destroy(Notifikasi $notifikasi): JsonResponse
+    public function destroy(Notifikasi $notifikasi)
     {
-        try {
-            // Check if notification belongs to current user
-            if ($notifikasi->user_id !== Auth::id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized'
-                ], 403);
-            }
-            
-            $notifikasi->delete();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Notifikasi berhasil dihapus'
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error deleting notification: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menghapus notifikasi'
-            ], 500);
+        $user = Auth::user();
+        
+        if ($notifikasi->user_id !== $user->id) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
         }
+
+        $notifikasi->delete();
+
+        return response()->json(['success' => true, 'message' => 'Notifikasi berhasil dihapus.']);
     }
 
     /**
      * Delete all notifications
      */
-    public function destroyAll(): JsonResponse
+    public function destroyAll()
     {
-        try {
-            $user = Auth::user();
-            $count = $user->notifikasi()->count();
-            $user->notifikasi()->delete();
-            
-            return response()->json([
-                'success' => true,
-                'message' => "Berhasil menghapus {$count} notifikasi"
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error deleting all notifications: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menghapus semua notifikasi'
-            ], 500);
-        }
+        $user = Auth::user();
+        
+        Notifikasi::where('user_id', $user->id)->delete();
+
+        return response()->json(['success' => true, 'message' => 'Semua notifikasi berhasil dihapus.']);
     }
 
     /**
-     * Get unread notifications count
+     * Get recent notifications (for AJAX)
      */
-    public function getUnreadCount(): JsonResponse
+    public function getRecent(Request $request)
     {
-        try {
-            $user = Auth::user();
-            $count = $user->notifikasi()->where('dibaca', false)->count();
-            
-            return response()->json([
-                'success' => true,
-                'count' => $count
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error getting unread count: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengambil jumlah notifikasi belum dibaca',
-                'count' => 0
-            ], 500);
-        }
+        $user = Auth::user();
+        $limit = $request->get('limit', 10);
+        
+        $notifikasi = Notifikasi::where('user_id', $user->id)
+                                ->orderBy('created_at', 'desc')
+                                ->limit($limit)
+                                ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $notifikasi->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'judul' => $item->judul,
+                    'pesan' => $item->pesan,
+                    'tipe' => $item->tipe,
+                    'kategori' => $item->kategori,
+                    'dibaca' => $item->dibaca,
+                    'created_at' => $item->created_at_formatted,
+                    'tipe_icon' => $item->tipe_icon,
+                    'tipe_badge' => $item->tipe_badge,
+                ];
+            })
+        ]);
     }
 
     /**
-     * Get recent notifications
+     * Get unread count
      */
-    public function getRecent(): JsonResponse
+    public function getUnreadCount()
     {
-        try {
-            $user = Auth::user();
-            $notifications = $user->notifikasi()
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function($notif) {
-                    return [
-                        'id' => $notif->id,
-                        'title' => $notif->judul,
-                        'message' => $notif->pesan,
-                        'type' => $notif->tipe,
-                        'category' => $notif->kategori,
-                        'read' => $notif->dibaca,
-                        'timestamp' => $notif->created_at->toISOString(),
-                        'time_ago' => $notif->created_at->diffForHumans(),
-                    ];
-                });
-            
-            return response()->json([
-                'success' => true,
-                'data' => $notifications
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error getting recent notifications: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengambil notifikasi terbaru',
-                'data' => []
-            ], 500);
-        }
+        $user = Auth::user();
+        
+        $count = Notifikasi::where('user_id', $user->id)
+                           ->where('dibaca', false)
+                           ->count();
+
+        return response()->json([
+            'success' => true,
+            'count' => $count
+        ]);
     }
 }

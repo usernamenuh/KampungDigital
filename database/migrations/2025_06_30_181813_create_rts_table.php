@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('rw_id')->constrained('rws')->onDelete('cascade');
             $table->string('nama_rt');
             $table->string('alamat')->nullable();
-            $table->string('ketua_rt')->nullable();
             $table->string('no_telpon')->nullable();
             $table->integer('jumlah_kk')->default(0);
             $table->decimal('saldo', 15, 2)->default(0.00);

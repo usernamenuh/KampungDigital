@@ -2,33 +2,22 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\PengaturanKas;
-use App\Models\Rt;
 
 class PengaturanKasSeeder extends Seeder
 {
-    /**
-     * Run the database seeder.
-     */
-    public function run(): void
+    public function run()
     {
-        // Get all active RTs
-        $rts = Rt::where('status', 'aktif')->get();
-
-        foreach ($rts as $rt) {
-            PengaturanKas::create([
-                'rt_id' => $rt->id,
-                'jumlah_per_minggu' => 10000, // Default Rp 10,000 per week
-                'hari_bayar' => 'minggu',
-                'batas_hari_terlambat' => 7,
-                'auto_generate' => true,
-                'kirim_pengingat' => true,
-                'hari_pengingat_sebelum' => 2,
-                'hari_pengingat_setelah' => 3,
-                'aktif' => true,
-            ]);
-        }
+        PengaturanKas::create([
+            'jumlah_kas_mingguan' => 10000,
+            'batas_hari_pembayaran' => 7,
+            'persentase_denda' => 2.0,
+            'metode_pembayaran_aktif' => json_encode(['tunai', 'bank_transfer', 'e_wallet', 'qr_code']),
+            'notifikasi_h_minus' => 3,
+            'auto_generate_kas' => true,
+            'tahun_aktif' => date('Y'),
+            'keterangan' => 'Pengaturan kas default untuk sistem'
+        ]);
     }
 }

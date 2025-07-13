@@ -19,7 +19,7 @@ return new class extends Migration
             $table->char('village_code', 4);
             $table->string('alamat');
             $table->integer('kode_pos');
-            $table->integer('no_telpon')->nullable();
+            $table->string('no_telpon')->nullable();
             $table->string('gmail');
             $table->decimal('saldo', 15, 2)->default(0.00);
             $table->enum('status', ['aktif', 'tidak_aktif'])->default('aktif');

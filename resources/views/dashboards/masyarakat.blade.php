@@ -7,7 +7,7 @@
 @section('content')
 <div x-data="masyarakatDashboardData()" x-init="initDashboard()" class="p-6 space-y-6">
     <!-- Welcome Header -->
-    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-xl shadow-sm">
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-xl shadow-md">
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-2xl font-bold">Dashboard Masyarakat</h2>
@@ -19,7 +19,7 @@
             <div class="text-right">
                 <p class="text-sm text-blue-100" x-text="currentTime">01.32.26</p>
                 <p class="text-xs text-blue-200" x-text="currentDate">Kamis, 3 Juli 2025</p>
-                <div class="flex items-center mt-2">
+                <div class="flex items-center mt-2 justify-end">
                     <div class="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
                     <span class="text-xs text-blue-200">Online</span>
                 </div>
@@ -29,7 +29,7 @@
 
     <!-- Check if user has penduduk data -->
     @if(!auth()->user()->penduduk)
-    <div class="bg-red-50 border border-red-200 rounded-xl p-6">
+    <div class="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm dark:bg-red-900/20 dark:border-red-800">
         <div class="flex items-center">
             <div class="flex-shrink-0">
                 <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,8 +37,8 @@
                 </svg>
             </div>
             <div class="ml-4">
-                <h4 class="text-lg font-bold text-red-800">Data Penduduk Tidak Ditemukan</h4>
-                <p class="text-sm text-red-700">Akun Anda belum terhubung dengan data penduduk. Silakan hubungi administrator untuk menghubungkan akun Anda dengan data kependudukan.</p>
+                <h4 class="text-lg font-bold text-red-800 dark:text-red-200">Data Penduduk Tidak Ditemukan</h4>
+                <p class="text-sm text-red-700 dark:text-red-300">Akun Anda belum terhubung dengan data penduduk. Silakan hubungi administrator untuk menghubungkan akun Anda dengan data kependudukan.</p>
             </div>
         </div>
     </div>
@@ -120,7 +120,7 @@
     </div>
 
     <!-- Notification Alert for Unpaid Kas -->
-    <div x-show="kasBelumBayar > 0 && !isYearCompleted" x-cloak class="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+    <div x-show="kasBelumBayar > 0 && !isYearCompleted" x-cloak class="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 shadow-sm">
         <div class="flex items-center">
             <div class="flex-shrink-0">
                 <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center animate-pulse">
@@ -149,7 +149,7 @@
         <!-- Kas Status -->
         <div class="lg:col-span-2">
             <!-- Year Completion Alert -->
-            <div x-show="isYearCompleted" x-cloak class="mb-6 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6">
+            <div x-show="isYearCompleted" x-cloak class="mb-6 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 shadow-sm">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
                         <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
@@ -210,8 +210,9 @@
                                         <h4 class="font-medium text-gray-800 dark:text-white" x-text="`Minggu ke-${kas.minggu_ke}`"></h4>
                                         <span :class="{
                                             'bg-green-100 text-green-800': kas.status === 'lunas',
-                                            'bg-yellow-100 text-yellow-800': kas.status === 'belum_bayar' && !kas.is_overdue,
-                                            'bg-red-100 text-red-800': kas.is_overdue
+                                            'bg-yellow-100 text-yellow-800': kas.status === 'menunggu_konfirmasi',
+                                            'bg-red-100 text-red-800': kas.is_overdue && kas.status === 'belum_bayar',
+                                            'bg-gray-100 text-gray-800': kas.status === 'belum_bayar' && !kas.is_overdue
                                         }" class="px-2 py-1 rounded-full text-xs font-medium" x-text="kas.status_text"></span>
                                     </div>
                                     <div class="grid grid-cols-2 gap-4 text-sm">
@@ -236,8 +237,21 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div x-show="kas.status === 'menunggu_konfirmasi'" class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                        <div class="grid grid-cols-2 gap-4 text-sm">
+                                            <div>
+                                                <p class="text-gray-500 dark:text-gray-400">Metode</p>
+                                                <p class="font-medium text-gray-800 dark:text-white" x-text="kas.metode_bayar_formatted"></p>
+                                            </div>
+                                            <div>
+                                                <p class="text-500 dark:text-gray-400">Waktu Upload</p>
+                                                <p class="font-medium text-gray-800 dark:text-white" x-text="kas.bukti_bayar_uploaded_at_formatted"></p>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Menunggu konfirmasi dari RT/RW Anda.</p>
+                                    </div>
                                 </div>
-                                <div x-show="kas.status !== 'lunas'" class="ml-4">
+                                <div x-show="kas.status === 'belum_bayar'" class="ml-4">
                                     <button @click="openPaymentModal(kas)" 
                                             :class="{
                                                 'bg-red-600 hover:bg-red-700': kas.is_overdue,
@@ -348,8 +362,8 @@
     </div>
 
     <!-- Payment Modal -->
-    <div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
             <div class="mt-3">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white">Konfirmasi Pembayaran</h3>
@@ -372,6 +386,48 @@
                         </p>
                     </div>
                 </div>
+
+                <div x-show="paymentInfo" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <h4 class="font-semibold text-blue-800 dark:text-blue-200 mb-2">Detail Pembayaran (<span x-text="paymentInfo.rt_info"></span>)</h4>
+                    <template x-if="paymentInfo.bank_transfer && paymentInfo.bank_transfer.account_number">
+                        <div class="mb-3">
+                            <p class="text-sm font-medium text-blue-700 dark:text-blue-300">Transfer Bank:</p>
+                            <p class="text-sm text-gray-800 dark:text-white">Bank: <span x-text="paymentInfo.bank_transfer.bank_name"></span></p>
+                            <p class="text-sm text-gray-800 dark:text-white">No. Rek: <span x-text="paymentInfo.bank_transfer.account_number"></span></p>
+                            <p class="text-sm text-gray-800 dark:text-white">A.N.: <span x-text="paymentInfo.bank_transfer.account_name"></span></p>
+                        </div>
+                    </template>
+                    <template x-if="paymentInfo.e_wallet && (paymentInfo.e_wallet.dana || paymentInfo.e_wallet.ovo || paymentInfo.e_wallet.gopay)">
+                        <div class="mb-3">
+                            <p class="text-sm font-medium text-blue-700 dark:text-blue-300">E-Wallet:</p>
+                            <template x-if="paymentInfo.e_wallet.dana">
+                                <p class="text-sm text-gray-800 dark:text-white">DANA: <span x-text="paymentInfo.e_wallet.dana"></span></p>
+                            </template>
+                            <template x-if="paymentInfo.e_wallet.ovo">
+                                <p class="text-sm text-gray-800 dark:text-white">OVO: <span x-text="paymentInfo.e_wallet.ovo"></span></p>
+                            </template>
+                            <template x-if="paymentInfo.e_wallet.gopay">
+                                <p class="text-sm text-gray-800 dark:text-white">GOPAY: <span x-text="paymentInfo.e_wallet.gopay"></span></p>
+                            </template>
+                        </div>
+                    </template>
+                    <template x-if="paymentInfo.qr_code && paymentInfo.qr_code.image_url">
+                        <div class="mb-3 text-center">
+                            <p class="text-sm font-medium text-blue-700 dark:text-blue-300">QR Code:</p>
+                            <img :src="paymentInfo.qr_code.image_url" alt="QR Code Pembayaran" class="w-32 h-32 mx-auto border rounded-lg mt-2">
+                            <p x-show="paymentInfo.qr_code.description" class="text-xs text-gray-600 dark:text-gray-400 mt-1" x-text="paymentInfo.qr_code.description"></p>
+                        </div>
+                    </template>
+                    <template x-if="paymentInfo.payment_notes">
+                        <div class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                            <p class="text-sm font-medium text-blue-700 dark:text-blue-300">Catatan:</p>
+                            <p class="text-sm text-gray-800 dark:text-white" x-text="paymentInfo.payment_notes"></p>
+                        </div>
+                    </template>
+                </div>
+                <div x-show="!paymentInfo" class="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-yellow-800 dark:text-yellow-200">
+                    <p class="text-sm">Informasi pembayaran untuk RT Anda belum diatur. Silakan hubungi pengurus RT/RW.</p>
+                </div>
                 
                 <form @submit.prevent="submitPayment()">
                     <div class="mb-4">
@@ -379,12 +435,20 @@
                         <select x-model="paymentMethod" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
                             <option value="">Pilih Metode</option>
                             <option value="tunai">💵 Tunai</option>
-                            <option value="transfer">🏦 Transfer Bank</option>
-                            <option value="digital">📱 Digital Payment</option>
-                            <option value="e_wallet">💳 E-Wallet</option>
+                            <template x-if="paymentInfo && paymentInfo.available_methods">
+                                <template x-for="method in paymentInfo.available_methods" :key="method">
+                                    <option :value="method" x-text="formatMetodeBayar(method)"></option>
+                                </template>
+                            </template>
                         </select>
                     </div>
                     
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload Bukti Pembayaran *</label>
+                        <input type="file" x-ref="buktiBayarFile" accept="image/*" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                        <p class="text-xs text-gray-500 mt-1">Format: JPG, PNG. Maksimal 5MB</p>
+                    </div>
+
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Keterangan (Opsional)</label>
                         <textarea x-model="paymentNote" rows="3" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="Nomor referensi, keterangan, atau catatan lainnya..."></textarea>
@@ -394,7 +458,7 @@
                         <button type="button" @click="closePaymentModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
                             Batal
                         </button>
-                        <button type="submit" :disabled="isProcessing" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50">
+                        <button type="submit" :disabled="isProcessing || !paymentInfo" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50">
                             <span x-show="!isProcessing" class="flex items-center">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
@@ -440,7 +504,8 @@ function masyarakatDashboardData() {
         isLoading: true,
         currentPage: 1,
         unreadNotifications: 0,
-        
+        paymentInfo: null, // New property for payment info
+
         async initDashboard() {
             console.log('🚀 Initializing Masyarakat Dashboard...');
             
@@ -503,18 +568,20 @@ function masyarakatDashboardData() {
         
         async loadKasList(page = 1) {
             try {
-                const response = await fetch(`/api/kas?page=${page}&status=belum_bayar&limit=10`);
+                const response = await fetch(`/api/kas?page=${page}&status=belum_bayar,menunggu_konfirmasi&limit=10`); // Include menunggu_konfirmasi
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
                         const newKas = data.data.map(kas => ({
                             ...kas,
-                            is_overdue: new Date(kas.tanggal_jatuh_tempo) < new Date(),
+                            is_overdue: kas.status === 'belum_bayar' && new Date(kas.tanggal_jatuh_tempo) < new Date(),
                             status_text: kas.status === 'lunas' ? 'Lunas' : 
-                                        (new Date(kas.tanggal_jatuh_tempo) < new Date() ? 'Terlambat' : 'Belum Bayar'),
+                                        (kas.status === 'menunggu_konfirmasi' ? 'Menunggu Konfirmasi' :
+                                        (new Date(kas.tanggal_jatuh_tempo) < new Date() ? 'Terlambat' : 'Belum Bayar')),
                             tanggal_jatuh_tempo_formatted: new Date(kas.tanggal_jatuh_tempo).toLocaleDateString('id-ID'),
                             tanggal_bayar_formatted: kas.tanggal_bayar ? new Date(kas.tanggal_bayar).toLocaleDateString('id-ID') : '-',
-                            metode_bayar_formatted: kas.metode_bayar ? this.formatMetodeBayar(kas.metode_bayar) : '-'
+                            metode_bayar_formatted: kas.metode_bayar ? this.formatMetodeBayar(kas.metode_bayar) : '-',
+                            bukti_bayar_uploaded_at_formatted: kas.bukti_bayar_uploaded_at ? new Date(kas.bukti_bayar_uploaded_at).toLocaleString('id-ID') : '-'
                         }));
                         
                         if (page === 1) {
@@ -548,7 +615,7 @@ function masyarakatDashboardData() {
                     if (data.success) {
                         this.recentPayments = data.data.map(payment => ({
                             ...payment,
-                            tanggal_bayar_formatted: new Date(payment.tanggal_bayar).toLocaleDateString('id-ID')
+                            tanggal_bayar_formatted: payment.tanggal_bayar ? new Date(payment.tanggal_bayar).toLocaleDateString('id-ID') : '-'
                         }));
                     }
                 }
@@ -588,11 +655,30 @@ function masyarakatDashboardData() {
             });
         },
         
-        openPaymentModal(kas) {
+        async openPaymentModal(kas) {
             this.selectedKas = kas;
-            this.showPaymentModal = true;
             this.paymentMethod = '';
             this.paymentNote = '';
+            this.paymentInfo = null; // Reset payment info
+            
+            // Fetch payment info for the selected RT
+            if (kas.rt_id) { // Assuming kas object has rt_id
+                try {
+                    const response = await fetch(`/api/payment-info?rt_id=${kas.rt_id}`);
+                    const data = await response.json();
+                    if (data.success) {
+                        this.paymentInfo = data.data;
+                    } else {
+                        this.showNotification(data.message || 'Gagal memuat info pembayaran RT ini.', 'warning');
+                    }
+                } catch (error) {
+                    console.error('Error fetching payment info:', error);
+                    this.showNotification('Gagal memuat info pembayaran.', 'error');
+                }
+            } else {
+                this.showNotification('RT ID tidak ditemukan untuk kas ini.', 'error');
+            }
+            this.showPaymentModal = true;
         },
         
         closePaymentModal() {
@@ -601,6 +687,10 @@ function masyarakatDashboardData() {
             this.paymentMethod = '';
             this.paymentNote = '';
             this.isProcessing = false;
+            this.paymentInfo = null; // Clear payment info on close
+            if (this.$refs.buktiBayarFile) {
+                this.$refs.buktiBayarFile.value = ''; // Clear file input
+            }
         },
         
         async submitPayment() {
@@ -609,16 +699,25 @@ function masyarakatDashboardData() {
             this.isProcessing = true;
             
             try {
-                const response = await fetch(`/api/kas/${this.selectedKas.id}/pay`, {
+                const formData = new FormData();
+                formData.append('metode_bayar', this.paymentMethod);
+                formData.append('bukti_bayar_notes', this.paymentNote);
+                
+                const buktiBayarFile = this.$refs.buktiBayarFile.files[0];
+                if (buktiBayarFile) {
+                    formData.append('bukti_bayar', buktiBayarFile);
+                } else {
+                    this.showNotification('Mohon unggah bukti pembayaran.', 'error');
+                    this.isProcessing = false;
+                    return;
+                }
+
+                const response = await fetch(`/payments/kas/${this.selectedKas.id}/submit`, { // Use the new route
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: JSON.stringify({
-                        metode_bayar: this.paymentMethod,
-                        keterangan: this.paymentNote
-                    })
+                    body: formData
                 });
                 
                 const data = await response.json();
@@ -640,7 +739,7 @@ function masyarakatDashboardData() {
                 }
             } catch (error) {
                 console.error('Payment error:', error);
-                this.showNotification('Gagal memproses pembayaran', 'error');
+                this.showNotification('Gagal memproses pembayaran: ' + error.message, 'error');
             } finally {
                 this.isProcessing = false;
             }
@@ -649,9 +748,9 @@ function masyarakatDashboardData() {
         formatMetodeBayar(metode) {
             const methods = {
                 'tunai': '💵 Tunai',
-                'transfer': '🏦 Transfer Bank',
-                'digital': '📱 Digital Payment',
-                'e_wallet': '💳 E-Wallet'
+                'bank_transfer': '🏦 Transfer Bank',
+                'e_wallet': '💳 E-Wallet',
+                'qr_code': '📸 QR Code'
             };
             return methods[metode] || metode;
         },

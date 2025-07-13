@@ -4,6 +4,65 @@
 
 @section('content')
 <div class="p-6" x-data="rtRwManager()" x-init="init()">
+    <!-- Success/Error Alert with Auto Dismiss (Shorter Duration) -->
+    @if(session('success'))
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-2"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="opacity-100 transform translate-y-0"
+             x-transition:leave-end="opacity-0 transform translate-y-2"
+             class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center">
+            <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i>
+            {{ session('success') }}
+            <button @click="show = false" class="ml-auto text-green-500 hover:text-green-700">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-2"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="opacity-100 transform translate-y-0"
+             x-transition:leave-end="opacity-0 transform translate-y-2"
+             class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center">
+            <i data-lucide="alert-circle" class="w-5 h-5 mr-2"></i>
+            {{ session('error') }}
+            <button @click="show = false" class="ml-auto text-red-500 hover:text-red-700">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-2"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="opacity-100 transform translate-y-0"
+             x-transition:leave-end="opacity-0 transform translate-y-2"
+             class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <div class="flex items-center mb-2">
+                <i data-lucide="alert-triangle" class="w-5 h-5 mr-2"></i>
+                <strong>Terjadi kesalahan:</strong>
+                <button @click="show = false" class="ml-auto text-red-500 hover:text-red-700">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <ul class="list-disc list-inside">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
         <div>
@@ -159,7 +218,9 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $rw->no_rw ?? '-' }}</div>
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                {{ $rw->no_rw ? str_pad($rw->no_rw, 3, '0', STR_PAD_LEFT) : '-' }}
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $rw->nama_rw }}</div>
@@ -169,7 +230,7 @@
                             <div class="text-sm text-gray-900 dark:text-white">{{ $rw->desa->alamat ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900 dark:text-white">{{ $rw->ketua_rw ?? '-' }}</div>
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rw->ketua->nama_lengkap ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900 dark:text-white">{{ $rw->no_telpon ?? '-' }}</div>
@@ -217,7 +278,9 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $rt->no_rt ?? '-' }}</div>
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                {{ $rt->no_rt ? str_pad($rt->no_rt, 3, '0', STR_PAD_LEFT) : '-' }}
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $rt->nama_rt }}</div>
@@ -228,7 +291,7 @@
                             <div class="text-sm text-gray-500 dark:text-gray-400">{{ $rt->rw->desa->alamat ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900 dark:text-white">{{ $rt->ketua_rt ?? '-' }}</div>
+                            <div class="text-sm text-gray-900 dark:text-white">{{ $rt->ketua->nama_lengkap ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900 dark:text-white">{{ $rt->no_telpon ?? '-' }}</div>
@@ -283,24 +346,13 @@
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
             
             <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <form @submit.prevent="submitForm('rw')">
+                <form @submit="submitForm('rw', $event)" data-type="rw">
+                    @csrf
                     <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
                                 <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4" 
                                     x-text="modalAction === 'create' ? 'Tambah RW' : 'Edit RW'"></h3>
-                                
-                                <!-- Error Messages -->
-                                <div x-show="validationErrors && Object.keys(validationErrors).length > 0" 
-                                     class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                                    <ul class="list-disc list-inside text-sm">
-                                        <template x-for="(errors, field) in validationErrors" :key="field">
-                                            <template x-for="error in errors" :key="error">
-                                                <li x-text="error"></li>
-                                            </template>
-                                        </template>
-                                    </ul>
-                                </div>
                                 
                                 <div class="space-y-4">
                                     <div>
@@ -319,9 +371,9 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                No. RW
+                                                No. RW <span class="text-red-500">*</span>
                                             </label>
-                                            <input type="text" x-model="formData.no_rw"
+                                            <input type="text" x-model="formData.no_rw" required
                                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                    placeholder="001">
                                         </div>
@@ -349,9 +401,13 @@
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Ketua RW
                                         </label>
-                                        <input type="text" x-model="formData.ketua_rw"
-                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                               placeholder="Masukkan nama ketua RW">
+                                        <select x-model="formData.ketua_rw_id"
+                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                            <option value="">Pilih Ketua RW</option>
+                                            @foreach($penduduks as $penduduk)
+                                                <option value="{{ $penduduk->id }}">{{ $penduduk->nik }} - {{ $penduduk->nama_lengkap }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
 
                                     <div>
@@ -418,24 +474,13 @@
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
             
             <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <form @submit.prevent="submitForm('rt')">
+                <form @submit="submitForm('rt', $event)" data-type="rt">
+                    @csrf
                     <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
                                 <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4" 
                                     x-text="modalAction === 'create' ? 'Tambah RT' : 'Edit RT'"></h3>
-                                
-                                <!-- Error Messages -->
-                                <div x-show="validationErrors && Object.keys(validationErrors).length > 0" 
-                                     class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                                    <ul class="list-disc list-inside text-sm">
-                                        <template x-for="(errors, field) in validationErrors" :key="field">
-                                            <template x-for="error in errors" :key="error">
-                                                <li x-text="error"></li>
-                                            </template>
-                                        </template>
-                                    </ul>
-                                </div>
                                 
                                 <div class="space-y-4">
                                     <div>
@@ -454,9 +499,9 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                No. RT
+                                                No. RT <span class="text-red-500">*</span>
                                             </label>
-                                            <input type="text" x-model="formData.no_rt"
+                                            <input type="text" x-model="formData.no_rt" required
                                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                    placeholder="001">
                                         </div>
@@ -484,9 +529,13 @@
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Ketua RT
                                         </label>
-                                        <input type="text" x-model="formData.ketua_rt"
-                                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                               placeholder="Masukkan nama ketua RT">
+                                        <select x-model="formData.ketua_rt_id"
+                                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                            <option value="">Pilih Ketua RT</option>
+                                            @foreach($penduduks as $penduduk)
+                                                <option value="{{ $penduduk->id }}">{{ $penduduk->nik }} - {{ $penduduk->nama_lengkap }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
 
                                     <div>
@@ -701,11 +750,11 @@ function rtRwManager() {
         formData: {},
         detailData: {},
         deleteData: {},
-        validationErrors: {},
         
         // Data arrays
         rwData: @json($rws),
         rtData: @json($rts),
+        pendudukData: @json($penduduks),
         
         init() {
             console.log('RT RW Manager initialized');
@@ -729,19 +778,18 @@ function rtRwManager() {
                 no_rw: '',
                 nama_rw: '',
                 alamat: '',
-                ketua_rw: '',
+                ketua_rw_id: '',
                 no_telpon: '',
-                saldo: 0,
+                saldo: '',
                 status: 'aktif',
                 
                 // RT fields
                 rw_id: '',
                 no_rt: '',
                 nama_rt: '',
-                ketua_rt: '',
-                jumlah_kk: 0
+                ketua_rt_id: '',
+                jumlah_kk: ''
             };
-            this.validationErrors = {};
         },
         
         openModal(type, action, id = null) {
@@ -791,49 +839,31 @@ function rtRwManager() {
             
             this.isDeleting = true;
             
-            try {
-                const formData = new FormData();
-                formData.append('_method', 'DELETE');
-                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-                
-                const response = await fetch(`/${this.deleteData.type}/${this.deleteData.id}`, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    }
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    // Use global notification system from app.blade.php
-                    if (window.showNotification) {
-                        window.showNotification(result.message || `${this.deleteData.type.toUpperCase()} berhasil dihapus!`, 'success');
-                    } else {
-                        alert(result.message || `${this.deleteData.type.toUpperCase()} berhasil dihapus!`);
-                    }
-                    this.closeDeleteModal();
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    const errorData = await response.json();
-                    if (window.showNotification) {
-                        window.showNotification(errorData.message || 'Gagal menghapus data', 'error');
-                    } else {
-                        alert(errorData.message || 'Gagal menghapus data');
-                    }
-                }
-            } catch (error) {
-                console.error('Delete error:', error);
-                if (window.showNotification) {
-                    window.showNotification('Terjadi kesalahan koneksi. Silakan coba lagi.', 'error');
-                } else {
-                    alert('Terjadi kesalahan koneksi. Silakan coba lagi.');
-                }
-            } finally {
-                this.isDeleting = false;
+            // Buat form untuk delete
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/${this.deleteData.type}/${this.deleteData.id}`;
+            
+            // Tambahkan CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (csrfToken) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '_token';
+                tokenInput.value = csrfToken.getAttribute('content');
+                form.appendChild(tokenInput);
             }
+            
+            // Tambahkan method DELETE
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            form.appendChild(methodInput);
+            
+            // Submit form
+            document.body.appendChild(form);
+            form.submit();
         },
         
         loadEditData(type, id) {
@@ -842,128 +872,81 @@ function rtRwManager() {
                 : this.rtData.find(item => item.id === id);
                 
             if (data) {
-                Object.keys(this.formData).forEach(key => {
-                    if (data.hasOwnProperty(key)) {
-                        this.formData[key] = data[key];
-                    }
-                });
+                console.log('Loading edit data:', data);
+                
+                // Load semua data form
+                this.formData.desa_id = data.desa_id || '';
+                this.formData.rw_id = data.rw_id || '';
+                this.formData.alamat = data.alamat || '';
+                this.formData.no_telpon = data.no_telpon || '';
+                this.formData.saldo = data.saldo || '';
+                this.formData.status = data.status || 'aktif';
+                this.formData.jumlah_kk = data.jumlah_kk || '';
+                
+                if (type === 'rw') {
+                    this.formData.no_rw = data.no_rw ? String(data.no_rw).padStart(3, '0') : '';
+                    this.formData.nama_rw = data.nama_rw || '';
+                    this.formData.ketua_rw_id = data.ketua_rw_id || '';
+                } else {
+                    this.formData.no_rt = data.no_rt ? String(data.no_rt).padStart(3, '0') : '';
+                    this.formData.nama_rt = data.nama_rt || '';
+                    this.formData.ketua_rt_id = data.ketua_rt_id || '';
+                }
+                
+                console.log('Form data after loading:', this.formData);
             }
         },
         
-        async submitForm(type) {
-            if (this.isSubmitting) return;
+        submitForm(type, event) {
+            event.preventDefault();
+            
+            if (this.isSubmitting) return false;
             
             console.log('Submitting form:', type, this.formData);
             this.isSubmitting = true;
-            this.validationErrors = {};
             
-            try {
-                // Client-side validation
-                if (type === 'rw') {
-                    if (!this.formData.desa_id) {
-                        this.validationErrors.desa_id = ['Desa harus dipilih.'];
-                    }
-                    if (!this.formData.nama_rw) {
-                        this.validationErrors.nama_rw = ['Nama RW harus diisi.'];
-                    }
-                    if (!this.formData.alamat) {
-                        this.validationErrors.alamat = ['Alamat harus diisi.'];
-                    }
-                } else if (type === 'rt') {
-                    if (!this.formData.rw_id) {
-                        this.validationErrors.rw_id = ['RW harus dipilih.'];
-                    }
-                    if (!this.formData.nama_rt) {
-                        this.validationErrors.nama_rt = ['Nama RT harus diisi.'];
-                    }
-                }
-
-                if (Object.keys(this.validationErrors).length > 0) {
-                    this.isSubmitting = false;
-                    return;
-                }
-
-                const url = this.modalAction === 'create' 
-                    ? `/${type}`
-                    : `/${type}/${this.editId}`;
-                    
-                const method = this.modalAction === 'create' ? 'POST' : 'PUT';
-                
-                // Prepare form data
-                const formData = new FormData();
-                
-                // Add CSRF token
-                const csrfToken = document.querySelector('meta[name="csrf-token"]');
-                if (csrfToken) {
-                    formData.append('_token', csrfToken.getAttribute('content'));
-                }
-                
-                // Add method for PUT requests
-                if (method === 'PUT') {
-                    formData.append('_method', 'PUT');
-                }
-                
-                // Add form fields
-                Object.keys(this.formData).forEach(key => {
-                    if (this.formData[key] !== null && this.formData[key] !== '' && this.formData[key] !== undefined) {
-                        formData.append(key, this.formData[key]);
-                    }
-                });
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    }
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    
-                    // Use global notification system from app.blade.php
-                    if (window.showNotification) {
-                        window.showNotification(
-                            result.message || `${type.toUpperCase()} berhasil ${this.modalAction === 'create' ? 'ditambahkan' : 'diperbarui'}!`, 
-                            'success'
-                        );
-                    } else {
-                        alert(result.message || `${type.toUpperCase()} berhasil ${this.modalAction === 'create' ? 'ditambahkan' : 'diperbarui'}!`);
-                    }
-                    this.closeModal();
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    const errorData = await response.json();
-                    
-                    if (response.status === 422 && errorData.errors) {
-                        // Validation errors
-                        this.validationErrors = errorData.errors;
-                        if (window.showNotification) {
-                            window.showNotification('Mohon periksa kembali data yang dimasukkan', 'error');
-                        } else {
-                            alert('Mohon periksa kembali data yang dimasukkan');
-                        }
-                    } else {
-                        let errorMessage = errorData.message || 'Terjadi kesalahan saat menyimpan data';
-                        if (window.showNotification) {
-                            window.showNotification(errorMessage, 'error');
-                        } else {
-                            alert(errorMessage);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Submit error:', error);
-                if (window.showNotification) {
-                    window.showNotification('Terjadi kesalahan koneksi. Silakan coba lagi.', 'error');
-                } else {
-                    alert('Terjadi kesalahan koneksi. Silakan coba lagi.');
-                }
-            } finally {
-                this.isSubmitting = false;
+            // Buat form element
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = this.modalAction === 'create' 
+                ? `/${type}` 
+                : `/${type}/${this.editId}`;
+            
+            // Tambahkan CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (csrfToken) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '_token';
+                tokenInput.value = csrfToken.getAttribute('content');
+                form.appendChild(tokenInput);
             }
+            
+            // Tambahkan method untuk edit
+            if (this.modalAction === 'edit') {
+                const methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'PUT';
+                form.appendChild(methodInput);
+            }
+            
+            // Tambahkan semua form data
+            Object.keys(this.formData).forEach(key => {
+                if (this.formData[key] !== '' && this.formData[key] !== null && this.formData[key] !== undefined) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = this.formData[key];
+                    form.appendChild(input);
+                }
+            });
+            
+            // Submit form
+            document.body.appendChild(form);
+            form.submit();
+            
+            return false;
         },
         
         viewDetail(type, id) {
@@ -975,10 +958,10 @@ function rtRwManager() {
             if (data) {
                 this.detailData = {
                     type: type,
-                    nomor: type === 'rw' ? data.no_rw : data.no_rt,
+                    nomor: type === 'rw' ? (data.no_rw ? String(data.no_rw).padStart(3, '0') : '-') : (data.no_rt ? String(data.no_rt).padStart(3, '0') : '-'),
                     nama: type === 'rw' ? data.nama_rw : data.nama_rt,
                     alamat: data.alamat,
-                    ketua: type === 'rw' ? data.ketua_rw : data.ketua_rt,
+                    ketua: type === 'rw' ? (data.ketua ? data.ketua.nama_lengkap : '-') : (data.ketua ? data.ketua.nama_lengkap : '-'),
                     no_telpon: data.no_telpon,
                     saldo: data.saldo,
                     status: data.status,
