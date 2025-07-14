@@ -260,18 +260,16 @@
         @if(session('error'))
             <div class="mb-6 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 text-red-800 dark:text-red-200 px-6 py-4 rounded-r-xl shadow-sm"
                  x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 5000)">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <i data-lucide="alert-circle" class="w-5 h-5 mr-3 text-red-500"></i>
-                        <div>
-                            <p class="font-medium">Terjadi Kesalahan!</p>
-                            <p class="text-sm">{{ session('error') }}</p>
-                        </div>
+                <div class="flex items-center">
+                    <i data-lucide="alert-circle" class="w-5 h-5 mr-3 text-red-500"></i>
+                    <div>
+                        <p class="font-medium">Terjadi Kesalahan!</p>
+                        <p class="text-sm">{{ session('error') }}</p>
                     </div>
-                    <button @click="show = false" class="text-red-500 hover:text-red-700 transition-colors">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
                 </div>
+                <button @click="show = false" class="text-red-500 hover:text-red-700 transition-colors">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
             </div>
         @endif
 

@@ -72,6 +72,7 @@ class PendudukController extends Controller
     public function create()
     {
         $kks = Kk::with('rt.rw')->where('status', 'aktif')->get();
+        // Load user roles for display in dropdown
         $users = User::active()->whereDoesntHave('penduduk')->get();
         
         Log::info('Penduduk create form accessed', [
@@ -193,7 +194,8 @@ class PendudukController extends Controller
      */
     public function show(Penduduk $penduduk)
     {
-        $penduduk->load(['kk.rt.rw', 'user', 'kkAsKepala']);
+        // Load all potential leadership relationships
+        $penduduk->load(['kk.rt.rw', 'user', 'kkAsKepala', 'rwKetua', 'rtKetua', 'kepalaDesa']);
         
         Log::info('Penduduk detail viewed', [
             'user_id' => Auth::id(),
@@ -210,11 +212,15 @@ class PendudukController extends Controller
     public function edit(Penduduk $penduduk)
     {
         $kks = Kk::with('rt.rw')->where('status', 'aktif')->get();
+        // Load user roles for display in dropdown
         $users = User::active()
                     ->whereDoesntHave('penduduk')
                     ->orWhere('id', $penduduk->user_id)
                     ->get();
         
+        // Load all potential leadership relationships for the current penduduk
+        $penduduk->load(['rwKetua', 'rtKetua', 'kepalaDesa']);
+
         Log::info('Penduduk edit form accessed', [
             'user_id' => Auth::id(),
             'penduduk_id' => $penduduk->id,

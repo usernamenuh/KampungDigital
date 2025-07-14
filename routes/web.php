@@ -25,7 +25,7 @@ use App\Http\Controllers\KasPaymentController;
 
 // Public routes
 Route::get('/', function () {
-    return view('welcome');
+    return view('landing');
 });
 
 // Authentication Routes
@@ -140,20 +140,31 @@ Route::middleware(['auth', 'user.status'])->group(function () {
         Route::put('/password', [HomeController::class, 'updatePassword'])->name('password.update');
     });
 
-    // Admin specific routes
-    Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/users', [HomeController::class, 'users'])->name('users');
-        Route::get('/users/{user}/edit', [HomeController::class, 'editUser'])->name('users.edit');
-        Route::put('/users/{user}', [HomeController::class, 'updateUser'])->name('users.update');
-        Route::delete('/users/{user}', [HomeController::class, 'deleteUser'])->name('users.delete');
-        
-        Route::get('/settings', [HomeController::class, 'settings'])->name('settings');
-        Route::put('/settings', [HomeController::class, 'updateSettings'])->name('settings.update');
-        
-        Route::get('/reports', [HomeController::class, 'reports'])->name('reports');
-        Route::get('/reports/kas', [HomeController::class, 'kasReports'])->name('reports.kas');
-        Route::get('/reports/payments', [HomeController::class, 'paymentReports'])->name('reports.payments');
-        Route::get('/reports/export', [HomeController::class, 'exportReports'])->name('reports.export');
+   // Admin specific routes (without /admin prefix for some resources)
+    Route::middleware('role:admin')->group(function () {
+        // Desa management for admin
+        Route::resource('desas', DesaController::class); // Moved here to be accessible at /desas
+
+        // User management for admin
+        Route::resource('users', UserController::class); // This was already here, but now explicitly under admin role
+        Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+        Route::patch('users/{user}/change-role', [UserController::class, 'changeRole'])->name('users.change-role');
+
+        // Admin specific dashboard/settings routes (still under admin. name prefix)
+        Route::prefix('admin')->name('admin.')->group(function () {
+            Route::get('/users', [HomeController::class, 'users'])->name('users'); // This might be redundant if UserController::class is used
+            Route::get('/users/{user}/edit', [HomeController::class, 'editUser'])->name('users.edit');
+            Route::put('/users/{user}', [HomeController::class, 'updateUser'])->name('users.update');
+            Route::delete('/users/{user}', [HomeController::class, 'deleteUser'])->name('users.delete');
+            
+            Route::get('/settings', [HomeController::class, 'settings'])->name('settings');
+            Route::put('/settings', [HomeController::class, 'updateSettings'])->name('settings.update');
+            
+            Route::get('/reports', [HomeController::class, 'reports'])->name('reports');
+            Route::get('/reports/kas', [HomeController::class, 'kasReports'])->name('reports.kas');
+            Route::get('/reports/payments', [HomeController::class, 'paymentReports'])->name('reports.payments');
+            Route::get('/reports/export', [HomeController::class, 'exportReports'])->name('reports.export');
+        });
     });
 
     // Existing routes with role-based middleware
@@ -175,23 +186,7 @@ Route::middleware(['auth', 'user.status'])->group(function () {
         Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::patch('users/{user}/change-role', [UserController::class, 'changeRole'])->name('users.change-role');
     });
-
-    // Routes yang bisa diakses semua role
-    Route::get('/laporan', function () { return view('laporan.index'); })->name('laporan.index');
-    Route::get('/agenda', function () { return view('agenda.index'); })->name('agenda.index');
-    Route::get('/media', function () { return view('media.index'); })->name('media.index');
-    Route::get('/dokumen', function () { return view('dokumen.index'); })->name('dokumen.index');
-    Route::get('/pesan', function () { return view('pesan.index'); })->name('pesan.index');
 });
-
-// Public routes
-Route::get('/about', function () {
-    return view('about');
-})->name('about');
-
-Route::get('/contact', function () {
-    return view('contact');
-})->name('contact');
 
 // Public API routes for location data
 Route::prefix('api')->group(function () {
@@ -305,8 +300,3 @@ if (app()->environment('local')) {
         return response()->json($routes->values()->toArray(), 200, [], JSON_PRETTY_PRINT);
     });
 }
-
-// Fallback route
-Route::fallback(function () {
-    return redirect('/dashboard');
-});

@@ -54,15 +54,15 @@
                     <li class="relative">
                         <!-- Kondisi untuk menu berdasarkan role -->
                         <div x-show="hasMenuAccess(item.id)">
-                            <button @click="setActiveItem(item.id)"
-                                    :class="{
-                                        'text-gray-800 dark:text-white font-medium border-l-2': isActiveMenuItem(item),
-                                        'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white': !isActiveMenuItem(item)
-                                    }"
-                                    class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-200 group text-sm border-l-2 border-transparent"
-                                    :style="getMenuItemStyle(item)"
-                                    @mouseenter="applyHoverEffect($event, item)"
-                                    @mouseleave="removeHoverEffect($event, item)">
+                            <a :href="item.route"
+                               :class="{
+                                   'text-gray-800 dark:text-white font-medium border-l-2': isActiveMenuItem(item),
+                                   'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white': !isActiveMenuItem(item)
+                               }"
+                               class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-200 group text-sm border-l-2 border-transparent"
+                               :style="getMenuItemStyle(item)"
+                               @mouseenter="applyHoverEffect($event, item)"
+                               @mouseleave="removeHoverEffect($event, item)">
                             
                                 <div class="flex items-center space-x-2">
                                     <i x-show="$store.app.showIcons" 
@@ -74,7 +74,7 @@
                                 </div>
 
                                 <!-- Badge (removed) -->
-                            </button>
+                            </a>
                         </div>
                     </li>
                 </template>
@@ -114,16 +114,15 @@ function navigationData(appStore) {
         
         // Flattened menu items
         menuItems: [
-            { id: 'dashboard', label: 'Dashboard', icon: 'gauge', route: '/home' },
-            { id: 'penduduk', label: 'Penduduk', icon: 'users', route: '/penduduk' },
-            { id: 'kk', label: 'Kartu Keluarga', icon: 'users', route: '/kk' },
-            { id: 'desa', label: 'Desa', icon: 'building-2', route: '/desas' },
-            { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '/rt-rw' },
-            { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '/kas' },
-            { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '/pengaturan-kas' },
+            { id: 'dashboard', label: 'Dashboard', icon: 'gauge', route: '{{ route('dashboard') }}' },
+            { id: 'penduduk', label: 'Penduduk', icon: 'users', route: '{{ route('penduduk.index') }}' },
+            { id: 'kk', label: 'Kartu Keluarga', icon: 'users', route: '{{ route('kk.index') }}' },
+            { id: 'desa', label: 'Desa', icon: 'building-2', route: '{{ route('admin.desas.index') }}' }, // Updated route
+            { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '{{ route('rt-rw.index') }}' },
+            { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '{{ route('kas.index') }}' },
+            { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '{{ route('pengaturan-kas.index') }}' },
             { id: 'umkm', label: 'UMKM', icon: 'store', route: '/umkm' },
-            { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '/users' },
-            
+            { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '{{ route('users.index') }}' }, // Assuming users.index is correct
             { id: 'wisata', label: 'Wisata', icon: 'camera', route: '/wisata' },
             { id: 'berita', label: 'Berita', icon: 'newspaper', route: '/berita' },
             { id: 'program', label: 'Program', icon: 'calendar', route: '/program' },
@@ -228,19 +227,23 @@ function navigationData(appStore) {
         
         getCurrentRoute() {
             const path = window.location.pathname;
-            if (path === '/home' || path === '/') return 'dashboard';
-            if (path === '/desas' || path.includes('/desas')) return 'desa';
-            if (path === '/rt-rw' || path.includes('/rt-rw')) return 'rt-rw';
-            if (path === '/kk' || path.includes('/kk')) return 'kk';
-            if (path === '/kas' || path.includes('/kas')) return 'kas';
-            if (path === '/pengaturan-kas' || path.includes('/pengaturan-kas')) return 'pengaturan-kas';
-            if (path === '/users' || path.includes('/users')) return 'users';
-            if (path === '/wisata' || path.includes('/wisata')) return 'wisata';
-            if (path === '/berita' || path.includes('/berita')) return 'berita';
-            if (path === '/program' || path.includes('/program')) return 'program';
-            if (path === '/pendidikan' || path.includes('/pendidikan')) return 'pendidikan';
-            if (path === '/pembangunan' || path.includes('/pembangunan')) return 'pembangunan';
-            if (path === '/keuangan' || path.includes('/keuangan')) return 'keuangan';
+            if (path === '{{ route('home') }}' || path === '/') return 'dashboard';
+            // Updated logic for 'desa' to match 'admin.desas.index' route
+            if (path.startsWith('{{ route('admin.desas.index') }}') || path === '/admin/desas') return 'desa';
+            if (path.startsWith('{{ route('penduduk.index') }}') || path === '/penduduk') return 'penduduk';
+            if (path.startsWith('{{ route('kk.index') }}') || path === '/kk') return 'kk';
+            if (path.startsWith('{{ route('rt-rw.index') }}') || path === '/rt-rw') return 'rt-rw';
+            if (path.startsWith('{{ route('kas.index') }}') || path === '/kas') return 'kas';
+            if (path.startsWith('{{ route('pengaturan-kas.index') }}') || path === '/pengaturan-kas') return 'pengaturan-kas';
+            if (path.startsWith('{{ route('users.index') }}') || path === '/users') return 'users'; // Assuming users.index is correct
+            // Add similar logic for other routes if they have sub-paths
+            if (path.startsWith('/umkm')) return 'umkm';
+            if (path.startsWith('/wisata')) return 'wisata';
+            if (path.startsWith('/berita')) return 'berita';
+            if (path.startsWith('/program')) return 'program';
+            if (path.startsWith('/pendidikan')) return 'pendidikan';
+            if (path.startsWith('/pembangunan')) return 'pembangunan';
+            if (path.startsWith('/keuangan')) return 'keuangan';
             return path.substring(1) || 'dashboard';
         },
         
