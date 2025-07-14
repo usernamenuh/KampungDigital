@@ -118,11 +118,12 @@ function navigationData(appStore) {
             { id: 'penduduk', label: 'Penduduk', icon: 'users', route: '/penduduk' },
             { id: 'kk', label: 'Kartu Keluarga', icon: 'users', route: '/kk' },
             { id: 'desa', label: 'Desa', icon: 'building-2', route: '/desas' },
+            { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '/rt-rw' },
             { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '/kas' },
             { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '/pengaturan-kas' },
             { id: 'umkm', label: 'UMKM', icon: 'store', route: '/umkm' },
             { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '/users' },
-            { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '/rt-rw' },
+            
             { id: 'wisata', label: 'Wisata', icon: 'camera', route: '/wisata' },
             { id: 'berita', label: 'Berita', icon: 'newspaper', route: '/berita' },
             { id: 'program', label: 'Program', icon: 'calendar', route: '/program' },
