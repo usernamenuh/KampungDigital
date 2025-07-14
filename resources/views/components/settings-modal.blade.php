@@ -172,46 +172,6 @@
                     </div>
                 </div>
 
-                <!-- Card Customization -->
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Kustomisasi Card</h3>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Gaya Card</label>
-                            <div class="grid grid-cols-2 gap-3">
-                                <button @click="updateCardStyle('default')"
-                                        :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900': cardStyle === 'default' }"
-                                        class="p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
-                                    <div class="w-full h-16 bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-2"></div>
-                                    <p class="text-sm font-medium text-gray-800 dark:text-white">Default</p>
-                                </button>
-                                
-                                <button @click="updateCardStyle('blur')"
-                                        :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900': cardStyle === 'blur' }"
-                                        class="p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
-                                    <div class="w-full h-16 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg shadow-sm mb-2 backdrop-blur-sm opacity-80"></div>
-                                    <p class="text-sm font-medium text-gray-800 dark:text-white">Blur</p>
-                                </button>
-                                
-                                <button @click="updateCardStyle('gradient')"
-                                        :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900': cardStyle === 'gradient' }"
-                                        class="p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
-                                    <div class="w-full h-16 bg-gradient-to-r from-pink-400 to-red-500 rounded-lg shadow-sm mb-2"></div>
-                                    <p class="text-sm font-medium text-gray-800 dark:text-white">Gradient</p>
-                                </button>
-                                
-                                <button @click="updateCardStyle('colored')"
-                                        :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900': cardStyle === 'colored' }"
-                                        class="p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
-                                    <div class="w-full h-16 bg-green-400 rounded-lg shadow-sm mb-2"></div>
-                                    <p class="text-sm font-medium text-gray-800 dark:text-white">Colored</p>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Chart Theme -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Tema Chart</h3>

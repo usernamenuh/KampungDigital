@@ -19,7 +19,8 @@
             '-translate-x-full': $store.app.isMobile && !$store.app.isMobileMenuOpen,
             'w-48': !$store.app.isMobile
          }"
-         class="bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out flex flex-col z-50 md:relative md:translate-x-0 border-r border-gray-200 dark:border-gray-700 min-h-screen">
+         class="bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out flex flex-col z-50 md:relative md:translate-x-0 border-r border-gray-200 dark:border-gray-700 min-h-screen"
+         x-cloak>
          
         <!-- Header -->
         <div class="p-3 border-b border-gray-100 dark:border-gray-700">
@@ -48,51 +49,43 @@
 
         <!-- Navigation -->
         <nav class="flex-1 p-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-            <!-- Categories -->
-            <template x-for="category in filteredCategories" :key="category.name">
-                <!-- Hanya tampilkan kategori jika ada item yang bisa diakses -->
-                <div x-show="category.items.length > 0" class="mb-3">
-                    <!-- Removed category title (h3) as requested -->
-                    
-                    <ul class="space-y-1">
-                        <template x-for="item in category.items" :key="item.id">
-                            <li class="relative">
-                                <!-- Kondisi untuk menu berdasarkan role -->
-                                <div x-show="hasMenuAccess(item.id)">
-                                    <button @click="setActiveItem(item.id)"
-                                            :class="{
-                                                'text-gray-800 dark:text-white font-medium shadow-sm border-l-2': isActiveMenuItem(item),
-                                                'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white border-l-2 border-transparent': !isActiveMenuItem(item)
-                                            }"
-                                            :style="getMenuItemStyle(item)"
-                                            class="w-full flex items-center justify-between px-3 py-2 ml-1 mr-1 rounded-lg text-left transition-all duration-200 group text-sm"
-                                            @mouseenter="applyHoverEffect($event, item)"
-                                            @mouseleave="removeHoverEffect($event, item)">
-                                    
-                                        <div class="flex items-center space-x-2">
-                                            <i x-show="appStore.showIcons" 
-                                               :data-lucide="item.icon" 
-                                               :style="getIconStyle(item)"
-                                               class="w-4 h-4 transition-colors flex-shrink-0"></i>
+            <ul class="space-y-1">
+                <template x-for="item in filteredMenuItems" :key="item.id">
+                    <li class="relative">
+                        <!-- Kondisi untuk menu berdasarkan role -->
+                        <div x-show="hasMenuAccess(item.id)">
+                            <button @click="setActiveItem(item.id)"
+                                    :class="{
+                                        'text-gray-800 dark:text-white font-medium border-l-2': isActiveMenuItem(item),
+                                        'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white': !isActiveMenuItem(item)
+                                    }"
+                                    class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-200 group text-sm border-l-2 border-transparent"
+                                    :style="getMenuItemStyle(item)"
+                                    @mouseenter="applyHoverEffect($event, item)"
+                                    @mouseleave="removeHoverEffect($event, item)">
+                            
+                                <div class="flex items-center space-x-2">
+                                    <i x-show="$store.app.showIcons" 
+                                       :data-lucide="item.icon" 
+                                       :style="getIconStyle(item)"
+                                       class="w-4 h-4 transition-colors flex-shrink-0"></i>
 
-                                            <span class="font-medium text-sm truncate" x-text="item.label"></span>
-                                        </div>
-
-                                        <!-- Badge (removed) -->
-                                    </button>
+                                    <span class="font-medium text-sm truncate" x-text="item.label"></span>
                                 </div>
-                            </li>
-                        </template>
-                    </ul>
-                </div>
-            </template>
+
+                                <!-- Badge (removed) -->
+                            </button>
+                        </div>
+                    </li>
+                </template>
+            </ul>
         </nav>
 
         <!-- Settings -->
         <div class="p-2 border-t border-gray-100 dark:border-gray-700 mt-auto">
             <button @click="openSettings()"
                     :class="{
-                        'text-gray-800 dark:text-white font-medium shadow-sm border-l-2': activeItem === 'settings',
+                        'text-gray-800 dark:text-white font-medium border-l-2': activeItem === 'settings',
                         'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white border-l-2 border-transparent': activeItem !== 'settings'
                     }"
                     :style="getSettingsStyle()"
@@ -100,7 +93,7 @@
                     @mouseenter="applyHoverEffect($event, { id: 'settings' })"
                     @mouseleave="removeHoverEffect($event, { id: 'settings' })">
                 
-                <i x-show="appStore.showIcons"
+                <i x-show="$store.app.showIcons"
                    data-lucide="settings" 
                    :style="getSettingsIconStyle()"
                    class="w-4 h-4 transition-colors flex-shrink-0"></i>
@@ -119,55 +112,26 @@ function navigationData(appStore) {
         activeItem: 'dashboard',
         userRole: '{{ Auth::user()->role ?? "guest" }}', // Ambil role user dari Laravel
         
-        menuCategories: [
-            {
-                name: 'Dashboard',
-                items: [
-                    { id: 'dashboard', label: 'Dashboard', icon: 'gauge', route: '/home' }
-                ]
-            },
-            {
-                name: 'Data Master',
-                items: [
-                    { id: 'penduduk', label: 'Penduduk', icon: 'users', route: '/penduduk' },
-                    { id: 'kk', label: 'Kartu Keluarga', icon: 'users', route: '/kk' },
-                    { id: 'desa', label: 'Desa', icon: 'building-2', route: '/desas' }
-                ]
-            },
-            {
-                name: 'Keuangan',
-                items: [
-                    { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '/kas' },
-                    { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '/pengaturan-kas' },
-                    { id: 'umkm', label: 'UMKM', icon: 'store', route: '/umkm' }
-                ]
-            },
-            {
-                name: 'Sistem',
-                items: [
-                    { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '/users' },
-                    { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '/rt-rw' }
-                ]
-            },
-            {
-                name: 'Konten',
-                items: [
-                    { id: 'wisata', label: 'Wisata', icon: 'camera', route: '/wisata' },
-                    { id: 'berita', label: 'Berita', icon: 'newspaper', route: '/berita' },
-                    { id: 'program', label: 'Program', icon: 'calendar', route: '/program' },
-                    { id: 'pendidikan', label: 'Pendidikan', icon: 'graduation-cap', route: '/pendidikan' }
-                ]
-            },
-            {
-                name: 'Administrasi',
-                items: [
-                    { id: 'pembangunan', label: 'Pembangunan', icon: 'hammer', route: '/pembangunan' },
-                    { id: 'keuangan', label: 'Keuangan', icon: 'banknote', route: '/keuangan' }
-                ]
-            }
+        // Flattened menu items
+        menuItems: [
+            { id: 'dashboard', label: 'Dashboard', icon: 'gauge', route: '/home' },
+            { id: 'penduduk', label: 'Penduduk', icon: 'users', route: '/penduduk' },
+            { id: 'kk', label: 'Kartu Keluarga', icon: 'users', route: '/kk' },
+            { id: 'desa', label: 'Desa', icon: 'building-2', route: '/desas' },
+            { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '/kas' },
+            { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '/pengaturan-kas' },
+            { id: 'umkm', label: 'UMKM', icon: 'store', route: '/umkm' },
+            { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '/users' },
+            { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '/rt-rw' },
+            { id: 'wisata', label: 'Wisata', icon: 'camera', route: '/wisata' },
+            { id: 'berita', label: 'Berita', icon: 'newspaper', route: '/berita' },
+            { id: 'program', label: 'Program', icon: 'calendar', route: '/program' },
+            { id: 'pendidikan', label: 'Pendidikan', icon: 'graduation-cap', route: '/pendidikan' },
+            { id: 'pembangunan', label: 'Pembangunan', icon: 'hammer', route: '/pembangunan' },
+            { id: 'keuangan', label: 'Keuangan', icon: 'banknote', route: '/keuangan' }
         ],
         
-        filteredCategories: [],
+        filteredMenuItems: [], // Will hold the filtered and role-accessed items
         
         // Fungsi untuk mengecek akses menu berdasarkan role
         hasMenuAccess(menuId) {
@@ -220,50 +184,15 @@ function navigationData(appStore) {
             this.filterMenuItems(); // Filter menu items berdasarkan role
             this.activeItem = this.getCurrentRoute();
             
-            // Listen for color changes from settings modal (dispatched from app store)
-            window.addEventListener('activeColorChanged', () => {
-                this.updateStyles();
-            });
-            
-            window.addEventListener('hoverColorChanged', () => {
-                this.updateStyles();
-            });
-            
-            window.addEventListener('showIconsChanged', () => {
-                this.reinitializeIcons();
-            });
-            
-            window.addEventListener('showIconColorsChanged', () => {
-                this.updateStyles();
-            });
-            
-            window.addEventListener('iconColorChanged', () => {
-                this.updateStyles();
-            });
-
-            // Handle window resize (handled by app store now, but good to have a listener here too if needed for specific navigation logic)
-            window.addEventListener('resize', () => {
-                // This component's responsiveness is primarily driven by $store.app.isMobile
-                // No direct action needed here unless specific navigation layout changes based on resize
-            });
-
             // Initialize icons and styles
             this.reinitializeIcons();
-            this.updateStyles();
         },
-
-        updateStyles() {
-            // Force Alpine to re-evaluate styles by touching reactive properties
-            this.$nextTick(() => {
-                // No direct properties to update here, styles are bound to appStore properties
-                // The reactivity comes from the :style bindings directly using appStore.activeColor etc.
-            });
-        },
-
+        
         getMenuItemStyle(item) {
             if (this.isActiveMenuItem(item)) {
                 return `background-color: ${this.appStore.activeColor}15; border-left-color: ${this.appStore.activeColor};`;
             }
+            // Untuk item tidak aktif, border-left-color akan tetap transparan dari kelas dasar
             return '';
         },
 
@@ -315,28 +244,12 @@ function navigationData(appStore) {
         },
         
         filterMenuItems() {
-            if (!this.searchQuery.trim()) {
-                // Filter kategori dan item berdasarkan akses role
-                this.filteredCategories = this.menuCategories.map(category => ({
-                    ...category,
-                    items: category.items.filter(item => this.hasMenuAccess(item.id))
-                })).filter(category => category.items.length > 0); // Hanya tampilkan kategori yang memiliki item
-                this.$nextTick(() => { // Reinitialize icons after filtering
-                    this.reinitializeIcons();
-                });
-                return;
-            }
-            
-            const query = this.searchQuery.toLowerCase();
-            this.filteredCategories = this.menuCategories.map(category => ({
-                ...category,
-                items: category.items.filter(item => {
-                    // Filter berdasarkan pencarian dan role
-                    const matchesSearch = item.label.toLowerCase().includes(query);
-                    const hasAccess = this.hasMenuAccess(item.id);
-                    return matchesSearch && hasAccess;
-                })
-            })).filter(category => category.items.length > 0); // Hanya tampilkan kategori yang memiliki item
+            const query = this.searchQuery.toLowerCase().trim();
+            this.filteredMenuItems = this.menuItems.filter(item => {
+                const matchesSearch = item.label.toLowerCase().includes(query);
+                const hasAccess = this.hasMenuAccess(item.id);
+                return matchesSearch && hasAccess;
+            });
             this.$nextTick(() => { // Reinitialize icons after filtering
                 this.reinitializeIcons();
             });
@@ -351,11 +264,7 @@ function navigationData(appStore) {
         },
         
         findMenuItem(itemId) {
-            for (const category of this.menuCategories) {
-                const item = category.items.find(item => item.id === itemId);
-                if (item) return item;
-            }
-            return null;
+            return this.menuItems.find(item => item.id === itemId);
         },
         
         isActiveMenuItem(item) {
