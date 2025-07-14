@@ -52,8 +52,7 @@
             <template x-for="category in filteredCategories" :key="category.name">
                 <!-- Hanya tampilkan kategori jika ada item yang bisa diakses -->
                 <div x-show="category.items.length > 0" class="mb-3">
-                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-2" 
-                        x-text="category.name"></h3>
+                    <!-- Removed category title (h3) as requested -->
                     
                     <ul class="space-y-1">
                         <template x-for="item in category.items" :key="item.id">
@@ -76,18 +75,10 @@
                                                :style="getIconStyle(item)"
                                                class="w-4 h-4 transition-colors flex-shrink-0"></i>
 
-                                            <span class="font-medium text-xs truncate" x-text="item.label"></span>
+                                            <span class="font-medium text-sm truncate" x-text="item.label"></span>
                                         </div>
 
-                                        <!-- Badge -->
-                                        <span x-show="item.count" 
-                                              x-text="item.count"
-                                              :class="{
-                                                  'bg-white text-purple-600': isActiveMenuItem(item),
-                                                  'bg-red-500 text-white': !isActiveMenuItem(item)
-                                              }"
-                                              class="text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center flex-shrink-0">
-                                        </span>
+                                        <!-- Badge (removed) -->
                                     </button>
                                 </div>
                             </li>
@@ -114,7 +105,7 @@
                    :style="getSettingsIconStyle()"
                    class="w-4 h-4 transition-colors flex-shrink-0"></i>
 
-                <span class="font-medium text-xs">Pengaturan</span>
+                <span class="font-medium text-sm">Pengaturan</span>
             </button>
         </div>
     </div>
@@ -138,7 +129,7 @@ function navigationData(appStore) {
             {
                 name: 'Data Master',
                 items: [
-                    { id: 'penduduk', label: 'Penduduk', icon: 'users', count: 12, route: '/penduduk' },
+                    { id: 'penduduk', label: 'Penduduk', icon: 'users', route: '/penduduk' },
                     { id: 'kk', label: 'Kartu Keluarga', icon: 'users', route: '/kk' },
                     { id: 'desa', label: 'Desa', icon: 'building-2', route: '/desas' }
                 ]
@@ -148,7 +139,7 @@ function navigationData(appStore) {
                 items: [
                     { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '/kas' },
                     { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '/pengaturan-kas' },
-                    { id: 'umkm', label: 'UMKM', icon: 'store', count: 3, route: '/umkm' }
+                    { id: 'umkm', label: 'UMKM', icon: 'store', route: '/umkm' }
                 ]
             },
             {
@@ -314,7 +305,12 @@ function navigationData(appStore) {
             if (path === '/kas' || path.includes('/kas')) return 'kas';
             if (path === '/pengaturan-kas' || path.includes('/pengaturan-kas')) return 'pengaturan-kas';
             if (path === '/users' || path.includes('/users')) return 'users';
+            if (path === '/wisata' || path.includes('/wisata')) return 'wisata';
+            if (path === '/berita' || path.includes('/berita')) return 'berita';
+            if (path === '/program' || path.includes('/program')) return 'program';
             if (path === '/pendidikan' || path.includes('/pendidikan')) return 'pendidikan';
+            if (path === '/pembangunan' || path.includes('/pembangunan')) return 'pembangunan';
+            if (path === '/keuangan' || path.includes('/keuangan')) return 'keuangan';
             return path.substring(1) || 'dashboard';
         },
         
@@ -325,6 +321,9 @@ function navigationData(appStore) {
                     ...category,
                     items: category.items.filter(item => this.hasMenuAccess(item.id))
                 })).filter(category => category.items.length > 0); // Hanya tampilkan kategori yang memiliki item
+                this.$nextTick(() => { // Reinitialize icons after filtering
+                    this.reinitializeIcons();
+                });
                 return;
             }
             
@@ -338,6 +337,9 @@ function navigationData(appStore) {
                     return matchesSearch && hasAccess;
                 })
             })).filter(category => category.items.length > 0); // Hanya tampilkan kategori yang memiliki item
+            this.$nextTick(() => { // Reinitialize icons after filtering
+                this.reinitializeIcons();
+            });
         },
         
         setActiveItem(itemId) {

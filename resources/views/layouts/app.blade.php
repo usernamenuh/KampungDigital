@@ -192,11 +192,13 @@
         
         // Listen for color changes from navigation
         window.addEventListener('activeColorChanged', (e) => {
-            activeColor = e.detail;
+            $store.app.activeColor = e.detail; // Correctly update store property
+            document.documentElement.style.setProperty('--color-primary', e.detail); // Update CSS variable
         });
         
         window.addEventListener('hoverColorChanged', (e) => {
-            hoverColor = e.detail;
+            $store.app.hoverColor = e.detail; // Correctly update store property
+            document.documentElement.style.setProperty('--color-hover', e.detail); // Update CSS variable
         });
     ">
         @include('components.settings-modal')
