@@ -11,6 +11,9 @@ class Kas extends Model
     use HasFactory;
 
     protected $table = 'kas';
+    protected $primaryKey = 'kas_id'; // Fixed: set correct primary key
+    public $incrementing = true;
+    public $timestamps = true;
 
     protected $fillable = [
         'penduduk_id',
@@ -26,34 +29,46 @@ class Kas extends Model
         'bukti_bayar_file',
         'bukti_bayar_notes',
         'bukti_bayar_uploaded_at',
+        'jumlah_dibayar',
+        'catatan_pembayaran',
         'confirmed_by',
         'confirmed_at',
         'confirmation_notes',
+        'konfirmasi_oleh_user_id',
+        'tanggal_konfirmasi',
+        'catatan_konfirmasi',
     ];
 
     protected $casts = [
         'tanggal_jatuh_tempo' => 'date',
-        'tanggal_bayar' => 'date',
+        'tanggal_bayar' => 'datetime',
         'bukti_bayar_uploaded_at' => 'datetime',
         'confirmed_at' => 'datetime',
+        'tanggal_konfirmasi' => 'datetime',
         'jumlah' => 'decimal:2',
         'denda' => 'decimal:2',
+        'jumlah_dibayar' => 'decimal:2',
     ];
 
-    // Relationships
+    // Relationships - Fixed to use correct foreign keys
     public function penduduk()
     {
-        return $this->belongsTo(Penduduk::class);
+        return $this->belongsTo(Penduduk::class, 'penduduk_id', 'penduduk_id');
     }
 
     public function rt()
     {
-        return $this->belongsTo(Rt::class);
+        return $this->belongsTo(Rt::class, 'rt_id', 'rt_id');
     }
 
     public function confirmedBy()
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function konfirmasiOleh()
+    {
+        return $this->belongsTo(User::class, 'konfirmasi_oleh_user_id', 'id');
     }
 
     // Accessors
@@ -63,10 +78,11 @@ class Kas extends Model
             'belum_bayar' => 'Belum Bayar',
             'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
             'lunas' => 'Lunas',
-            'terlambat' => 'Terlambat'
+            'terlambat' => 'Terlambat',
+            'ditolak' => 'Ditolak'
         ];
 
-        return $statusTexts[$this->status] ?? $this->status;
+        return $statusTexts[$this->status] ?? ucfirst(str_replace('_', ' ', $this->status));
     }
 
     public function getIsOverdueAttribute()
@@ -93,7 +109,7 @@ class Kas extends Model
 
     public function getTanggalBayarFormattedAttribute()
     {
-        return $this->tanggal_bayar ? $this->tanggal_bayar->format('d M Y') : '-';
+        return $this->tanggal_bayar ? $this->tanggal_bayar->format('d M Y H:i') : '-';
     }
 
     public function getMetodeBayarFormattedAttribute()
@@ -146,7 +162,6 @@ class Kas extends Model
             $pengaturan = PengaturanKas::first();
             $persentaseDenda = $pengaturan ? $pengaturan->persentase_denda : 2.00;
             $this->denda = ($this->jumlah * $persentaseDenda) / 100;
-            $this->status = 'terlambat';
             $this->save();
         }
     }

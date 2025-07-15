@@ -37,7 +37,7 @@
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-500">RT/RW</label>
-                            <p class="text-sm text-gray-900">RT {{ $kk->rt->nama_rt }} / RW {{ $kk->rt->rw->nama_rw }}</p>
+                            <p class="text-sm text-gray-900">RT {{ $kk->rt->no_rt }} / RW {{ $kk->rt->rw->no_rw }}</p>
                         </div>
                         
                         <div>

@@ -93,6 +93,12 @@
                                 Terlambat
                             </span>
                             @break
+                        @case('menunggu_konfirmasi')
+                            <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800">
+                                <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                Menunggu Konfirmasi
+                            </span>
+                            @break
                     @endswitch
                     <a href="{{ route('kas.index') }}" 
                        class="inline-flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 shadow-sm hover:shadow-md">
@@ -102,7 +108,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Main Content -->
@@ -200,6 +205,29 @@
                         <p class="text-gray-600 dark:text-gray-400">{{ $kas->keterangan }}</p>
                     </div>
                     @endif
+
+                    @if($kas->bukti_bayar_file)
+                    <div class="mt-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+                            <i data-lucide="image" class="w-4 h-4 mr-2"></i>
+                            Bukti Pembayaran
+                        </h4>
+                        <a href="{{ Storage::url($kas->bukti_bayar_file) }}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                            Lihat Bukti Pembayaran
+                            <i data-lucide="external-link" class="w-4 h-4 ml-1"></i>
+                        </a>
+                    </div>
+                    @endif
+
+                    @if($kas->confirmation_notes)
+                    <div class="mt-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+                            <i data-lucide="clipboard-check" class="w-4 h-4 mr-2"></i>
+                            Catatan Konfirmasi
+                        </h4>
+                        <p class="text-gray-600 dark:text-gray-400">{{ $kas->confirmation_notes }}</p>
+                    </div>
+                    @endif
                 </div>
                 
                 <!-- Action Footer -->
@@ -208,6 +236,9 @@
                         <div class="text-sm text-gray-600 dark:text-gray-400">
                             <i data-lucide="clock" class="w-4 h-4 inline mr-1"></i>
                             Dibuat: {{ $kas->created_at->format('d/m/Y H:i') }}
+                            @if($kas->createdBy)
+                                oleh {{ $kas->createdBy->name }} ({{ $kas->createdBy->role }})
+                            @endif
                         </div>
                         <div class="flex items-center space-x-3">
                             @if(in_array(Auth::user()->role, ['admin', 'kades', 'rw', 'rt']))
@@ -266,6 +297,18 @@
                             </div>
                         </div>
                     </div>
+                @elseif($kas->status === 'menunggu_konfirmasi')
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i data-lucide="hourglass" class="w-6 h-6 text-blue-600 mr-3"></i>
+                            <div>
+                                <h4 class="font-semibold text-blue-800 dark:text-blue-200">Menunggu Konfirmasi</h4>
+                                <p class="text-sm text-blue-600 dark:text-blue-300 mt-1">
+                                    Menunggu verifikasi pembayaran.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 @else
                     <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
                         <div class="flex items-center">
@@ -282,7 +325,6 @@
             </div>
 
             <!-- Payment History -->
-            @if($kas->status === 'lunas')
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6">
                 <div class="flex items-center space-x-3 mb-4">
                     <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
@@ -298,29 +340,70 @@
                             <h4 class="font-semibold text-gray-900 dark:text-white text-sm">Kas Dibuat</h4>
                             <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                 {{ $kas->created_at->format('d/m/Y H:i') }}
+                                @if($kas->createdBy)
+                                    oleh {{ $kas->createdBy->name }}
+                                @endif
                             </p>
                         </div>
                     </div>
                     
+                    @if($kas->status === 'menunggu_konfirmasi')
+                    <div class="timeline-item">
+                        <div class="timeline-dot bg-blue-500"></div>
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                            <h4 class="font-semibold text-blue-800 dark:text-blue-200 text-sm">Menunggu Konfirmasi</h4>
+                            <p class="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                                Bukti pembayaran diunggah pada {{ $kas->tanggal_bayar->format('d/m/Y H:i') }}
+                            </p>
+                            @if($kas->metode_bayar)
+                                <p class="text-xs text-blue-600 dark:text-blue-300">
+                                    Via {{ ucfirst($kas->metode_bayar) }}
+                                </p>
+                            @endif
+                            @if($kas->bukti_bayar_file)
+                                <a href="{{ Storage::url($kas->bukti_bayar_file) }}" target="_blank" class="text-blue-600 hover:underline text-xs mt-1 inline-flex items-center">
+                                    Lihat Bukti
+                                    <i data-lucide="external-link" class="w-3 h-3 ml-1"></i>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
+                    @if($kas->status === 'lunas')
                     <div class="timeline-item">
                         <div class="timeline-dot bg-green-500"></div>
                         <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
                             <h4 class="font-semibold text-green-800 dark:text-green-200 text-sm">Pembayaran Lunas</h4>
                             <p class="text-xs text-green-600 dark:text-green-300 mt-1">
                                 {{ $kas->tanggal_bayar->format('d/m/Y H:i') }}
+                                @if($kas->confirmedBy)
+                                    oleh {{ $kas->confirmedBy->name }}
+                                @endif
                             </p>
                             @if($kas->metode_bayar)
                                 <p class="text-xs text-green-600 dark:text-green-300">
                                     Via {{ ucfirst($kas->metode_bayar) }}
                                 </p>
                             @endif
+                            @if($kas->bukti_bayar_file)
+                                <a href="{{ Storage::url($kas->bukti_bayar_file) }}" target="_blank" class="text-green-600 hover:underline text-xs mt-1 inline-flex items-center">
+                                    Lihat Bukti
+                                    <i data-lucide="external-link" class="w-3 h-3 ml-1"></i>
+                                </a>
+                            @endif
+                            @if($kas->confirmation_notes)
+                                <p class="text-xs text-green-600 dark:text-green-300 mt-1">
+                                    Catatan: {{ $kas->confirmation_notes }}
+                                </p>
+                            @endif
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
-            @endif
+            </div>
         </div>
-    </div>
 
     <!-- Payment Confirmation Modal -->
     @if(in_array(Auth::user()->role, ['admin', 'kades', 'rw', 'rt']) && $kas->status !== 'lunas')
@@ -354,7 +437,7 @@
 
                 <form action="{{ route('kas.bayar', $kas) }}" method="POST">
                     @csrf
-                    @method('PATCH')
+                    @method('POST') {{-- Changed to POST as per route definition --}}
                     <div class="space-y-4">
                         <div>
                             <label for="metode_pembayaran" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">

@@ -117,7 +117,7 @@ function navigationData(appStore) {
             { id: 'dashboard', label: 'Dashboard', icon: 'gauge', route: '{{ route('dashboard') }}' },
             { id: 'penduduk', label: 'Penduduk', icon: 'users', route: '{{ route('penduduk.index') }}' },
             { id: 'kk', label: 'Kartu Keluarga', icon: 'users', route: '{{ route('kk.index') }}' },
-            { id: 'desa', label: 'Desa', icon: 'building-2', route: '{{ route('admin.desas.index') }}' }, // Updated route
+            { id: 'desa', label: 'Desa', icon: 'building-2', route: '{{ route('desas.index') }}' }, // Updated route
             { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '{{ route('rt-rw.index') }}' },
             { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '{{ route('kas.index') }}' },
             { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '{{ route('pengaturan-kas.index') }}' },
@@ -229,7 +229,7 @@ function navigationData(appStore) {
             const path = window.location.pathname;
             if (path === '{{ route('home') }}' || path === '/') return 'dashboard';
             // Updated logic for 'desa' to match 'admin.desas.index' route
-            if (path.startsWith('{{ route('admin.desas.index') }}') || path === '/admin/desas') return 'desa';
+            if (path.startsWith('{{ route('desas.index') }}') || path === '/desas') return 'desa';
             if (path.startsWith('{{ route('penduduk.index') }}') || path === '/penduduk') return 'penduduk';
             if (path.startsWith('{{ route('kk.index') }}') || path === '/kk') return 'kk';
             if (path.startsWith('{{ route('rt-rw.index') }}') || path === '/rt-rw') return 'rt-rw';

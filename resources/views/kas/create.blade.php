@@ -143,7 +143,7 @@
                                                 class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-blue-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200" 
                                                 required>
                                             <option value="">Pilih RT</option>
-                                            @foreach($rtList as $rt)
+                                            @foreach($rtList as $rt) {{-- Changed $rts to $rtList --}}
                                                 <option value="{{ $rt->id }}" {{ old('rt_id') == $rt->id ? 'selected' : '' }}>
                                                     RT {{ $rt->no_rt }} / RW {{ $rt->rw->no_rw }}
                                                 </option>
@@ -163,7 +163,7 @@
                                             </div>
                                             <input type="number" name="jumlah" id="jumlah" 
                                                    class="w-full pl-10 pr-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-blue-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200"
-                                                   value="{{ old('jumlah', 10000) }}" min="1000" step="1000" required>
+                                                   value="{{ old('jumlah', $pengaturanKas->jumlah_kas_mingguan ?? 10000) }}" min="1000" step="1000" required>
                                         </div>
                                         <small class="text-gray-500 dark:text-gray-400 mt-1 block">Minimal Rp 1.000</small>
                                     </div>
@@ -198,7 +198,7 @@
                                         </label>
                                         <input type="date" name="tanggal_jatuh_tempo" id="tanggal_jatuh_tempo" 
                                                class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-blue-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200"
-                                               value="{{ old('tanggal_jatuh_tempo', now()->addDays(7)->format('Y-m-d')) }}" 
+                                               value="{{ old('tanggal_jatuh_tempo', now()->addDays($pengaturanKas->batas_hari_pembayaran ?? 7)->format('Y-m-d')) }}" 
                                                min="{{ now()->addDay()->format('Y-m-d') }}" required>
                                         <small class="text-gray-500 dark:text-gray-400 mt-1 block">Minimal besok</small>
                                     </div>

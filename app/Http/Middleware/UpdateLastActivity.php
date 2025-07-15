@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class UpdateLastActivity
@@ -26,7 +27,7 @@ class UpdateLastActivity
                     ]);
             } catch (\Exception $e) {
                 // Log error tapi jangan break request
-                \Log::warning('Gagal update last activity', [
+                Log::warning('Gagal update last activity', [
                     'user_id' => Auth::id(),
                     'error' => $e->getMessage()
                 ]);
