@@ -30,6 +30,7 @@ return new class extends Migration
             // Satu RT hanya boleh punya satu payment info aktif
             $table->unique(['rt_id', 'is_active']);
         });
+        
     }
 
     /**

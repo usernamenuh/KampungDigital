@@ -11,30 +11,19 @@ use App\Models\Notifikasi;
 class NotifikasiApiController extends Controller
 {
     /**
-     * Get all notifications for authenticated user
+     * Get all notifications for the authenticated user.
      */
     public function index(Request $request)
     {
         try {
-            $user = Auth::user();
-            $notifications = Notifikasi::where('user_id', $user->id)
-                                     ->orderBy('created_at', 'desc')
-                                     ->paginate($request->get('limit', 10));
+            $notifications = Auth::user()->notifikasis()
+                                ->orderBy('created_at', 'desc')
+                                ->paginate($request->get('limit', 10));
 
             return response()->json([
                 'success' => true,
-                'data' => $notifications->items(),
-                'pagination' => [
-                    'total' => $notifications->total(),
-                    'per_page' => $notifications->perPage(),
-                    'current_page' => $notifications->currentPage(),
-                    'last_page' => $notifications->lastPage(),
-                    'from' => $notifications->firstItem(),
-                    'to' => $notifications->lastItem(),
-                    'has_more' => $notifications->hasMorePages(),
-                ]
+                'data' => $notifications
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error getting notifications', [
                 'user_id' => Auth::id(),
@@ -42,30 +31,26 @@ class NotifikasiApiController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat notifikasi: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Gagal memuat notifikasi.'
             ], 500);
         }
     }
 
     /**
-     * Get unread notifications
+     * Get unread notifications for the authenticated user.
      */
     public function getUnread(Request $request)
     {
         try {
-            $user = Auth::user();
-            $unreadNotifications = Notifikasi::where('user_id', $user->id)
-                                           ->where('dibaca', false)
-                                           ->orderBy('created_at', 'desc')
-                                           ->limit($request->get('limit', 10))
-                                           ->get();
+            $notifications = Auth::user()->notifikasis()
+                                ->where('is_read', false)
+                                ->orderBy('created_at', 'desc')
+                                ->get();
 
             return response()->json([
                 'success' => true,
-                'data' => $unreadNotifications
+                'data' => $notifications
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error getting unread notifications', [
                 'user_id' => Auth::id(),
@@ -73,28 +58,23 @@ class NotifikasiApiController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat notifikasi belum dibaca: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Gagal memuat notifikasi belum dibaca.'
             ], 500);
         }
     }
 
     /**
-     * Get unread notifications count
+     * Get unread notifications count for the authenticated user.
      */
-    public function getUnreadCount(Request $request)
+    public function getUnreadCount()
     {
         try {
-            $user = Auth::user();
-            $unreadCount = Notifikasi::where('user_id', $user->id)
-                                   ->where('dibaca', false)
-                                   ->count();
+            $count = Auth::user()->notifikasis()->where('is_read', false)->count();
 
             return response()->json([
                 'success' => true,
-                'count' => $unreadCount
+                'count' => $count
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error getting unread notifications count', [
                 'user_id' => Auth::id(),
@@ -102,29 +82,26 @@ class NotifikasiApiController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat jumlah notifikasi belum dibaca: ' . $e->getMessage(),
-                'count' => 0
+                'message' => 'Gagal memuat jumlah notifikasi belum dibaca.'
             ], 500);
         }
     }
 
     /**
-     * Get recent notifications
+     * Get recent notifications for the authenticated user.
      */
     public function getRecent(Request $request)
     {
         try {
-            $user = Auth::user();
-            $recentNotifications = Notifikasi::where('user_id', $user->id)
-                                           ->orderBy('created_at', 'desc')
-                                           ->limit($request->get('limit', 5))
-                                           ->get();
+            $notifications = Auth::user()->notifikasis()
+                                ->orderBy('created_at', 'desc')
+                                ->limit($request->get('limit', 5))
+                                ->get();
 
             return response()->json([
                 'success' => true,
-                'data' => $recentNotifications
+                'data' => $notifications
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error getting recent notifications', [
                 'user_id' => Auth::id(),
@@ -132,16 +109,15 @@ class NotifikasiApiController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat notifikasi terbaru: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Gagal memuat notifikasi terbaru.'
             ], 500);
         }
     }
 
     /**
-     * Mark notification as read
+     * Mark a specific notification as read.
      */
-    public function markAsRead(Request $request, Notifikasi $notification)
+    public function markAsRead(Notifikasi $notification)
     {
         try {
             if ($notification->user_id !== Auth::id()) {
@@ -151,14 +127,12 @@ class NotifikasiApiController extends Controller
                 ], 403);
             }
 
-            $notification->update(['dibaca' => true]);
+            $notification->update(['is_read' => true]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Notifikasi berhasil ditandai sebagai dibaca.',
-                'notification' => $notification
+                'message' => 'Notifikasi berhasil ditandai sudah dibaca.'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error marking notification as read', [
                 'notification_id' => $notification->notifikasi_id,
@@ -167,25 +141,23 @@ class NotifikasiApiController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menandai notifikasi sebagai dibaca: ' . $e->getMessage()
+                'message' => 'Gagal menandai notifikasi sudah dibaca.'
             ], 500);
         }
     }
 
     /**
-     * Mark all notifications as read
+     * Mark all notifications as read for the authenticated user.
      */
-    public function markAllAsRead(Request $request)
+    public function markAllAsRead()
     {
         try {
-            $user = Auth::user();
-            Notifikasi::where('user_id', $user->id)->update(['dibaca' => true]);
+            Auth::user()->notifikasis()->update(['is_read' => true]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Semua notifikasi berhasil ditandai sebagai dibaca.'
+                'message' => 'Semua notifikasi berhasil ditandai sudah dibaca.'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error marking all notifications as read', [
                 'user_id' => Auth::id(),
@@ -193,15 +165,15 @@ class NotifikasiApiController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menandai semua notifikasi sebagai dibaca: ' . $e->getMessage()
+                'message' => 'Gagal menandai semua notifikasi sudah dibaca.'
             ], 500);
         }
     }
 
     /**
-     * Delete notification
+     * Delete a specific notification.
      */
-    public function destroy(Request $request, Notifikasi $notification)
+    public function destroy(Notifikasi $notification)
     {
         try {
             if ($notification->user_id !== Auth::id()) {
@@ -217,7 +189,6 @@ class NotifikasiApiController extends Controller
                 'success' => true,
                 'message' => 'Notifikasi berhasil dihapus.'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error deleting notification', [
                 'notification_id' => $notification->notifikasi_id,
@@ -226,25 +197,23 @@ class NotifikasiApiController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus notifikasi: ' . $e->getMessage()
+                'message' => 'Gagal menghapus notifikasi.'
             ], 500);
         }
     }
 
     /**
-     * Delete all notifications
+     * Delete all notifications for the authenticated user.
      */
-    public function destroyAll(Request $request)
+    public function destroyAll()
     {
         try {
-            $user = Auth::user();
-            Notifikasi::where('user_id', $user->id)->delete();
+            Auth::user()->notifikasis()->delete();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Semua notifikasi berhasil dihapus.'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error deleting all notifications', [
                 'user_id' => Auth::id(),
@@ -252,7 +221,7 @@ class NotifikasiApiController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus semua notifikasi: ' . $e->getMessage()
+                'message' => 'Gagal menghapus semua notifikasi.'
             ], 500);
         }
     }

@@ -73,8 +73,9 @@ Route::middleware(['auth', 'user.status'])->group(function () {
     Route::prefix('kas')->name('kas.')->group(function () {
         // Masyarakat specific routes
         Route::middleware('role:masyarakat')->group(function () {
-            Route::get('/kas/payment-form', [KasPaymentController::class, 'showPaymentForm'])->name('payment.form');
-            Route::post('/kas/submit-payment', [KasPaymentController::class, 'submitPayment'])->name('payment.submit');
+            // Corrected routes to accept {kas} parameter for route model binding
+            Route::get('/{kas}/payment-form', [KasPaymentController::class, 'showPaymentForm'])->name('payment.form');
+            Route::post('/{kas}/submit-payment', [KasPaymentController::class, 'submitPayment'])->name('payment.submit');
             Route::get('/{kas}/payment-success', [KasPaymentController::class, 'paymentSuccess'])->name('payment.success');
         });
         
@@ -92,7 +93,7 @@ Route::middleware(['auth', 'user.status'])->group(function () {
     // Payment Management Routes
     Route::prefix('payments')->name('payments.')->middleware('role:rt,rw,kades,admin')->group(function () {
         Route::get('/list', [KasPaymentController::class, 'paymentsList'])->name('list');
-        Route::post('/{kas}/confirm', [PaymentApiController::class, 'confirmPayment'])->name('confirm');
+        Route::post('/{kas}/confirm', [KasPaymentController::class, 'confirmPayment'])->name('confirm'); // Changed to KasPaymentController
         Route::get('/{kas}/proof', [KasPaymentController::class, 'showProof'])->name('proof');
         Route::get('/{kas}/download-proof', [KasPaymentController::class, 'downloadProof'])->name('download.proof');
     });
@@ -167,6 +168,7 @@ Route::middleware(['auth', 'user.status'])->group(function () {
         Route::post('/clear-cache', [DashboardApiController::class, 'clearCache']);
         Route::get('/system-health', [DashboardApiController::class, 'getSystemHealth']);
         Route::post('/update-activity', [DashboardApiController::class, 'updateActivity']);
+        Route::get('/payment-alerts', [DashboardApiController::class, 'getPaymentAlerts']); // New route for payment alerts
     });
 
     // API routes for Kas - Fixed for masyarakat dashboard
@@ -197,7 +199,7 @@ Route::middleware(['auth', 'user.status'])->group(function () {
     // API routes for Payments - Fixed routing
     Route::prefix('api/payment')->group(function () {
         Route::get('/index', [PaymentApiController::class, 'index']);
-        Route::post('/{payment}/confirm', [PaymentApiController::class, 'confirmPayment']);
+        Route::post('/{kas}/confirm', [PaymentApiController::class, 'confirmPayment']);
     });
 });
 

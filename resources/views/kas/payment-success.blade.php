@@ -12,7 +12,7 @@
         </div>
         <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Pembayaran Berhasil!</h2>
         <p class="text-lg text-gray-700 dark:text-gray-300 mb-6">
-            Terima kasih! Bukti pembayaran kas Anda untuk minggu ke-<strong>{{ $payment->minggu_ke }}</strong> tahun <strong>{{ $payment->tahun }}</strong> telah berhasil diunggah.
+            Terima kasih! Bukti pembayaran kas Anda untuk minggu ke-<strong>{{ $kas->minggu_ke }}</strong> tahun <strong>{{ $kas->tahun }}</strong> telah berhasil diunggah.
         </p>
         <p class="text-md text-gray-600 dark:text-gray-400 mb-8">
             Pembayaran Anda sekarang berstatus <span class="font-semibold text-yellow-600">Menunggu Konfirmasi</span>. Pengurus RT/RW Anda akan segera memverifikasi pembayaran ini.
@@ -23,7 +23,7 @@
                 <i data-lucide="home" class="w-5 h-5 mr-2"></i>
                 Kembali ke Dashboard
             </a>
-            <a href="{{ route('payments.download-proof', $payment->id) }}" class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 ml-4">
+            <a href="{{ route('payments.download-proof', $kas->id) }}" class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 ml-4">
                 <i data-lucide="download" class="w-5 h-5 mr-2"></i>
                 Unduh Bukti Pembayaran
             </a>

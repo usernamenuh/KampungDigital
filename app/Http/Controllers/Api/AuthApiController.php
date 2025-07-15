@@ -12,6 +12,8 @@ use Illuminate\Auth\Events\Registered;
 use App\Models\User;
 use App\Models\Penduduk;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class AuthApiController extends Controller
 {
@@ -20,27 +22,27 @@ class AuthApiController extends Controller
      */
     public function login(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|string|email',
-            'password' => 'required|string',
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+        $credentials = $request->only('email', 'password');
+
+        if (Auth::attempt($credentials)) {
+            $user = Auth::user();
+            $token = $user->createToken('authToken')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful',
+                'user' => $user,
+                'token' => $token,
+            ]);
         }
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            return response()->json(['success' => false, 'message' => 'Kredensial tidak valid'], 401);
-        }
-
-        $user = Auth::user();
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Login berhasil',
-            'user' => $user,
-            'token' => $token,
+        throw ValidationException::withMessages([
+            'email' => ['The provided credentials do not match our records.'],
         ]);
     }
 
@@ -49,63 +51,28 @@ class AuthApiController extends Controller
      */
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:masyarakat', // Only 'masyarakat' can self-register
-            'nik' => 'required|string|digits:16|unique:penduduk,nik',
-            'nama_lengkap' => 'required|string|max:255',
-            'tanggal_lahir' => 'required|date',
-            'jenis_kelamin' => 'required|in:L,P',
-            'alamat' => 'required|string|max:255',
-            'rt_id' => 'required|exists:rts,id',
-            'kk_id' => 'nullable|exists:kk,id', // Optional, can be linked later
+            'role' => 'required|string|in:masyarakat,rt,rw,kades,admin',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
-        }
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+            'status' => 'active', // Default status
+        ]);
 
-        try {
-            // Create User
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => $request->role,
-                'status' => 'pending', // User needs to be activated by admin
-            ]);
+        $token = $user->createToken('authToken')->plainTextToken;
 
-            // Create Penduduk
-            $penduduk = Penduduk::create([
-                'user_id' => $user->id,
-                'nik' => $request->nik,
-                'nama_lengkap' => $request->nama_lengkap,
-                'tanggal_lahir' => $request->tanggal_lahir,
-                'jenis_kelamin' => $request->jenis_kelamin,
-                'alamat' => $request->alamat,
-                'rt_id' => $request->rt_id,
-                'kk_id' => $request->kk_id,
-                'status' => 'aktif', // Penduduk status can be active by default
-            ]);
-
-            event(new Registered($user));
-
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Registrasi berhasil. Akun Anda menunggu aktivasi.',
-                'user' => $user,
-                'penduduk' => $penduduk,
-                'token' => $token,
-            ], 201);
-
-        } catch (\Exception $e) {
-            Log::error('User registration failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Registrasi gagal. Silakan coba lagi.'], 500);
-        }
+        return response()->json([
+            'message' => 'Registration successful',
+            'user' => $user,
+            'token' => $token,
+        ], 201);
     }
 
     /**
@@ -115,7 +82,7 @@ class AuthApiController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => $request->user()->load('penduduk.rt.rw'), // Load related data
+            'user' => $request->user(),
         ]);
     }
 
@@ -126,7 +93,10 @@ class AuthApiController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['success' => true, 'message' => 'Logout berhasil']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully',
+        ]);
     }
 
     /**
@@ -142,12 +112,12 @@ class AuthApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
         $user->update($request->only('name', 'email'));
 
-        return response()->json(['success' => true, 'message' => 'Profil berhasil diperbarui', 'user' => $user]);
+        return response()->json(['success' => true, 'message' => 'Profile updated successfully', 'user' => $user]);
     }
 
     /**
@@ -163,12 +133,12 @@ class AuthApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
         $user->update(['password' => Hash::make($request->password)]);
 
-        return response()->json(['success' => true, 'message' => 'Password berhasil diperbarui']);
+        return response()->json(['success' => true, 'message' => 'Password updated successfully']);
     }
 
     /**
@@ -181,7 +151,7 @@ class AuthApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
         $status = Password::sendResetLink(
@@ -189,8 +159,8 @@ class AuthApiController extends Controller
         );
 
         return $status == Password::RESET_LINK_SENT
-            ? response()->json(['success' => true, 'message' => 'Link reset password telah dikirim ke email Anda.'])
-            : response()->json(['success' => false, 'message' => 'Gagal mengirim link reset password.'], 500);
+            ? response()->json(['success' => true, 'message' => 'Password reset link sent to your email.'])
+            : response()->json(['success' => false, 'message' => 'Failed to send password reset link.'], 500);
     }
 
     /**
@@ -205,7 +175,7 @@ class AuthApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
         $status = Password::reset(
@@ -218,8 +188,8 @@ class AuthApiController extends Controller
         );
 
         return $status == Password::PASSWORD_RESET
-            ? response()->json(['success' => true, 'message' => 'Password berhasil direset.'])
-            : response()->json(['success' => false, 'message' => 'Gagal mereset password.'], 500);
+            ? response()->json(['success' => true, 'message' => 'Password reset successfully.'])
+            : response()->json(['success' => false, 'message' => 'Failed to reset password.'], 500);
     }
 
     /**
@@ -261,7 +231,7 @@ class AuthApiController extends Controller
                 $q->where('rt_id', $rtId);
             });
         } elseif (!in_array($user->role, ['admin', 'kades'])) {
-            return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
 
         $users = $query->limit($limit)->get();
@@ -275,7 +245,7 @@ class AuthApiController extends Controller
     public function getAllUsers(Request $request)
     {
         if (Auth::user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
 
         $users = User::with('penduduk.rt.rw')->paginate(10);
@@ -289,7 +259,7 @@ class AuthApiController extends Controller
     public function createUser(Request $request)
     {
         if (Auth::user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -307,7 +277,7 @@ class AuthApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
         try {
@@ -333,10 +303,10 @@ class AuthApiController extends Controller
                 ]);
             }
 
-            return response()->json(['success' => true, 'message' => 'User berhasil dibuat', 'user' => $user], 201);
+            return response()->json(['success' => true, 'message' => 'User created successfully', 'user' => $user], 201);
         } catch (\Exception $e) {
             Log::error('Create user failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Gagal membuat user.'], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to create user.'], 500);
         }
     }
 
@@ -346,7 +316,7 @@ class AuthApiController extends Controller
     public function updateUser(Request $request, User $targetUser)
     {
         if (Auth::user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -364,7 +334,7 @@ class AuthApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
         try {
@@ -393,10 +363,10 @@ class AuthApiController extends Controller
                 // For now, if NIK is empty, don't update penduduk fields.
             }
 
-            return response()->json(['success' => true, 'message' => 'User berhasil diperbarui', 'user' => $targetUser->load('penduduk')], 200);
+            return response()->json(['success' => true, 'message' => 'User updated successfully', 'user' => $targetUser->load('penduduk')], 200);
         } catch (\Exception $e) {
             Log::error('Update user failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Gagal memperbarui user.'], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to update user.'], 500);
         }
     }
 
@@ -406,19 +376,19 @@ class AuthApiController extends Controller
     public function deleteUser(User $targetUser)
     {
         if (Auth::user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
 
         if (Auth::id() === $targetUser->id) {
-            return response()->json(['success' => false, 'message' => 'Anda tidak dapat menghapus akun Anda sendiri.'], 403);
+            return response()->json(['success' => false, 'message' => 'You cannot delete your own account.'], 403);
         }
 
         try {
             $targetUser->delete();
-            return response()->json(['success' => true, 'message' => 'User berhasil dihapus'], 200);
+            return response()->json(['success' => true, 'message' => 'User deleted successfully'], 200);
         } catch (\Exception $e) {
             Log::error('Delete user failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Gagal menghapus user.'], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to delete user.'], 500);
         }
     }
 
@@ -428,7 +398,7 @@ class AuthApiController extends Controller
     public function resetUserPassword(Request $request, User $targetUser)
     {
         if (Auth::user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -436,15 +406,15 @@ class AuthApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
         try {
             $targetUser->update(['password' => Hash::make($request->password)]);
-            return response()->json(['success' => true, 'message' => 'Password user berhasil direset'], 200);
+            return response()->json(['success' => true, 'message' => 'User password reset successfully'], 200);
         } catch (\Exception $e) {
             Log::error('Reset user password failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Gagal mereset password user.'], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to reset user password.'], 500);
         }
     }
 
@@ -454,20 +424,20 @@ class AuthApiController extends Controller
     public function toggleUserStatus(User $targetUser)
     {
         if (Auth::user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
 
         if (Auth::id() === $targetUser->id) {
-            return response()->json(['success' => false, 'message' => 'Anda tidak dapat mengubah status akun Anda sendiri.'], 403);
+            return response()->json(['success' => false, 'message' => 'You cannot change your own account status.'], 403);
         }
 
         try {
             $newStatus = $targetUser->status === 'aktif' ? 'nonaktif' : 'aktif';
             $targetUser->update(['status' => $newStatus]);
-            return response()->json(['success' => true, 'message' => 'Status user berhasil diubah menjadi ' . $newStatus, 'user' => $targetUser], 200);
+            return response()->json(['success' => true, 'message' => 'User status changed to ' . $newStatus, 'user' => $targetUser], 200);
         } catch (\Exception $e) {
             Log::error('Toggle user status failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Gagal mengubah status user.'], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to change user status.'], 500);
         }
     }
 }

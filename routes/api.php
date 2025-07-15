@@ -2,87 +2,24 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\DashboardApiController;
-use App\Http\Controllers\Api\KasApiController;
-use App\Http\Controllers\Api\PaymentApiController;
-use App\Http\Controllers\Api\NotifikasiApiController;
 use App\Http\Controllers\Api\AuthApiController;
+use App\Http\Controllers\Api\DashboardApiController;
+use App\Http\Controllers\Api\PaymentApiController;
+use App\Http\Controllers\Api\KasApiController;
+use App\Http\Controllers\Api\NotifikasiApiController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "api" middleware group. Make something great!
+|
 */
 
-Route::middleware('auth:sanctum')->group(function () {
-    // Dashboard API routes - Centralized dashboard logic
-    Route::prefix('dashboard')->group(function () {
-        Route::get('/stats', [DashboardApiController::class, 'getStats']);
-        Route::get('/monthly-kas', [DashboardApiController::class, 'getMonthlyKasData']);
-        Route::get('/activities', [DashboardApiController::class, 'getActivities']);
-        Route::get('/payment-alerts', [DashboardApiController::class, 'getPaymentAlerts']);
-        Route::get('/system-monitoring', [DashboardApiController::class, 'getSystemMonitoring']);
-        Route::get('/system-health', [DashboardApiController::class, 'getSystemHealth']);
-        Route::post('/clear-cache', [DashboardApiController::class, 'clearCache']);
-        Route::post('/update-activity', [DashboardApiController::class, 'updateActivity']);
-    });
-
-    // Kas API routes
-    Route::prefix('kas')->group(function () {
-        Route::get('/stats', [KasApiController::class, 'getStats']);
-        Route::get('/user/{userId}', [KasApiController::class, 'getUserKas']);
-        Route::get('/recent-payments', [KasApiController::class, 'getRecentPayments']);
-    });
-
-    // Payment API routes - Enhanced for masyarakat dashboard
-    Route::prefix('payment')->group(function () {
-        Route::get('/index', [PaymentApiController::class, 'index']);
-        Route::post('/{payment}/confirm', [PaymentApiController::class, 'confirmPayment']);
-    });
-
-    // Payment Info API routes
-    Route::prefix('payment-info')->group(function () {
-        Route::get('/for-user-rt', [PaymentApiController::class, 'getPaymentInfoForUserRt']);
-        Route::get('/rt/{rtId}', [PaymentApiController::class, 'getPaymentInfoByRt']);
-    });
-
-    // Notifications API routes
-    Route::prefix('notifications')->group(function () {
-        Route::get('/', [NotifikasiApiController::class, 'index']);
-        Route::get('/unread', [NotifikasiApiController::class, 'getUnread']);
-        Route::get('/unread-count', [NotifikasiApiController::class, 'getUnreadCount']);
-        Route::get('/recent', [NotifikasiApiController::class, 'getRecent']);
-        Route::post('/{notification}/mark-read', [NotifikasiApiController::class, 'markAsRead']);
-        Route::post('/mark-all-read', [NotifikasiApiController::class, 'markAllAsRead']);
-        Route::delete('/{notification}', [NotifikasiApiController::class, 'destroy']);
-        Route::delete('/all', [NotifikasiApiController::class, 'destroyAll']);
-    });
-
-    // Authentication API routes
-    Route::prefix('auth')->group(function () {
-        Route::post('/login', [AuthApiController::class, 'login'])->withoutMiddleware('auth:sanctum');
-        Route::post('/register', [AuthApiController::class, 'register'])->withoutMiddleware('auth:sanctum');
-        Route::post('/logout', [AuthApiController::class, 'logout']);
-        Route::get('/user', [AuthApiController::class, 'user']);
-        Route::put('/profile', [AuthApiController::class, 'updateProfile']);
-        Route::put('/password', [AuthApiController::class, 'updatePassword']);
-        Route::post('/forgot-password', [AuthApiController::class, 'forgotPassword'])->withoutMiddleware('auth:sanctum');
-        Route::post('/reset-password', [AuthApiController::class, 'resetPassword'])->withoutMiddleware('auth:sanctum');
-    });
-
-    // Admin-only API routes
-    Route::middleware('role:admin')->prefix('admin')->group(function () {
-        Route::get('/users', [AuthApiController::class, 'getAllUsers']);
-        Route::post('/users', [AuthApiController::class, 'createUser']);
-        Route::put('/users/{user}', [AuthApiController::class, 'updateUser']);
-        Route::delete('/users/{user}', [AuthApiController::class, 'deleteUser']);
-        Route::post('/users/{user}/reset-password', [AuthApiController::class, 'resetUserPassword']);
-        Route::post('/users/{user}/toggle-status', [AuthApiController::class, 'toggleUserStatus']);
-        Route::get('/users/search', [AuthApiController::class, 'searchUsers']);
-    });
-});
-
-// Public API routes (no authentication required)
+// Public API routes (e.g., for health check, public data)
 Route::get('/health', function () {
     try {
         $checks = [
@@ -108,4 +45,124 @@ Route::get('/health', function () {
             'timestamp' => now()->toISOString()
         ], 503);
     }
+});
+
+// Authentication API routes
+Route::post('/login', [AuthApiController::class, 'login']);
+
+// Protected API routes (require authentication)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthApiController::class, 'logout']);
+    Route::get('/user', [AuthApiController::class, 'user']);
+
+    // Dashboard API routes
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/stats', [DashboardApiController::class, 'getStats']);
+        Route::get('/monthly-kas', [DashboardApiController::class, 'getMonthlyKasData']);
+        Route::get('/activities', [DashboardApiController::class, 'getActivities']);
+        Route::get('/system-monitoring', [DashboardApiController::class, 'getSystemMonitoring']);
+        Route::post('/clear-cache', [DashboardApiController::class, 'clearCache']);
+        Route::get('/system-health', [DashboardApiController::class, 'getSystemHealth']);
+        Route::post('/update-activity', [DashboardApiController::class, 'updateActivity']);
+        Route::get('/payment-alerts', [DashboardApiController::class, 'getPaymentAlerts']); // New route for payment alerts
+    });
+
+    // Kas API routes
+    Route::prefix('kas')->group(function () {
+        Route::get('/stats', [KasApiController::class, 'getStats']);
+        Route::get('/user/{user_id}', [KasApiController::class, 'getUserKas']);
+        Route::get('/recent-payments', [KasApiController::class, 'getRecentPayments']);
+    });
+
+    // Notifications API routes
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotifikasiApiController::class, 'index']);
+        Route::get('/unread', [NotifikasiApiController::class, 'getUnread']);
+        Route::get('/unread-count', [NotifikasiApiController::class, 'getUnreadCount']);
+        Route::get('/recent', [NotifikasiApiController::class, 'getRecent']);
+        Route::post('/{notification}/read', [NotifikasiApiController::class, 'markAsRead']);
+        Route::post('/mark-all-read', [NotifikasiApiController::class, 'markAllAsRead']);
+        Route::delete('/{notification}', [NotifikasiApiController::class, 'destroy']);
+        Route::delete('/clear-all', [NotifikasiApiController::class, 'destroyAll']);
+    });
+
+    // Payment Info API routes
+    Route::prefix('payment-info')->group(function () {
+        Route::get('/rt/{rt_id}', [PaymentApiController::class, 'getPaymentInfoByRt']);
+        Route::get('/for-user-rt', [PaymentApiController::class, 'getPaymentInfoForUserRt']);
+    });
+
+    // Payments API routes
+    Route::prefix('payment')->group(function () {
+        Route::get('/index', [PaymentApiController::class, 'index']);
+        Route::post('/{payment}/confirm', [PaymentApiController::class, 'confirmPayment']);
+    });
+});
+
+// Public API routes for location data
+Route::prefix('location')->group(function () {
+    Route::get('/provinces', function () {
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => \Illuminate\Support\Facades\DB::table('id_provinces')->get()
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+
+    Route::get('/regencies/{province_code}', function ($province_code) {
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => \Illuminate\Support\Facades\DB::table('id_regencies')
+                    ->where('province_code', $province_code)
+                    ->get()
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+
+    Route::get('/districts/{province_code}/{regency_code}', function ($province_code, $regency_code) {
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => \Illuminate\Support\Facades\DB::table('id_districts')
+                    ->where('province_code', $province_code)
+                    ->where('regency_code', $regency_code)
+                    ->get()
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+
+    Route::get('/villages/{province_code}/{regency_code}/{district_code}', function ($province_code, $regency_code, $district_code) {
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => \Illuminate\Support\Facades\DB::table('id_villages')
+                    ->where('province_code', $province_code)
+                    ->where('regency_code', $regency_code)
+                    ->where('district_code', $district_code)
+                    ->get()
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
 });

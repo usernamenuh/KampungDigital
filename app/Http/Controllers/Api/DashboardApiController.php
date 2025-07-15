@@ -5,24 +5,20 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Artisan;
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Penduduk;
+use App\Models\Rt;
+use App\Models\Rw;
 use App\Models\Kas;
 use App\Models\Notifikasi;
-use App\Models\Desa;
-use App\Models\Rw;
-use App\Models\Rt;
-use App\Models\Kk;
-use App\Models\PaymentInfo;
-use Carbon\Carbon;
 
 class DashboardApiController extends Controller
 {
     /**
-     * Get Dashboard Statistics
+     * Get general statistics for the authenticated user's dashboard based on their role.
      */
     public function getStats(Request $request)
     {
@@ -30,158 +26,200 @@ class DashboardApiController extends Controller
             $user = Auth::user();
             $stats = [];
 
-            switch ($user->role) {
-                case 'admin':
-                    $stats = $this->getAdminStats();
-                    break;
-                case 'kades':
-                    $stats = $this->getKadesStats();
-                    break;
-                case 'rw':
-                    $stats = $this->getRwStats($user);
-                    break;
-                case 'rt':
-                    $stats = $this->getRtStats($user);
-                    break;
-                case 'masyarakat':
-                    $stats = $this->getMasyarakatStats($user);
-                    break;
-                default:
-                    $stats = $this->getBasicStats();
+            if ($user->role === 'masyarakat') {
+                $penduduk = Penduduk::where('user_id', $user->id)->first();
+                if (!$penduduk) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data penduduk tidak ditemukan untuk pengguna ini.'
+                    ], 404);
+                }
+
+                $currentYear = Carbon::now()->year;
+                $totalWeeksInYear = Carbon::createFromDate($currentYear, 12, 31)->weekOfYear;
+
+                $kasQuery = Kas::where('penduduk_id', $penduduk->penduduk_id)
+                               ->where('tahun', $currentYear);
+
+                $stats['userNik'] = $penduduk->nik;
+                $stats['kasLunas'] = $kasQuery->clone()->where('status', 'lunas')->count();
+                $stats['kasBelumBayar'] = $kasQuery->clone()->where('status', 'belum_bayar')->count();
+                $stats['kasTerlambat'] = $kasQuery->clone()->where('status', 'belum_bayar')
+                                                  ->where('tanggal_jatuh_tempo', '<', Carbon::now())->count();
+                $stats['kasMenungguKonfirmasi'] = $kasQuery->clone()->where('status', 'menunggu_konfirmasi')->count();
+                $stats['totalKasAnda'] = $kasQuery->clone()->where('status', 'lunas')->sum('jumlah');
+                
+                $paidWeeks = $kasQuery->clone()->whereIn('status', ['lunas', 'menunggu_konfirmasi'])->count();
+                $stats['isYearCompleted'] = $paidWeeks >= $totalWeeksInYear;
+
+            } elseif ($user->role === 'rt') {
+                $rt = $user->rt;
+                if (!$rt) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data RT tidak ditemukan untuk pengguna ini.'
+                    ], 404);
+                }
+
+                $stats['rtNumber'] = $rt->no_rt;
+                $stats['totalKk'] = $rt->kks->count();
+                $stats['totalPenduduk'] = $rt->penduduks->count();
+                $stats['kasLunas'] = Kas::where('rt_id', $rt->rt_id)->where('status', 'lunas')->count();
+                $stats['kasBelumBayar'] = Kas::where('rt_id', $rt->rt_id)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count();
+
+            } elseif ($user->role === 'rw') {
+                $rw = $user->rw;
+                if (!$rw) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data RW tidak ditemukan untuk pengguna ini.'
+                    ], 404);
+                }
+
+                $rtIds = $rw->rts->pluck('rt_id');
+                $stats['rwNumber'] = $rw->no_rw;
+                $stats['totalRts'] = $rtIds->count();
+                $stats['totalPenduduk'] = Penduduk::whereIn('rt_id', $rtIds)->count();
+                $stats['kasLunas'] = Kas::whereIn('rt_id', $rtIds)->where('status', 'lunas')->count();
+                $stats['kasBelumBayar'] = Kas::whereIn('rt_id', $rtIds)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count();
+
+            } elseif ($user->role === 'kades') {
+                $stats['totalRws'] = Rw::count();
+                $stats['totalRts'] = Rt::count();
+                $stats['totalPenduduk'] = Penduduk::count();
+                $stats['totalKasTerkumpul'] = Kas::where('status', 'lunas')->sum('jumlah');
+
+            } elseif ($user->role === 'admin') {
+                $stats['totalUsers'] = User::count();
+                $stats['totalRts'] = Rt::count();
+                $stats['totalRws'] = Rw::count();
+                $stats['totalPenduduk'] = Penduduk::count();
             }
 
             return response()->json([
                 'success' => true,
-                'data' => $stats,
-                'message' => 'Data dashboard berhasil dimuat'
+                'data' => $stats
             ]);
 
         } catch (\Exception $e) {
             Log::error('Error getting dashboard stats', [
                 'user_id' => Auth::id(),
+                'role' => Auth::user()->role,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data dashboard: ' . $e->getMessage(),
-                'data' => $this->getBasicStats()
+                'message' => 'Gagal memuat statistik dashboard: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Get Monthly Kas Chart Data
+     * Get monthly kas data for charts.
      */
     public function getMonthlyKasData(Request $request)
     {
         try {
             $user = Auth::user();
-            $months = [];
-            $data = [];
-            
-            // Get last 6 months
-            for ($i = 5; $i >= 0; $i--) {
-                $date = Carbon::now()->subMonths($i);
-                $months[] = $date->format('M');
-                
-                // Get kas data for this month based on user role
-                $monthlyTotal = 0;
-                
-                switch ($user->role) {
-                    case 'admin':
-                        $monthlyTotal = Kas::whereMonth('tanggal_bayar', $date->month)
-                            ->whereYear('tanggal_bayar', $date->year)
-                            ->where('status', 'lunas')
-                            ->sum('jumlah');
-                        break;
-                        
-                    case 'kades':
-                        $monthlyTotal = Kas::whereMonth('tanggal_bayar', $date->month)
-                            ->whereYear('tanggal_bayar', $date->year)
-                            ->where('status', 'lunas')
-                            ->sum('jumlah');
-                        break;
-                        
-                    case 'rw':
-                        $rwId = $this->getUserRwId($user);
-                        if ($rwId) {
-                            $monthlyTotal = Kas::whereHas('rt', function($q) use ($rwId) {
-                                $q->where('rw_id', $rwId);
-                            })
-                            ->whereMonth('tanggal_bayar', $date->month)
-                            ->whereYear('tanggal_bayar', $date->year)
-                            ->where('status', 'lunas')
-                            ->sum('jumlah');
-                        }
-                        break;
-                        
-                    case 'rt':
-                        $rtId = $this->getUserRtId($user);
-                        if ($rtId) {
-                            $monthlyTotal = Kas::where('rt_id', $rtId)
-                                ->whereMonth('tanggal_bayar', $date->month)
-                                ->whereYear('tanggal_bayar', $date->year)
-                                ->where('status', 'lunas')
-                                ->sum('jumlah');
-                        }
-                        break;
-                        
-                    case 'masyarakat':
-                        if ($user->penduduk) {
-                            $monthlyTotal = Kas::where('penduduk_id', $user->penduduk->id)
-                                ->whereMonth('tanggal_bayar', $date->month)
-                                ->whereYear('tanggal_bayar', $date->year)
-                                ->where('status', 'lunas')
-                                ->sum('jumlah');
-                        }
-                        break;
-                }
-                
-                $data[] = $monthlyTotal;
+            $currentYear = Carbon::now()->year;
+            $query = Kas::where('tahun', $currentYear)
+                        ->where('status', 'lunas');
+
+            if ($user->role === 'rt') {
+                $query->where('rt_id', $user->rt->rt_id);
+            } elseif ($user->role === 'rw') {
+                $rtIds = $user->rw->rts->pluck('rt_id');
+                $query->whereIn('rt_id', $rtIds);
+            }
+
+            $monthlyData = $query->selectRaw('MONTH(tanggal_bayar) as month, SUM(jumlah) as total_amount')
+                                 ->groupBy('month')
+                                 ->orderBy('month')
+                                 ->get();
+
+            $labels = [];
+            $values = [];
+            for ($i = 1; $i <= 12; $i++) {
+                $monthName = Carbon::create()->month($i)->translatedFormat('F');
+                $labels[] = $monthName;
+                $values[] = $monthlyData->firstWhere('month', $i)->total_amount ?? 0;
             }
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'labels' => $months,
-                    'values' => $data,
-                    'total' => array_sum($data)
+                    'labels' => $labels,
+                    'values' => $values
                 ]
             ]);
 
         } catch (\Exception $e) {
             Log::error('Error getting monthly kas data', [
                 'user_id' => Auth::id(),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-
             return response()->json([
-                'success' => true,
-                'data' => [
-                    'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
-                    'values' => [0, 0, 0, 0, 0, 0],
-                    'total' => 0
-                ]
-            ]);
+                'success' => false,
+                'message' => 'Gagal memuat data kas bulanan: ' . $e->getMessage()
+            ], 500);
         }
     }
 
     /**
-     * Get Dashboard Activities
+     * Get recent activities/notifications.
      */
     public function getActivities(Request $request)
     {
         try {
             $user = Auth::user();
-            $limit = $request->get('limit', 20);
             $activities = [];
 
-            if ($user->role === 'admin') {
-                $activities = $this->getAllSystemActivities($limit);
-            } else {
-                $activities = $this->getRoleSpecificActivities($user, $limit);
+            if ($user->role === 'masyarakat') {
+                $activities = Notifikasi::where('user_id', $user->id)
+                                        ->orderBy('created_at', 'desc')
+                                        ->limit($request->get('limit', 5))
+                                        ->get()
+                                        ->map(function($notif) {
+                                            return [
+                                                'id' => $notif->notifikasi_id,
+                                                'title' => $notif->judul,
+                                                'description' => $notif->pesan,
+                                                'timestamp' => $notif->created_at,
+                                                'icon' => 'bell', // Default icon
+                                                'color' => $notif->is_read ? 'gray' : 'blue', // Example color logic
+                                            ];
+                                        });
+            } elseif (in_array($user->role, ['rt', 'rw', 'kades', 'admin'])) {
+                // For RT/RW/Kades/Admin, show recent payment confirmations or other system activities
+                $query = Kas::with(['penduduk', 'rt'])
+                            ->whereIn('status', ['lunas', 'menunggu_konfirmasi'])
+                            ->orderBy('updated_at', 'desc')
+                            ->limit($request->get('limit', 5));
+
+                if ($user->role === 'rt') {
+                    $query->where('rt_id', $user->rt->rt_id);
+                } elseif ($user->role === 'rw') {
+                    $rtIds = $user->rw->rts->pluck('rt_id');
+                    $query->whereIn('rt_id', $rtIds);
+                }
+
+                $activities = $query->get()->map(function($kas) {
+                    $title = $kas->status === 'lunas' ? 'Pembayaran Dikonfirmasi' : 'Pembayaran Menunggu Konfirmasi';
+                    $description = 'Kas Minggu ke-' . $kas->minggu_ke . ' Tahun ' . $kas->tahun . ' dari ' . ($kas->penduduk->nama ?? 'N/A');
+                    $icon = $kas->status === 'lunas' ? 'check-circle' : 'hourglass';
+                    $color = $kas->status === 'lunas' ? 'green' : 'yellow';
+                    
+                    return [
+                        'id' => $kas->kas_id,
+                        'title' => $title,
+                        'description' => $description,
+                        'timestamp' => $kas->updated_at,
+                        'icon' => $icon,
+                        'color' => $color,
+                    ];
+                });
             }
 
             return response()->json([
@@ -190,157 +228,56 @@ class DashboardApiController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error getting dashboard activities', [
+            Log::error('Error getting activities', [
                 'user_id' => Auth::id(),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat aktivitas',
-                'data' => []
+                'message' => 'Gagal memuat aktivitas: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Get Outstanding Payment Alerts for Masyarakat
+     * Get system monitoring data (for admin).
      */
-    public function getPaymentAlerts(Request $request)
+    public function getSystemMonitoring()
+    {
+        // This is a placeholder. In a real app, you'd fetch actual system metrics.
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'cpu_usage' => rand(10, 80),
+                'memory_usage' => rand(20, 90),
+                'disk_usage' => rand(30, 70),
+                'network_traffic' => rand(100, 1000),
+            ]
+        ]);
+    }
+
+    /**
+     * Clear application cache.
+     */
+    public function clearCache()
     {
         try {
-            $user = Auth::user();
+            Artisan::call('cache:clear');
+            Artisan::call('config:clear');
+            Artisan::call('route:clear');
+            Artisan::call('view:clear');
             
-            if ($user->role !== 'masyarakat') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Akses tidak diizinkan'
-                ], 403);
-            }
-
-            $penduduk = Penduduk::where('user_id', $user->id)->first();
-            if (!$penduduk) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Data penduduk tidak ditemukan'
-                ], 404);
-            }
-
-            // Get outstanding payments
-            $outstandingPayments = Kas::where('penduduk_id', $penduduk->id)
-                ->whereIn('status', ['belum_bayar', 'terlambat'])
-                ->where('tanggal_jatuh_tempo', '<=', Carbon::now()->addDays(7)) // Due within 7 days
-                ->orderBy('tanggal_jatuh_tempo', 'asc')
-                ->get();
-
-            $alerts = [];
-            
-            foreach ($outstandingPayments as $payment) {
-                $daysUntilDue = Carbon::now()->diffInDays($payment->tanggal_jatuh_tempo, false);
-                $isOverdue = $daysUntilDue < 0;
-                
-                $alertType = 'warning';
-                $alertMessage = '';
-                
-                if ($isOverdue) {
-                    $alertType = 'error';
-                    $alertMessage = "Pembayaran kas minggu ke-{$payment->minggu_ke} sudah terlambat " . abs($daysUntilDue) . " hari!";
-                } elseif ($daysUntilDue <= 1) {
-                    $alertType = 'warning';
-                    $alertMessage = "Pembayaran kas minggu ke-{$payment->minggu_ke} jatuh tempo besok!";
-                } elseif ($daysUntilDue <= 3) {
-                    $alertType = 'info';
-                    $alertMessage = "Pembayaran kas minggu ke-{$payment->minggu_ke} jatuh tempo dalam {$daysUntilDue} hari.";
-                }
-
-                if ($alertMessage) {
-                    $alerts[] = [
-                        'id' => $payment->id,
-                        'type' => $alertType,
-                        'title' => $isOverdue ? 'Pembayaran Terlambat!' : 'Pengingat Pembayaran',
-                        'message' => $alertMessage,
-                        'kas_id' => $payment->id,
-                        'minggu_ke' => $payment->minggu_ke,
-                        'tahun' => $payment->tahun,
-                        'jumlah' => $payment->jumlah,
-                        'denda' => $payment->denda,
-                        'total_bayar' => $payment->jumlah + $payment->denda,
-                        'tanggal_jatuh_tempo' => $payment->tanggal_jatuh_tempo->format('d M Y'),
-                        'days_until_due' => $daysUntilDue,
-                        'is_overdue' => $isOverdue,
-                        'can_pay' => true,
-                        'payment_url' => route('kas.payment.form', $payment->id)
-                    ];
-                }
-            }
-
             return response()->json([
                 'success' => true,
-                'data' => $alerts,
-                'total_alerts' => count($alerts),
-                'has_overdue' => collect($alerts)->where('is_overdue', true)->count() > 0
+                'message' => 'Cache aplikasi berhasil dibersihkan.'
             ]);
-
         } catch (\Exception $e) {
-            Log::error('Error getting payment alerts', [
+            Log::error('Error clearing cache', [
                 'user_id' => Auth::id(),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memuat peringatan pembayaran',
-                'data' => []
-            ], 500);
-        }
-    }
-
-    /**
-     * Get System Monitoring
-     */
-    public function getSystemMonitoring(Request $request)
-    {
-        try {
-            $monitoring = [
-                'serverLoad' => round(rand(1, 10) / 10, 1),
-                'memoryUsage' => rand(100, 500),
-                'activeSessions' => User::where('last_activity', '>=', now()->subMinutes(5))->count(),
-                'dbConnections' => rand(5, 20),
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $monitoring
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memuat monitoring sistem',
-                'data' => [
-                    'serverLoad' => 0.5,
-                    'memoryUsage' => 128,
-                    'activeSessions' => 0,
-                    'dbConnections' => 0
-                ]
-            ], 500);
-        }
-    }
-
-    /**
-     * Clear Cache
-     */
-    public function clearCache(Request $request)
-    {
-        try {
-            Cache::flush();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Cache berhasil dibersihkan'
-            ]);
-
-        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal membersihkan cache: ' . $e->getMessage()
@@ -349,404 +286,134 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get System Health
+     * Get system health status.
      */
-    public function getSystemHealth(Request $request)
+    public function getSystemHealth()
     {
         try {
             $checks = [
-                'database' => $this->checkDatabase(),
-                'cache' => $this->checkCache(),
-                'storage' => $this->checkStorage(),
-                'queue' => 'ok'
+                'database' => \Illuminate\Support\Facades\DB::connection()->getPdo() ? 'ok' : 'error',
+                'cache' => cache()->put('health_check', 'ok', 60) ? 'ok' : 'error',
+                'storage' => is_writable(storage_path()) ? 'ok' : 'error'
             ];
-
+            
             $allHealthy = !in_array('error', array_values($checks));
-
-            $health = [
+            
+            return response()->json([
+                'success' => true,
                 'status' => $allHealthy ? 'healthy' : 'degraded',
                 'checks' => $checks,
                 'timestamp' => now()->toISOString()
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $health
-            ]);
-
+            ], $allHealthy ? 200 : 503);
+            
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memeriksa kesehatan sistem',
-                'data' => [
-                    'status' => 'error',
-                    'checks' => [],
-                    'timestamp' => now()->toISOString()
-                ]
-            ], 500);
-        }
-    }
-
-    /**
-     * Update User Activity
-     */
-    public function updateActivity(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            if ($user) {
-                $user->update([
-                    'last_activity' => now()
-                ]);
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Aktivitas berhasil diperbarui'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memperbarui aktivitas'
-            ], 500);
-        }
-    }
-
-    /**
-     * Get Admin Statistics - Complete implementation
-     */
-    private function getAdminStats()
-    {
-        try {
-            return [
-                'totalSaldoDesa' => $this->safeSum('desas', 'saldo'),
-                'totalSaldoRw' => $this->safeSum('rws', 'saldo'),
-                'totalSaldoRt' => $this->safeSum('rts', 'saldo'),
-                'totalSaldoSistem' => $this->safeSum('desas', 'saldo') + $this->safeSum('rws', 'saldo') + $this->safeSum('rts', 'saldo'),
-                'totalUsers' => User::count(),
-                'totalDesa' => $this->safeCount('desas'),
-                'totalRw' => Rw::count(),
-                'totalRt' => Rt::count(),
-                'usersOnline' => User::where('last_activity', '>=', now()->subMinutes(5))->count(),
-                'activeUsers' => User::where('status', 'aktif')->count(),
-                'inactiveUsers' => User::where('status', 'nonaktif')->count(),
-                'totalPenduduk' => Penduduk::count(),
-                'pendudukAktif' => Penduduk::where('status', 'aktif')->count(),
-                'pendudukLakiLaki' => Penduduk::where('jenis_kelamin', 'L')->count(),
-                'pendudukPerempuan' => Penduduk::where('jenis_kelamin', 'P')->count(),
-                'totalKk' => Kk::count(),
-                'totalKas' => Kas::count(),
-                'totalKasTerkumpul' => Kas::where('status', 'lunas')->sum('jumlah'),
-                'totalKasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->sum('jumlah'),
-                'jumlahKasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
-                'kasLunas' => Kas::where('status', 'lunas')->count(),
-                'kasBelumBayar' => Kas::where('status', 'belum_bayar')->count(),
-                'kasTerlambat' => Kas::where('status', 'terlambat')->count(),
-                'kasMenungguKonfirmasi' => Kas::where('status', 'menunggu_konfirmasi')->count(),
-                'kasHariIni' => Kas::whereDate('tanggal_bayar', today())->where('status', 'lunas')->count(),
-                'kasBulanIni' => Kas::whereMonth('tanggal_bayar', now()->month)->where('status', 'lunas')->sum('jumlah'),
-                'totalNotifikasi' => Notifikasi::count(),
-                'notifikasiUnread' => Notifikasi::where('dibaca', false)->count(),
-                'notifikasiHariIni' => Notifikasi::whereDate('created_at', today())->count(),
-                'systemHealth' => $this->getSystemHealthStatus(),
-            ];
-        } catch (\Exception $e) {
-            Log::error('Error in getAdminStats', ['error' => $e->getMessage()]);
-            return $this->getBasicStats();
-        }
-    }
-
-    /**
-     * Get Masyarakat Statistics - Enhanced with alert system
-     */
-    private function getMasyarakatStats($user)
-    {
-        try {
-            if (!$user->penduduk) {
-                return $this->getBasicStats();
-            }
-
-            $pendudukId = $user->penduduk->id;
-            $currentYear = Carbon::now()->year;
-
-            $query = Kas::where('penduduk_id', $pendudukId)
-                    ->where('tahun', $currentYear);
-
-            $kasLunas = (clone $query)->where('status', 'lunas')->count();
-            $kasBelumBayar = (clone $query)->where('status', 'belum_bayar')->count();
-            $kasMenungguKonfirmasi = (clone $query)->where('status', 'menunggu_konfirmasi')->count();
-        
-            $kasTerlambat = (clone $query)->where('status', 'belum_bayar')
-                                    ->where('tanggal_jatuh_tempo', '<', Carbon::now())
-                                    ->count();
-
-            $totalKasAnda = (clone $query)->where('status', 'lunas')->sum('jumlah');
-        
-            $totalWeeksInYear = 52;
-            $totalPaidOrPending = $kasLunas + $kasMenungguKonfirmasi;
-            $isYearCompleted = ($totalPaidOrPending >= $totalWeeksInYear);
-
-            // Get upcoming payments for alerts
-            $upcomingPayments = Kas::where('penduduk_id', $pendudukId)
-                ->whereIn('status', ['belum_bayar', 'terlambat'])
-                ->where('tanggal_jatuh_tempo', '<=', Carbon::now()->addDays(7))
-                ->count();
-
-            $overduePayments = Kas::where('penduduk_id', $pendudukId)
-                ->where('status', 'belum_bayar')
-                ->where('tanggal_jatuh_tempo', '<', Carbon::now())
-                ->count();
-
-            return [
-                'userNik' => $user->penduduk->nik ?? 'N/A',
-                'kasLunas' => $kasLunas,
-                'kasBelumBayar' => $kasBelumBayar,
-                'kasTerlambat' => $kasTerlambat,
-                'kasMenungguKonfirmasi' => $kasMenungguKonfirmasi,
-                'totalKasAnda' => $totalKasAnda,
-                'isYearCompleted' => $isYearCompleted,
-                'notifikasiUnread' => Notifikasi::where('user_id', $user->id)->where('dibaca', false)->count(),
-                'upcomingPayments' => $upcomingPayments,
-                'overduePayments' => $overduePayments,
-                'hasPaymentAlerts' => $upcomingPayments > 0 || $overduePayments > 0,
-            ];
-        } catch (\Exception $e) {
-            Log::error('Error in getMasyarakatStats', [
+            Log::error('Error getting system health', [
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return $this->getBasicStats();
+            return response()->json([
+                'success' => false,
+                'status' => 'unhealthy',
+                'error' => $e->getMessage(),
+                'timestamp' => now()->toISOString()
+            ], 500);
         }
     }
 
     /**
-     * Get Basic Statistics (fallback)
+     * Update activity (placeholder for custom activity logging).
      */
-    private function getBasicStats()
+    public function updateActivity(Request $request)
     {
-        return [
-            'userNik' => 'N/A',
-            'kasLunas' => 0,
-            'kasBelumBayar' => 0,
-            'kasTerlambat' => 0,
-            'kasMenungguKonfirmasi' => 0,
-            'totalKasAnda' => 0,
-            'isYearCompleted' => false,
-            'notifikasiUnread' => 0,
-            'upcomingPayments' => 0,
-            'overduePayments' => 0,
-            'hasPaymentAlerts' => false,
-        ];
+        // This is a placeholder for a custom activity logging endpoint
+        // In a real application, you might log specific user actions here.
+        Log::info('Activity logged', [
+            'user_id' => Auth::id(),
+            'action' => $request->input('action'),
+            'details' => $request->input('details'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Activity logged successfully.'
+        ]);
     }
 
     /**
-     * Get All System Activities
+     * Get payment alerts for masyarakat dashboard.
      */
-    private function getAllSystemActivities($limit)
+    public function getPaymentAlerts(Request $request)
     {
-        $activities = [];
-
         try {
-            $recentPayments = Kas::with(['penduduk', 'rt.rw'])
-                ->where('status', 'lunas')
-                ->whereNotNull('tanggal_bayar')
-                ->orderBy('tanggal_bayar', 'desc')
-                ->limit($limit / 2)
-                ->get();
-
-            foreach ($recentPayments as $payment) {
-                $activities[] = [
-                    'id' => 'kas_' . $payment->id,
-                    'type' => 'kas_payment',
-                    'title' => 'Pembayaran Kas',
-                    'description' => "{$payment->penduduk->nama_lengkap} membayar kas minggu ke-{$payment->minggu_ke}",
-                    'amount' => $payment->jumlah,
-                    'user' => $payment->penduduk->nama_lengkap,
-                    'location' => "RT {$payment->rt->nama_rt} RW {$payment->rt->rw->nama_rw}",
-                    'timestamp' => $payment->tanggal_bayar,
-                    'icon' => 'credit-card',
-                    'color' => 'green'
-                ];
+            $user = Auth::user();
+            if ($user->role !== 'masyarakat') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses tidak diizinkan.'
+                ], 403);
             }
 
-            $recentUsers = User::with('penduduk')
-                ->orderBy('created_at', 'desc')
-                ->limit($limit / 2)
-                ->get();
-
-            foreach ($recentUsers as $newUser) {
-                $activities[] = [
-                    'id' => 'user_' . $newUser->id,
-                    'type' => 'user_registration',
-                    'title' => 'Registrasi User Baru',
-                    'description' => "User baru {$newUser->name} ({$newUser->role}) telah mendaftar",
-                    'user' => $newUser->name,
-                    'role' => $newUser->role,
-                    'timestamp' => $newUser->created_at,
-                    'icon' => 'user-plus',
-                    'color' => 'blue'
-                ];
+            $penduduk = Penduduk::where('user_id', $user->id)->first();
+            if (!$penduduk) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data penduduk tidak ditemukan.'
+                ], 404);
             }
 
-            usort($activities, function($a, $b) {
-                return $b['timestamp'] <=> $a['timestamp'];
-            });
+            $alerts = [];
+            $hasOverdue = false;
 
-            return array_slice($activities, 0, $limit);
-        } catch (\Exception $e) {
-            Log::error('Error getting system activities', ['error' => $e->getMessage()]);
-            return [];
-        }
-    }
+            $kasBills = Kas::where('penduduk_id', $penduduk->penduduk_id)
+                           ->whereIn('status', ['belum_bayar', 'terlambat'])
+                           ->orderBy('tanggal_jatuh_tempo', 'asc')
+                           ->get();
 
-    /**
-     * Get Role Specific Activities
-     */
-    private function getRoleSpecificActivities($user, $limit)
-    {
-        $activities = [];
+            foreach ($kasBills as $bill) {
+                $alert = [
+                    'id' => $bill->kas_id,
+                    'kas_id' => $bill->kas_id,
+                    'total_bayar' => $bill->total_bayar,
+                    'tanggal_jatuh_tempo' => $bill->tanggal_jatuh_tempo_formatted,
+                    'payment_url' => route('kas.payment.form', $bill->kas_id),
+                    'is_overdue' => $bill->is_overdue,
+                ];
 
-        try {
-            if ($user->role === 'masyarakat') {
-                if ($user->penduduk) {
-                    $recentPayments = Kas::where('penduduk_id', $user->penduduk->id)
-                        ->where('status', 'lunas')
-                        ->whereNotNull('tanggal_bayar')
-                        ->orderBy('tanggal_bayar', 'desc')
-                        ->limit($limit)
-                        ->get();
-
-                    foreach ($recentPayments as $payment) {
-                        $activities[] = [
-                            'id' => 'kas_' . $payment->id,
-                            'type' => 'kas_payment',
-                            'title' => 'Pembayaran Kas Anda',
-                            'description' => "Anda telah membayar kas minggu ke-{$payment->minggu_ke} sebesar Rp " . number_format($payment->jumlah, 0, ',', '.') . " pada " . Carbon::parse($payment->tanggal_bayar)->format('d M Y H:i'),
-                            'amount' => $payment->jumlah,
-                            'user' => 'Anda',
-                            'location' => '',
-                            'timestamp' => $payment->tanggal_bayar,
-                            'icon' => 'credit-card',
-                            'color' => 'green'
-                        ];
-                    }
+                if ($bill->is_overdue) {
+                    $alert['type'] = 'error';
+                    $alert['title'] = 'Pembayaran Kas Terlambat!';
+                    $alert['message'] = 'Tagihan kas minggu ke-' . $bill->minggu_ke . ' tahun ' . $bill->tahun . ' sudah jatuh tempo.';
+                    $hasOverdue = true;
+                } elseif ($bill->tanggal_jatuh_tempo->diffInDays(Carbon::now()) <= 7) {
+                    $alert['type'] = 'warning';
+                    $alert['title'] = 'Pembayaran Kas Segera Jatuh Tempo!';
+                    $alert['message'] = 'Tagihan kas minggu ke-' . $bill->minggu_ke . ' tahun ' . $bill->tahun . ' akan jatuh tempo dalam ' . $bill->tanggal_jatuh_tempo->diffInDays(Carbon::now()) . ' hari.';
+                } else {
+                    $alert['type'] = 'info';
+                    $alert['title'] = 'Tagihan Kas Mendatang';
+                    $alert['message'] = 'Anda memiliki tagihan kas untuk minggu ke-' . $bill->minggu_ke . ' tahun ' . $bill->tahun . '.';
                 }
+                $alerts[] = $alert;
             }
-            
-            usort($activities, function($a, $b) {
-                return $b['timestamp'] <=> $a['timestamp'];
-            });
 
-            return array_slice($activities, 0, $limit);
+            return response()->json([
+                'success' => true,
+                'data' => $alerts,
+                'has_overdue' => $hasOverdue,
+            ]);
+
         } catch (\Exception $e) {
-            Log::error('Error getting role specific activities', ['error' => $e->getMessage()]);
-            return [];
+            Log::error('Error getting payment alerts', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat peringatan pembayaran: ' . $e->getMessage()
+            ], 500);
         }
     }
-
-    // Helper methods
-    private function safeSum($table, $column, $conditions = [])
-    {
-        try {
-            $query = DB::table($table);
-            foreach ($conditions as $key => $value) {
-                $query->where($key, $value);
-            }
-            return $query->sum($column) ?? 0;
-        } catch (\Exception $e) {
-            Log::error("Error in safeSum for table {$table}.{$column}", ['error' => $e->getMessage()]);
-            return 0;
-        }
-    }
-
-    private function safeCount($table, $conditions = [])
-    {
-        try {
-            $query = DB::table($table);
-            foreach ($conditions as $key => $value) {
-                $query->where($key, $value);
-            }
-            return $query->count();
-        } catch (\Exception $e) {
-            Log::error("Error in safeCount for table {$table}", ['error' => $e->getMessage()]);
-            return 0;
-        }
-    }
-
-    private function getUserRwId($user)
-    {
-        try {
-            if ($user->penduduk && $user->penduduk->rwKetua) {
-                return $user->penduduk->rwKetua->rw_id;
-            }
-            return null;
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
-
-    private function getUserRtId($user)
-    {
-        try {
-            if ($user->penduduk && $user->penduduk->rtKetua) {
-                return $user->penduduk->rtKetua->rt_id;
-            }
-            return null;
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
-
-    private function getSystemHealthStatus()
-    {
-        $checks = [
-            'database' => $this->checkDatabase(),
-            'cache' => $this->checkCache(),
-            'storage' => $this->checkStorage(),
-            'queue' => 'ok'
-        ];
-
-        $allHealthy = !in_array('error', array_values($checks));
-
-        return [
-            'status' => $allHealthy ? 'healthy' : 'degraded',
-            'checks' => $checks,
-            'timestamp' => now()->toISOString()
-        ];
-    }
-
-    private function checkDatabase()
-    {
-        try {
-            DB::connection()->getPdo();
-            return 'ok';
-        } catch (\Exception $e) {
-            return 'error';
-        }
-    }
-
-    private function checkCache()
-    {
-        try {
-            Cache::put('health_check', 'ok', 60);
-            return Cache::get('health_check') === 'ok' ? 'ok' : 'error';
-        } catch (\Exception $e) {
-            return 'error';
-        }
-    }
-
-    private function checkStorage()
-    {
-        try {
-            return is_writable(storage_path()) ? 'ok' : 'error';
-        } catch (\Exception $e) {
-            return 'error';
-        }
-    }
-
-    // Additional methods for kades, rw, rt stats would go here...
-    private function getKadesStats() { return $this->getBasicStats(); }
-    private function getRwStats($user) { return $this->getBasicStats(); }
-    private function getRtStats($user) { return $this->getBasicStats(); }
 }
+

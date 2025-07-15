@@ -169,36 +169,42 @@
             </div>
             
             <div x-show="paymentInfo" class="space-y-4">
-                <template x-if="paymentInfo && paymentInfo.has_bank_transfer">
+                <template x-if="paymentInfo && paymentInfo.bank_transfer && paymentInfo.bank_transfer.account_number">
                     <div class="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
                             <i data-lucide="banknote" class="w-5 h-5 text-blue-600"></i>
                         </div>
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-800 dark:text-white">Transfer Bank</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="paymentInfo.bank_name + ' - ' + paymentInfo.bank_account_number"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="'A/N: ' + paymentInfo.bank_account_name"></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="paymentInfo.bank_transfer.bank_name + ' - ' + paymentInfo.bank_transfer.account_number"></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="'A/N: ' + paymentInfo.bank_transfer.account_name"></p>
                         </div>
                     </div>
                 </template>
-                <template x-if="paymentInfo && paymentInfo.has_e_wallet">
+                <template x-if="paymentInfo && paymentInfo.e_wallet && (paymentInfo.e_wallet.dana || paymentInfo.e_wallet.ovo || paymentInfo.e_wallet.gopay)">
                     <div class="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
                             <i data-lucide="wallet" class="w-5 h-5 text-purple-600"></i>
                         </div>
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-800 dark:text-white">E-Wallet</p>
-                            <template x-for="(number, wallet) in (paymentInfo ? paymentInfo.e_wallet_list : {})" :key="wallet">
-                                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="wallet.toUpperCase() + ': ' + number"></p>
+                            <template x-if="paymentInfo.e_wallet.dana">
+                                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="'DANA: ' + paymentInfo.e_wallet.dana"></p>
+                            </template>
+                            <template x-if="paymentInfo.e_wallet.ovo">
+                                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="'OVO: ' + paymentInfo.e_wallet.ovo"></p>
+                            </template>
+                            <template x-if="paymentInfo.e_wallet.gopay">
+                                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="'GOPAY: ' + paymentInfo.e_wallet.gopay"></p>
                             </template>
                         </div>
                     </div>
                 </template>
-                <template x-if="paymentInfo && paymentInfo.has_qr_code">
+                <template x-if="paymentInfo && paymentInfo.qr_code && paymentInfo.qr_code.image_url">
                     <div class="flex flex-col items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <p class="text-sm font-medium text-gray-800 dark:text-white mb-2">QR Code Pembayaran</p>
-                        <img :src="paymentInfo.qr_code_path" alt="QR Code Pembayaran" class="w-32 h-32 object-contain mb-2">
-                        <p class="text-xs text-gray-500 dark:text-gray-400 text-center" x-text="paymentInfo.qr_code_description"></p>
+                        <img :src="paymentInfo.qr_code.image_url" alt="QR Code Pembayaran" class="w-32 h-32 object-contain mb-2">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 text-center" x-text="paymentInfo.qr_code.description"></p>
                     </div>
                 </template>
                 <template x-if="paymentInfo && paymentInfo.payment_notes">
@@ -226,7 +232,7 @@
             </div>
             
             <div class="space-y-4 max-h-96 overflow-y-auto">
-                <template x-for="bill in userKasBills" :key="bill.kas_id">
+                <template x-for="bill in userKasBills" :key="bill.id">
                     <div class="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div :class="{
                             'bg-yellow-100 text-yellow-600': bill.status === 'belum_bayar' || bill.status === 'menunggu_konfirmasi',
@@ -252,50 +258,13 @@
                                 </template>
                             </p>
                         </div>
-                        <a :href="'{{ route('kas.payment.form', '') }}' + '/' + bill.kas_id" x-show="bill.can_pay" class="bg-blue-600 text-white px-3 py-1 rounded-md text-xs hover:bg-blue-700 transition-colors">
+                        <a :href="'{{ route('kas.payment.form', ['kas' => 'PLACEHOLDER_KAS_ID']) }}'.replace('PLACEHOLDER_KAS_ID', bill.id)" x-show="bill.can_pay" class="bg-blue-600 text-white px-3 py-1 rounded-md text-xs hover:bg-blue-700 transition-colors">
                             Bayar
                         </a>
                     </div>
                 </template>
                 <div x-show="userKasBills.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-4">
                     <p>Tidak ada tagihan kas yang belum lunas.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Aktivitas Terbaru -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between mb-6">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Aktivitas Terbaru</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Log pembayaran kas Anda.</p>
-                </div>
-                <button @click="loadActivities()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                    Refresh
-                </button>
-            </div>
-            
-            <div class="space-y-4 max-h-96 overflow-y-auto">
-                <template x-for="activity in activities" :key="activity.id">
-                    <div class="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div :class="{
-                            'bg-green-100 text-green-600': activity.color === 'green',
-                            'bg-blue-100 text-blue-600': activity.color === 'blue',
-                            'bg-yellow-100 text-yellow-600': activity.color === 'yellow',
-                            'bg-red-100 text-red-600': activity.color === 'red',
-                            'bg-purple-100 text-purple-600': activity.color === 'purple'
-                        }" class="p-2 rounded-lg">
-                            <i :data-lucide="activity.icon" class="w-5 h-5"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-gray-800 dark:text-white" x-text="activity.title"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="activity.description"></p>
-                        </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400" x-text="formatTime(activity.timestamp)"></div>
-                    </div>
-                </template>
-                <div x-show="activities.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-4">
-                    <p>Belum ada aktivitas terbaru.</p>
                 </div>
             </div>
         </div>
@@ -336,6 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function masyarakatDashboardData() {
     return {
         userNik: 'Loading...',
+        rtRw: 'Loading...', // Added rtRw property
         currentDate: '',
         kasLunas: 0,
         kasBelumBayar: 0,
@@ -440,6 +410,7 @@ function masyarakatDashboardData() {
                     if (data.success) {
                         Object.assign(this, data.data);
                         this.userNik = data.data.userNik || 'N/A';
+                        this.rtRw = data.data.rtRw || 'N/A'; // Set rtRw from loaded data
                         this.isOnline = true;
                         this.connectionStatus = 'online';
                         console.log('✅ Masyarakat data loaded successfully:', data.data);

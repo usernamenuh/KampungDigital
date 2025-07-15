@@ -49,7 +49,7 @@
     @if($paymentInfo)
     <div class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-800 dark:text-green-200">
         <h3 class="text-lg font-semibold mb-2">Informasi Pembayaran RT Anda</h3>
-        @if($paymentInfo->bank_transfer && $paymentInfo->bank_transfer['account_number'])
+        @if(isset($paymentInfo->bank_transfer['account_number']) && $paymentInfo->bank_transfer['account_number'])
             <div class="mb-2">
                 <p class="text-sm font-medium">Transfer Bank:</p>
                 <p class="text-sm ml-2">Bank: {{ $paymentInfo->bank_transfer['bank_name'] ?? '-' }}</p>
@@ -57,7 +57,7 @@
                 <p class="text-sm ml-2">A.N.: {{ $paymentInfo->bank_transfer['account_name'] ?? '-' }}</p>
             </div>
         @endif
-        @if($paymentInfo->e_wallet && (isset($paymentInfo->e_wallet['dana']) || isset($paymentInfo->e_wallet['ovo']) || isset($paymentInfo->e_wallet['gopay'])))
+        @if(isset($paymentInfo->e_wallet) && (isset($paymentInfo->e_wallet['dana']) || isset($paymentInfo->e_wallet['ovo']) || isset($paymentInfo->e_wallet['gopay'])))
             <div class="mb-2">
                 <p class="text-sm font-medium">E-Wallet:</p>
                 @if(isset($paymentInfo->e_wallet['dana']))
@@ -71,11 +71,11 @@
                 @endif
             </div>
         @endif
-        @if($paymentInfo->qr_code && $paymentInfo->qr_code['image_url'])
+        @if(isset($paymentInfo->qr_code['image_url']) && $paymentInfo->qr_code['image_url'])
             <div class="mb-2 text-center">
                 <p class="text-sm font-medium">QR Code:</p>
                 <img src="{{ $paymentInfo->qr_code['image_url'] }}" alt="QR Code Pembayaran" class="w-48 h-48 mx-auto border rounded-lg mt-2">
-                @if($paymentInfo->qr_code['description'])
+                @if(isset($paymentInfo->qr_code['description']))
                     <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $paymentInfo->qr_code['description'] }}</p>
                 @endif
             </div>
@@ -96,7 +96,7 @@
     </div>
     @endif
 
-    <form action="{{ route('payments.submit', $kas->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+    <form action="{{ route('kas.payment.submit', $kas->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
         @csrf
         <div>
             <label for="metode_bayar" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Metode Pembayaran <span class="text-red-500">*</span></label>
@@ -105,13 +105,13 @@
                 <option value="">Pilih Metode</option>
                 <option value="tunai">Tunai</option>
                 @if($paymentInfo)
-                    @if($paymentInfo->bank_transfer && $paymentInfo->bank_transfer['account_number'])
+                    @if(isset($paymentInfo->bank_transfer['account_number']) && $paymentInfo->bank_transfer['account_number'])
                         <option value="bank_transfer">Transfer Bank</option>
                     @endif
-                    @if($paymentInfo->e_wallet && (isset($paymentInfo->e_wallet['dana']) || isset($paymentInfo->e_wallet['ovo']) || isset($paymentInfo->e_wallet['gopay'])))
+                    @if(isset($paymentInfo->e_wallet) && (isset($paymentInfo->e_wallet['dana']) || isset($paymentInfo->e_wallet['ovo']) || isset($paymentInfo->e_wallet['gopay'])))
                         <option value="e_wallet">E-Wallet</option>
                     @endif
-                    @if($paymentInfo->qr_code && $paymentInfo->qr_code['image_url'])
+                    @if(isset($paymentInfo->qr_code['image_url']) && $paymentInfo->qr_code['image_url'])
                         <option value="qr_code">QR Code</option>
                     @endif
                 @endif
@@ -122,11 +122,21 @@
         </div>
 
         <div>
-            <label for="bukti_bayar" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Bukti Pembayaran <span class="text-red-500">*</span></label>
-            <input type="file" name="bukti_bayar" id="bukti_bayar" accept="image/*" required
+            <label for="jumlah_dibayar" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah Dibayar <span class="text-red-500">*</span></label>
+            <input type="number" name="jumlah_dibayar" id="jumlah_dibayar" step="0.01" min="0" required
+                   value="{{ old('jumlah_dibayar', $kas->jumlah) }}"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            @error('jumlah_dibayar')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="bukti_bayar_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Bukti Pembayaran <span class="text-red-500">*</span></label>
+            <input type="file" name="bukti_bayar_file" id="bukti_bayar_file" accept="image/*,application/pdf" required
                    class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Format: JPG, PNG. Maksimal 5MB.</p>
-            @error('bukti_bayar')
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Format: JPG, PNG, PDF. Maksimal 5MB.</p>
+            @error('bukti_bayar_file')
                 <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
             @enderror
         </div>
@@ -135,7 +145,7 @@
             <label for="bukti_bayar_notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Keterangan (Opsional)</label>
             <textarea name="bukti_bayar_notes" id="bukti_bayar_notes" rows="3"
                       class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="Nomor referensi, keterangan, atau catatan lainnya..."></textarea>
+                      placeholder="Nomor referensi, keterangan, atau catatan lainnya...">{{ old('bukti_bayar_notes') }}</textarea>
             @error('bukti_bayar_notes')
                 <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
             @enderror
