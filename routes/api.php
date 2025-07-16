@@ -48,7 +48,6 @@ Route::post('/auth/login', [AuthApiController::class, 'login']);
 Route::post('/auth/register', [AuthApiController::class, 'register']);
 
 // Protected API routes (require authentication)
-// PERBAIKI: Ganti 'sectum' menjadi 'sanctum'
 Route::middleware('auth:sanctum')->group(function () {
   // Auth routes
   Route::post('/auth/logout', [AuthApiController::class, 'logout']);
@@ -99,15 +98,13 @@ Route::middleware('auth:sanctum')->group(function () {
       Route::delete('/clear-all', [NotifikasiApiController::class, 'destroyAll']);
   });
 
-  // Payment Info API routes (using PaymentInfoController directly for CRUD)
-  Route::prefix('payment-info')->group(function () {
-      Route::get('/', [PaymentInfoController::class, 'index']); // For listing/fetching current RT's info
-      Route::post('/', [PaymentInfoController::class, 'store']);
-      Route::post('/{paymentInfo}', [PaymentInfoController::class, 'update']); // Use POST for PUT/PATCH
-      Route::delete('/{paymentInfo}', [PaymentInfoController::class, 'destroy']);
-      Route::get('/rt/{rt_id}', [PaymentApiController::class, 'getPaymentInfoByRt']); // Keep this for specific RT lookup if needed elsewhere
-      Route::get('/for-user-rt', [PaymentApiController::class, 'getPaymentInfoForUserRt']); // Keep this for specific user's RT lookup if needed elsewhere
-  });
+  // Payment Info API routes (using apiResource for cleaner definition)
+  Route::apiResource('payment-info', PaymentInfoController::class);
+
+  // Keep these specific PaymentApiController routes if they are distinct
+  // from the PaymentInfoController's resource methods.
+  Route::get('/payment-info/rt/{rt_id}', [PaymentApiController::class, 'getPaymentInfoByRt']);
+  Route::get('/payment-info/for-user-rt', [PaymentApiController::class, 'getPaymentInfoForUserRt']);
 
   // Payments API routes
   Route::prefix('payment')->group(function () {

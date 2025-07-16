@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\PaymentInfo;
 use App\Models\Rt;
-use App\Models\Rw;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -20,6 +19,7 @@ class PaymentInfoController extends Controller
      */
     public function index(Request $request)
     {
+        Log::info('PaymentInfoController@index hit.'); // DEBUG LOG
         $user = Auth::user();
         $query = PaymentInfo::with('rt.rw')->orderBy('rt_id');
         $rtsForSelection = collect(); // Initialize an empty collection for RTs dropdown
@@ -56,30 +56,36 @@ class PaymentInfoController extends Controller
             $paymentInfos = $query->get();
         }
         
+        // For API requests, always return JSON
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'data' => $paymentInfos->map(function($info) {
-                    // Map to include accessors for frontend
+                    // Map to include accessors for frontend and new fields
                     return [
                         'id' => $info->id,
                         'rt_id' => $info->rt_id,
-                        'rt_no' => $info->rt->no_rt ?? 'N/A',
-                        'rw_no' => $info->rt->rw->no_rw ?? 'N/A',
+                        'rt_no' => $info->rt_no, // Using accessor
+                        'rw_no' => $info->rw_no, // Using accessor
                         'bank_name' => $info->bank_name,
                         'bank_account_number' => $info->bank_account_number,
                         'bank_account_name' => $info->bank_account_name,
                         'dana_number' => $info->dana_number,
+                        'dana_account_name' => $info->dana_account_name,
                         'gopay_number' => $info->gopay_number,
+                        'gopay_account_name' => $info->gopay_account_name,
                         'ovo_number' => $info->ovo_number,
+                        'ovo_account_name' => $info->ovo_account_name,
                         'shopeepay_number' => $info->shopeepay_number,
+                        'shopeepay_account_name' => $info->shopeepay_account_name,
                         'qr_code_path' => $info->qr_code_path,
                         'qr_code_description' => $info->qr_code_description,
+                        'qr_code_account_name' => $info->qr_code_account_name,
                         'payment_notes' => $info->payment_notes,
                         'is_active' => $info->is_active,
                         'has_bank_transfer' => $info->has_bank_transfer,
                         'has_e_wallet' => $info->has_e_wallet,
-                        'e_wallet_list' => $info->e_wallet_list,
+                        'e_wallet_list' => $info->e_wallet_list, // This accessor now returns structured data
                         'has_qr_code' => $info->has_qr_code,
                         'qr_code_url' => $info->qr_code_url,
                         'created_at' => $info->created_at,
@@ -98,7 +104,8 @@ class PaymentInfoController extends Controller
         }
 
         // This part is for traditional Blade view rendering, which might not be used if using Alpine.js for data fetching
-        return view('payment-info.index', compact('paymentInfos'));
+        // This will only be reached if the route is accessed directly (not via AJAX/JSON)
+        return view('payment-info.index', compact('paymentInfos', 'rtsForSelection'));
     }
 
     /**
@@ -106,6 +113,7 @@ class PaymentInfoController extends Controller
      */
     public function store(Request $request)
     {
+        Log::info('PaymentInfoController@store hit.'); // DEBUG LOG
         $user = Auth::user();
         $targetRtId = $request->input('rt_id'); // Get rt_id from request
 
@@ -117,8 +125,8 @@ class PaymentInfoController extends Controller
                 return response()->json(['success' => false, 'message' => 'Anda tidak diizinkan menambahkan informasi pembayaran untuk RT lain.'], 403);
             }
             $rt = Rt::find($userRtId);
-        } elseif ($user->hasRole('admin') || $user->hasRole('kades')) {
-            // Admin/Kades can add for any RT, but rt_id must be provided and exist
+        } elseif ($user->hasRole('admin') || $user->hasRole('kades') || $user->hasRole('rw')) {
+            // Admin/Kades/RW can add for any RT, but rt_id must be provided and exist
             $request->validate(['rt_id' => 'required|exists:rts,id']);
             $rt = Rt::find($targetRtId);
         } else {
@@ -134,11 +142,16 @@ class PaymentInfoController extends Controller
             'bank_account_number' => 'nullable|string|max:255',
             'bank_account_name' => 'nullable|string|max:255',
             'dana_number' => 'nullable|string|max:255',
+            'dana_account_name' => 'nullable|string|max:255',
             'gopay_number' => 'nullable|string|max:255',
+            'gopay_account_name' => 'nullable|string|max:255',
             'ovo_number' => 'nullable|string|max:255',
+            'ovo_account_name' => 'nullable|string|max:255',
             'shopeepay_number' => 'nullable|string|max:255',
+            'shopeepay_account_name' => 'nullable|string|max:255',
             'qr_code_file' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'qr_code_description' => 'nullable|string|max:500',
+            'qr_code_account_name' => 'nullable|string|max:255',
             'payment_notes' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
@@ -176,6 +189,7 @@ class PaymentInfoController extends Controller
      */
     public function update(Request $request, PaymentInfo $paymentInfo)
     {
+        Log::info('PaymentInfoController@update hit for ID: ' . $paymentInfo->id); // DEBUG LOG
         $user = Auth::user();
         
         // Authorization check: Ensure user has permission to update THIS paymentInfo
@@ -198,23 +212,28 @@ class PaymentInfoController extends Controller
             'bank_account_number' => 'nullable|string|max:255',
             'bank_account_name' => 'nullable|string|max:255',
             'dana_number' => 'nullable|string|max:255',
+            'dana_account_name' => 'nullable|string|max:255',
             'gopay_number' => 'nullable|string|max:255',
+            'gopay_account_name' => 'nullable|string|max:255',
             'ovo_number' => 'nullable|string|max:255',
+            'ovo_account_name' => 'nullable|string|max:255',
             'shopeepay_number' => 'nullable|string|max:255',
+            'shopeepay_account_name' => 'nullable|string|max:255',
             'qr_code_file' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'qr_code_description' => 'nullable|string|max:500',
+            'qr_code_account_name' => 'nullable|string|max:255',
             'payment_notes' => 'nullable|string',
             'is_active' => 'boolean',
-            'clear_qr_code' => 'nullable|boolean', // Added for explicit QR code deletion
+            'clear_qr_code' => 'nullable|boolean',
         ]);
 
         DB::beginTransaction();
         try {
             // If this payment info is being set to active, deactivate others for this RT
             if (isset($validatedData['is_active']) && $validatedData['is_active']) {
-                PaymentInfo::where('rt_id', $paymentInfo->rt_id) // Use the RT ID of the current paymentInfo
-                           ->where('id', '!=', $paymentInfo->id)
-                           ->update(['is_active' => false]);
+                PaymentInfo::where('rt_id', $paymentInfo->rt_id)
+                       ->where('id', '!=', $paymentInfo->id)
+                       ->update(['is_active' => false]);
             }
 
             // Handle QR code file upload
@@ -249,6 +268,7 @@ class PaymentInfoController extends Controller
      */
     public function destroy(PaymentInfo $paymentInfo)
     {
+        Log::info('PaymentInfoController@destroy hit for ID: ' . $paymentInfo->id); // DEBUG LOG
         $user = Auth::user();
 
         // Authorization check: Ensure user has permission to delete THIS paymentInfo

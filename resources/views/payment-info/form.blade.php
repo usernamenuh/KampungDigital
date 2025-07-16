@@ -1,67 +1,50 @@
 @extends('layouts.app')
 
-@section('title', isset($paymentInfo) ? 'Edit Info Pembayaran' : 'Tambah Info Pembayaran')
+@section('title', isset($paymentInfo) ? 'Edit Informasi Pembayaran' : 'Tambah Informasi Pembayaran')
 @section('page-title', isset($paymentInfo) ? 'Edit Informasi Pembayaran' : 'Tambah Informasi Pembayaran')
-@section('page-description', isset($paymentInfo) ? 'Formulir untuk mengedit detail informasi pembayaran.' : 'Formulir untuk menambahkan informasi pembayaran baru.')
+@section('page-description', isset($paymentInfo) ? 'Perbarui detail informasi pembayaran untuk RT Anda.' : 'Tambahkan informasi rekening dan metode pembayaran baru untuk RT Anda.')
 
 @section('content')
 <div class="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ isset($paymentInfo) ? 'Edit Informasi Pembayaran' : 'Tambah Informasi Pembayaran' }}</h2>
-            <a href="{{ route('payment-info.index') }}" class="inline-flex items-center justify-center px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-offset-gray-800 w-full sm:w-auto">
-                <i data-lucide="arrow-left" class="w-5 h-5 mr-2"></i>
-                Kembali
-            </a>
-        </div>
-
-        @if (session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong class="font-bold">Sukses!</strong>
-                <span class="block sm:inline">{{ session('success') }}</span>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong class="font-bold">Error!</strong>
-                <span class="block sm:inline">{{ session('error') }}</span>
-            </div>
-        @endif
-
         <form action="{{ isset($paymentInfo) ? route('payment-info.update', $paymentInfo->id) : route('payment-info.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
             @csrf
             @if(isset($paymentInfo))
                 @method('PUT')
             @endif
 
-            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
-                <h4 class="text-lg font-medium text-gray-800 dark:text-white mb-4 flex items-center"><i data-lucide="home" class="w-5 h-5 mr-2 text-gray-500"></i>Informasi RT</h4>
-                <div>
-                    <label for="rt_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pilih RT <span class="text-red-500">*</span></label>
-                    <select name="rt_id" id="rt_id" required {{ Auth::user()->role === 'rt' ? 'disabled' : '' }}
-                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white">
-                        <option value="">Pilih RT</option>
-                        @foreach($rts as $rt)
-                            <option value="{{ $rt->id }}" 
-                                {{ (isset($paymentInfo) && $paymentInfo->rt_id == $rt->id) || (Auth::user()->role === 'rt' && Auth::user()->penduduk->rt_id == $rt->id) ? 'selected' : '' }}>
-                                RT {{ $rt->no_rt }} / RW {{ $rt->rw->no_rw ?? '-' }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('rt_id')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    @if(Auth::user()->role === 'rt')
-                        <input type="hidden" name="rt_id" value="{{ Auth::user()->penduduk->rt_id ?? '' }}">
-                    @endif
-                </div>
-            </div>
+            {{-- RT Selection for Admin/Kades/RW --}}
+            @php
+                $user = Auth::user();
+                $isRtRole = $user->hasRole('rt');
+                $isAdminOrKadesOrRw = $user->hasRole('admin') || $user->hasRole('kades') || $user->hasRole('rw');
+            @endphp
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Bank Transfer Info -->
-                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
-                    <h3 class="text-lg font-medium text-gray-800 dark:text-white mb-4 flex items-center"><i data-lucide="banknote" class="w-5 h-5 mr-2 text-blue-500"></i>Transfer Bank</h3>
+            @if($isAdminOrKadesOrRw)
+            <div>
+                <label for="rt_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pilih RT <span class="text-red-500">*</span></label>
+                <select name="rt_id" id="rt_id" required
+                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white">
+                    <option value="">Pilih RT</option>
+                    @foreach($rts as $rt)
+                        <option value="{{ $rt->id }}" {{ old('rt_id', $paymentInfo->rt_id ?? '') == $rt->id ? 'selected' : '' }}>
+                            RT {{ $rt->no_rt }} / RW {{ $rt->rw->no_rw ?? 'N/A' }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('rt_id')
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+            @elseif($isRtRole)
+            {{-- Hidden input for RT role, value set by controller --}}
+            <input type="hidden" name="rt_id" value="{{ Auth::user()->penduduk->rtKetua->id ?? '' }}">
+            @endif
+
+            <!-- Bank Transfer Section -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
+                <h3 class="text-lg font-medium text-gray-800 dark:text-white mb-4 flex items-center"><i data-lucide="banknote" class="w-5 h-5 mr-2 text-blue-500"></i>Transfer Bank</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label for="bank_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Bank</label>
                         <input type="text" name="bank_name" id="bank_name" value="{{ old('bank_name', $paymentInfo->bank_name ?? '') }}"
@@ -70,7 +53,7 @@
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="mt-4">
+                    <div>
                         <label for="bank_account_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nomor Rekening</label>
                         <input type="text" name="bank_account_number" id="bank_account_number" value="{{ old('bank_account_number', $paymentInfo->bank_account_number ?? '') }}"
                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
@@ -78,8 +61,8 @@
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="mt-4">
-                        <label for="bank_account_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Atas Nama</label>
+                    <div class="md:col-span-2">
+                        <label for="bank_account_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Pemilik Rekening</label>
                         <input type="text" name="bank_account_name" id="bank_account_name" value="{{ old('bank_account_name', $paymentInfo->bank_account_name ?? '') }}"
                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
                         @error('bank_account_name')
@@ -87,44 +70,82 @@
                         @enderror
                     </div>
                 </div>
+            </div>
 
-                <!-- E-Wallet Info -->
-                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
-                    <h3 class="text-lg font-medium text-gray-800 dark:text-white mb-4 flex items-center"><i data-lucide="wallet" class="w-5 h-5 mr-2 text-purple-500"></i>E-Wallet</h3>
+            <hr class="border-gray-200 dark:border-gray-700">
+
+            <!-- E-Wallet Section -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
+                <h3 class="text-lg font-medium text-gray-800 dark:text-white mb-4 flex items-center"><i data-lucide="wallet" class="w-5 h-5 mr-2 text-purple-500"></i>E-Wallet</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label for="dana_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DANA (Nomor HP)</label>
+                        <label for="dana_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nomor DANA</label>
                         <input type="text" name="dana_number" id="dana_number" value="{{ old('dana_number', $paymentInfo->dana_number ?? '') }}"
                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
                         @error('dana_number')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="mt-4">
-                        <label for="ovo_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OVO (Nomor HP)</label>
-                        <input type="text" name="ovo_number" id="ovo_number" value="{{ old('ovo_number', $paymentInfo->ovo_number ?? '') }}"
+                    <div>
+                        <label for="dana_account_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Pemilik DANA (A/N)</label>
+                        <input type="text" name="dana_account_name" id="dana_account_name" value="{{ old('dana_account_name', $paymentInfo->dana_account_name ?? '') }}"
                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
-                        @error('ovo_number')
+                        @error('dana_account_name')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="mt-4">
-                        <label for="gopay_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gopay (Nomor HP)</label>
+                    <div>
+                        <label for="gopay_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nomor GoPay</label>
                         <input type="text" name="gopay_number" id="gopay_number" value="{{ old('gopay_number', $paymentInfo->gopay_number ?? '') }}"
                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
                         @error('gopay_number')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="mt-4">
-                        <label for="shopeepay_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ShopeePay (Nomor HP)</label>
+                    <div>
+                        <label for="gopay_account_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Pemilik GoPay (A/N)</label>
+                        <input type="text" name="gopay_account_name" id="gopay_account_name" value="{{ old('gopay_account_name', $paymentInfo->gopay_account_name ?? '') }}"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                        @error('gopay_account_name')
+                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="ovo_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nomor OVO</label>
+                        <input type="text" name="ovo_number" id="ovo_number" value="{{ old('ovo_number', $paymentInfo->ovo_number ?? '') }}"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                        @error('ovo_number')
+                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="ovo_account_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Pemilik OVO (A/N)</label>
+                        <input type="text" name="ovo_account_name" id="ovo_account_name" value="{{ old('ovo_account_name', $paymentInfo->ovo_account_name ?? '') }}"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                        @error('ovo_account_name')
+                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="shopeepay_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nomor ShopeePay</label>
                         <input type="text" name="shopeepay_number" id="shopeepay_number" value="{{ old('shopeepay_number', $paymentInfo->shopeepay_number ?? '') }}"
                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
                         @error('shopeepay_number')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
+                    <div>
+                        <label for="shopeepay_account_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Pemilik ShopeePay (A/N)</label>
+                        <input type="text" name="shopeepay_account_name" id="shopeepay_account_name" value="{{ old('shopeepay_account_name', $paymentInfo->shopeepay_account_name ?? '') }}"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                        @error('shopeepay_account_name')
+                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
             </div>
+
+            <hr class="border-gray-200 dark:border-gray-700">
 
             <!-- QR Code Info -->
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
@@ -145,6 +166,14 @@
                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-300 dark:hover:file:bg-blue-800 cursor-pointer">
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-300">Format: JPG, PNG. Maksimal 2MB.</p>
                     @error('qr_code_file')
+                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="mt-4">
+                    <label for="qr_code_account_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">QR Code (Atas Nama)</label>
+                    <input type="text" name="qr_code_account_name" id="qr_code_account_name" value="{{ old('qr_code_account_name', $paymentInfo->qr_code_account_name ?? '') }}"
+                           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                    @error('qr_code_account_name')
                         <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
