@@ -190,7 +190,7 @@ class DashboardApiController extends Controller
                 'disk_usage' => rand(30, 95),
                 'network_traffic' => rand(100, 1000),
                 'serverLoad' => round(mt_rand() / mt_getrandmax() * (2.0 - 0.1) + 0.1, 1),
-                'activeSessions' => User::where('last_seen_at', '>=', now()->subMinutes(5))->count(),
+                'activeSessions' => User::where('last_activity', '>=', now()->subMinutes(5))->count(),
                 'dbConnections' => rand(3, 15),
             ];
 
@@ -426,11 +426,12 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get Admin Statistics - Complete implementation
+     * Get Admin Statistics - Fixed implementation
      */
     private function getAdminStats()
     {
         try {
+            // Use safe queries with proper error handling
             $totalSaldoDesa = $this->safeSum('desas', 'saldo');
             $totalSaldoRw = $this->safeSum('rws', 'saldo');
             $totalSaldoRt = $this->safeSum('rts', 'saldo');
@@ -441,29 +442,27 @@ class DashboardApiController extends Controller
                 'totalSaldoRt' => $totalSaldoRt,
                 'totalSaldoSistem' => $totalSaldoDesa + $totalSaldoRw + $totalSaldoRt,
                 'totalUsers' => User::count(),
-                'totalDesa' => $this->safeCount('desas'),
+                'totalDesa' => Desa::count(),
                 'totalRws' => Rw::count(),
                 'totalRts' => Rt::count(),
-                'usersOnline' => User::where('last_seen_at', '>=', Carbon::now()->subMinutes(5))->count(),
-                'activeUsers' => User::where('status', 'aktif')->count(),
-                'inactiveUsers' => User::where('status', 'nonaktif')->count(),
+                'usersOnline' => User::where('last_activity', '>=', Carbon::now()->subMinutes(5))->count(),
+                'activeUsers' => User::where('status', 'active')->count(),
+                'inactiveUsers' => User::where('status', 'inactive')->count(),
                 'totalPenduduk' => Penduduk::count(),
-                'pendudukAktif' => Penduduk::whereHas('user', function($q) {
-                    $q->where('status', 'active');
-                })->count(),
+                'pendudukAktif' => Penduduk::where('status', 'aktif')->count(),
                 'pendudukLakiLaki' => Penduduk::where('jenis_kelamin', 'L')->count(),
                 'pendudukPerempuan' => Penduduk::where('jenis_kelamin', 'P')->count(),
                 'totalKk' => Kk::count(),
                 'totalKas' => Kas::count(),
-                'totalKasTerkumpul' => Kas::where('status', 'lunas')->sum('jumlah'),
-                'totalKasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->sum('jumlah'),
+                'totalKasTerkumpul' => Kas::where('status', 'lunas')->sum('jumlah') ?? 0,
+                'totalKasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->sum('jumlah') ?? 0,
                 'jumlahKasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
                 'kasLunas' => Kas::where('status', 'lunas')->count(),
                 'kasBelumBayar' => Kas::where('status', 'belum_bayar')->count(),
                 'kasTerlambat' => Kas::where('status', 'terlambat')->count(),
                 'kasMenungguKonfirmasi' => Kas::where('status', 'menunggu_konfirmasi')->count(),
                 'kasHariIni' => Kas::whereDate('tanggal_bayar', today())->where('status', 'lunas')->count(),
-                'kasBulanIni' => Kas::whereMonth('tanggal_bayar', now()->month)->where('status', 'lunas')->sum('jumlah'),
+                'kasBulanIni' => Kas::whereMonth('tanggal_bayar', now()->month)->where('status', 'lunas')->sum('jumlah') ?? 0,
                 'totalNotifikasi' => Notifikasi::count(),
                 'notifikasiUnread' => Notifikasi::where('dibaca', false)->count(),
                 'notifikasiHariIni' => Notifikasi::whereDate('created_at', today())->count(),
@@ -476,7 +475,7 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get Kades Statistics - Complete implementation
+     * Get Kades Statistics - Fixed implementation
      */
     private function getKadesStats()
     {
@@ -485,7 +484,7 @@ class DashboardApiController extends Controller
                 'totalRws' => Rw::count(),
                 'totalRts' => Rt::count(),
                 'totalPenduduk' => Penduduk::count(),
-                'totalKasTerkumpul' => Kas::where('status', 'lunas')->sum('jumlah'),
+                'totalKasTerkumpul' => Kas::where('status', 'lunas')->sum('jumlah') ?? 0,
                 'pendudukAktif' => Penduduk::where('status', 'aktif')->count(),
                 'pendudukLakiLaki' => Penduduk::where('jenis_kelamin', 'L')->count(),
                 'pendudukPerempuan' => Penduduk::where('jenis_kelamin', 'P')->count(),
@@ -517,9 +516,7 @@ class DashboardApiController extends Controller
                 'rwId' => $rw->id,
                 'rwNumber' => $rw->no_rw,
                 'totalRts' => $rtIds->count(),
-                'totalPenduduk' => Penduduk::whereHas('rt', function($q) use ($rtIds) {
-                    $q->whereIn('id', $rtIds);
-                })->count(),
+                'totalPenduduk' => Kk::whereIn('rt_id', $rtIds)->withCount('penduduks')->get()->sum('penduduks_count'),
                 'kasLunas' => Kas::whereIn('rt_id', $rtIds)->where('status', 'lunas')->count(),
                 'kasBelumBayar' => Kas::whereIn('rt_id', $rtIds)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
             ];
@@ -545,7 +542,7 @@ class DashboardApiController extends Controller
                 'rtId' => $rt->id,
                 'rtNumber' => $rt->no_rt,
                 'totalKk' => Kk::where('rt_id', $rt->id)->count(),
-                'totalPenduduk' => Penduduk::where('rt_id', $rt->id)->count(),
+                'totalPenduduk' => Kk::where('rt_id', $rt->id)->withCount('penduduks')->get()->sum('penduduks_count'),
                 'kasLunas' => Kas::where('rt_id', $rt->id)->where('status', 'lunas')->count(),
                 'kasBelumBayar' => Kas::where('rt_id', $rt->id)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
             ];
@@ -578,14 +575,22 @@ class DashboardApiController extends Controller
             $kasTerlambat = $kasQuery->clone()->where('status', 'belum_bayar')
                                     ->where('tanggal_jatuh_tempo', '<', Carbon::now())->count();
             $kasMenungguKonfirmasi = $kasQuery->clone()->where('status', 'menunggu_konfirmasi')->count();
-            $totalKasAnda = $kasQuery->clone()->where('status', 'lunas')->sum('jumlah');
+            $totalKasAnda = $kasQuery->clone()->where('status', 'lunas')->sum('jumlah') ?? 0;
             
             $paidWeeks = $kasQuery->clone()->whereIn('status', ['lunas', 'menunggu_konfirmasi'])->count();
             $isYearCompleted = $paidWeeks >= $totalWeeksInYear;
 
+            // Get RT/RW info safely
+            $rtRw = 'N/A';
+            if ($penduduk->kk && $penduduk->kk->rt) {
+                $rt = $penduduk->kk->rt;
+                $rw = $rt->rw;
+                $rtRw = 'RT ' . ($rt->no_rt ?? 'N/A') . ' / RW ' . ($rw->no_rw ?? 'N/A');
+            }
+
             return [
                 'userNik' => $penduduk->nik,
-                'rtRw' => 'RT ' . ($penduduk->rt->no_rt ?? 'N/A') . ' / RW ' . ($penduduk->rt->rw->no_rw ?? 'N/A'),
+                'rtRw' => $rtRw,
                 'kasLunas' => $kasLunas,
                 'kasBelumBayar' => $kasBelumBayar,
                 'kasTerlambat' => $kasTerlambat,
@@ -843,13 +848,23 @@ class DashboardApiController extends Controller
     private function getUserRw($user)
     {
         try {
-            // Check if user has penduduk relationship and is RW ketua
+            // Method 1: Check if user has penduduk relationship and is RW ketua
             if ($user->penduduk && $user->penduduk->rwKetua) {
                 return $user->penduduk->rwKetua;
             }
             
-            // Alternative: check if user is directly assigned as RW ketua
-            return Rw::where('ketua_id', $user->id)->first();
+            // Method 2: Check if user is directly assigned as RW ketua
+            $rw = Rw::where('ketua_rw_id', $user->penduduk->id ?? null)->first();
+            if ($rw) {
+                return $rw;
+            }
+
+            // Method 3: Check by user_id if there's a direct relationship
+            $rw = Rw::whereHas('ketua', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->first();
+            
+            return $rw;
         } catch (\Exception $e) {
             Log::error('Error getting user RW', ['error' => $e->getMessage(), 'user_id' => $user->id]);
             return null;
@@ -859,13 +874,23 @@ class DashboardApiController extends Controller
     private function getUserRt($user)
     {
         try {
-            // Check if user has penduduk relationship and is RT ketua
+            // Method 1: Check if user has penduduk relationship and is RT ketua
             if ($user->penduduk && $user->penduduk->rtKetua) {
                 return $user->penduduk->rtKetua;
             }
             
-            // Alternative: check if user is directly assigned as RT ketua
-            return Rt::where('ketua_id', $user->id)->first();
+            // Method 2: Check if user is directly assigned as RT ketua
+            $rt = Rt::where('ketua_rt_id', $user->penduduk->id ?? null)->first();
+            if ($rt) {
+                return $rt;
+            }
+
+            // Method 3: Check by user_id if there's a direct relationship
+            $rt = Rt::whereHas('ketua', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->first();
+            
+            return $rt;
         } catch (\Exception $e) {
             Log::error('Error getting user RT', ['error' => $e->getMessage(), 'user_id' => $user->id]);
             return null;

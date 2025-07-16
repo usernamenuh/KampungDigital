@@ -12,14 +12,9 @@ use App\Http\Controllers\Api\NotifikasiApiController;
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
-// Public API routes (e.g., for health check, public data)
+// Public API routes
 Route::get('/health', function () {
     try {
         $checks = [
@@ -48,12 +43,12 @@ Route::get('/health', function () {
 });
 
 // Authentication API routes
-Route::post('/login', [AuthApiController::class, 'login']);
+Route::post('/auth/login', [AuthApiController::class, 'login']);
 
 // Protected API routes (require authentication)
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthApiController::class, 'logout']);
-    Route::get('/user', [AuthApiController::class, 'user']);
+    Route::post('/auth/logout', [AuthApiController::class, 'logout']);
+    Route::get('/auth/user', [AuthApiController::class, 'user']);
 
     // Dashboard API routes
     Route::prefix('dashboard')->group(function () {
@@ -64,7 +59,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/clear-cache', [DashboardApiController::class, 'clearCache']);
         Route::get('/system-health', [DashboardApiController::class, 'getSystemHealth']);
         Route::post('/update-activity', [DashboardApiController::class, 'updateActivity']);
-        Route::get('/payment-alerts', [DashboardApiController::class, 'getPaymentAlerts']); // New route for payment alerts
+        Route::get('/payment-alerts', [DashboardApiController::class, 'getPaymentAlerts']);
+        Route::get('/aggregated-payment-info-rw', [DashboardApiController::class, 'getAggregatedPaymentInfoForRw']);
     });
 
     // Kas API routes
@@ -96,73 +92,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('payment')->group(function () {
         Route::get('/index', [PaymentApiController::class, 'index']);
         Route::post('/{payment}/confirm', [PaymentApiController::class, 'confirmPayment']);
-    });
-});
-
-// Public API routes for location data
-Route::prefix('location')->group(function () {
-    Route::get('/provinces', function () {
-        try {
-            return response()->json([
-                'success' => true,
-                'data' => \Illuminate\Support\Facades\DB::table('id_provinces')->get()
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    });
-
-    Route::get('/regencies/{province_code}', function ($province_code) {
-        try {
-            return response()->json([
-                'success' => true,
-                'data' => \Illuminate\Support\Facades\DB::table('id_regencies')
-                    ->where('province_code', $province_code)
-                    ->get()
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    });
-
-    Route::get('/districts/{province_code}/{regency_code}', function ($province_code, $regency_code) {
-        try {
-            return response()->json([
-                'success' => true,
-                'data' => \Illuminate\Support\Facades\DB::table('id_districts')
-                    ->where('province_code', $province_code)
-                    ->where('regency_code', $regency_code)
-                    ->get()
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    });
-
-    Route::get('/villages/{province_code}/{regency_code}/{district_code}', function ($province_code, $regency_code, $district_code) {
-        try {
-            return response()->json([
-                'success' => true,
-                'data' => \Illuminate\Support\Facades\DB::table('id_villages')
-                    ->where('province_code', $province_code)
-                    ->where('regency_code', $regency_code)
-                    ->where('district_code', $district_code)
-                    ->get()
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
-        }
     });
 });
