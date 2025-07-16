@@ -7,318 +7,206 @@ use App\Models\Rt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 class PaymentInfoController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
-
     /**
-     * Display a listing of payment infos
+     * Display a listing of the payment info.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        
-        if (!in_array($user->role, ['rt', 'rw', 'kades', 'admin'])) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses.');
+        $rt = null;
+
+        // Determine the RT for the current user
+        if ($user->hasRole('rt') && $user->penduduk && $user->penduduk->rtKetua) {
+            $rt = $user->penduduk->rtKetua;
+        } elseif ($user->hasRole('admin') || $user->hasRole('kades') || $user->hasRole('rw')) {
+            // Admins, Kades, RWs might view payment info for a specific RT
+            // For now, we'll just show their own if they are also an RT ketua,
+            // or show nothing if not explicitly selected.
+            // A more robust solution would involve a dropdown to select RT for these roles.
+            if ($request->has('rt_id')) {
+                $rt = Rt::find($request->input('rt_id'));
+            }
         }
 
-        $query = PaymentInfo::with('rt.rw');
-
-        // Filter berdasarkan role
-        switch ($user->role) {
-            case 'rt':
-                if ($user->penduduk && $user->penduduk->rtKetua) {
-                    $query->where('rt_id', $user->penduduk->rtKetua->id);
-                } else {
-                    return redirect()->back()->with('error', 'Data RT tidak ditemukan.');
-                }
-                break;
-            case 'rw':
-                if ($user->penduduk && $user->penduduk->rwKetua) {
-                    $rtIds = $user->penduduk->rwKetua->rts->pluck('id');
-                    $query->whereIn('rt_id', $rtIds);
-                } else {
-                    return redirect()->back()->with('error', 'Data RW tidak ditemukan.');
-                }
-                break;
-            // admin dan kades bisa lihat semua
+        if (!$rt) {
+            // If no RT is found or selected, return an empty response or error for AJAX
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'RT tidak ditemukan atau tidak dipilih.'
+                ], 404);
+            }
+            // For non-AJAX requests, redirect or show a message
+            return view('payment-info.index', ['paymentInfo' => null, 'rt' => null]);
         }
 
-        $paymentInfos = $query->paginate(10);
+        $paymentInfo = PaymentInfo::where('rt_id', $rt->id)->first();
 
-        return view('payment-info.index', compact('paymentInfos'));
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'data' => $paymentInfo,
+                'message' => $paymentInfo ? 'Informasi pembayaran berhasil dimuat.' : 'Informasi pembayaran belum diatur untuk RT ini.'
+            ]);
+        }
+
+        return view('payment-info.index', compact('paymentInfo', 'rt'));
     }
 
     /**
-     * Show the form for creating a new payment info
-     */
-    public function create()
-    {
-        $user = Auth::user();
-        
-        if (!in_array($user->role, ['rt', 'rw', 'kades', 'admin'])) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses.');
-        }
-
-        $rts = collect();
-
-        switch ($user->role) {
-            case 'rt':
-                if ($user->penduduk && $user->penduduk->rtKetua) {
-                    $rts = collect([$user->penduduk->rtKetua]);
-                }
-                break;
-            case 'rw':
-                if ($user->penduduk && $user->penduduk->rwKetua) {
-                    $rts = $user->penduduk->rwKetua->rts;
-                }
-                break;
-            case 'kades':
-            case 'admin':
-                $rts = Rt::with('rw')->get();
-                break;
-        }
-
-        return view('payment-info.form', compact('rts'));
-    }
-
-    /**
-     * Store a newly created payment info
+     * Store a newly created payment info in storage.
      */
     public function store(Request $request)
     {
         $user = Auth::user();
-        
-        if (!in_array($user->role, ['rt', 'rw', 'kades', 'admin'])) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses.');
+        $rt = $this->getUserRt($user);
+
+        if (!$rt) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk mengatur informasi pembayaran RT.'], 403);
         }
 
-        $request->validate([
-            'rt_id' => 'required|exists:rts,id',
-            'bank_transfer_bank_name' => 'nullable|string|max:100',
-            'bank_transfer_account_number' => 'nullable|string|max:50',
-            'bank_transfer_account_name' => 'nullable|string|max:100',
-            'e_wallet_dana' => 'nullable|string|max:20',
-            'e_wallet_ovo' => 'nullable|string|max:20',
-            'e_wallet_gopay' => 'nullable|string|max:20',
-            'qr_code_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'qr_code_description' => 'nullable|string|max:255',
-            'payment_notes' => 'nullable|string|max:1000',
+        $validatedData = $request->validate([
+            'bank_name' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:255',
+            'bank_account_name' => 'nullable|string|max:255',
+            'dana_number' => 'nullable|string|max:255',
+            'gopay_number' => 'nullable|string|max:255',
+            'ovo_number' => 'nullable|string|max:255',
+            'shopeepay_number' => 'nullable|string|max:255',
+            'qr_code_file' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'qr_code_description' => 'nullable|string|max:500',
+            'payment_notes' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
-        // Validasi akses RT
-        $rt = Rt::findOrFail($request->rt_id);
-        if (!$this->canAccessRt($rt)) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk RT ini.');
-        }
+        DB::beginTransaction();
+        try {
+            // Deactivate any existing active payment info for this RT
+            PaymentInfo::where('rt_id', $rt->id)->update(['is_active' => false]);
 
-        // Cek apakah sudah ada payment info untuk RT ini
-        $existing = PaymentInfo::where('rt_id', $request->rt_id)->first();
-        if ($existing) {
-            return redirect()->back()->with('error', 'Informasi pembayaran untuk RT ini sudah ada. Silakan edit yang sudah ada.');
-        }
+            $paymentInfo = new PaymentInfo();
+            $paymentInfo->rt_id = $rt->id;
+            $paymentInfo->fill($validatedData);
+            $paymentInfo->is_active = $validatedData['is_active'] ?? true; // Default to active if not provided
 
-        $data = [
-            'rt_id' => $request->rt_id,
-            'is_active' => $request->boolean('is_active', true),
-            'payment_notes' => $request->payment_notes,
-        ];
+            if ($request->hasFile('qr_code_file')) {
+                $path = $request->file('qr_code_file')->store('public/qrcodes');
+                $paymentInfo->qr_code_path = $path;
+            }
 
-        // Bank Transfer
-        if ($request->filled('bank_transfer_account_number')) {
-            $data['bank_transfer'] = [
-                'bank_name' => $request->bank_transfer_bank_name,
-                'account_number' => $request->bank_transfer_account_number,
-                'account_name' => $request->bank_transfer_account_name,
-            ];
-        }
+            $paymentInfo->save();
 
-        // E-Wallet
-        $eWallet = [];
-        if ($request->filled('e_wallet_dana')) $eWallet['dana'] = $request->e_wallet_dana;
-        if ($request->filled('e_wallet_ovo')) $eWallet['ovo'] = $request->e_wallet_ovo;
-        if ($request->filled('e_wallet_gopay')) $eWallet['gopay'] = $request->e_wallet_gopay;
-        
-        if (!empty($eWallet)) {
-            $data['e_wallet'] = $eWallet;
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Informasi pembayaran berhasil ditambahkan.', 'data' => $paymentInfo]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error storing payment info: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Gagal menambahkan informasi pembayaran: ' . $e->getMessage()], 500);
         }
-
-        // QR Code
-        $qrCode = [];
-        if ($request->hasFile('qr_code_image')) {
-            $file = $request->file('qr_code_image');
-            $path = $file->store('payment-qr-codes', 'public');
-            $qrCode['image_url'] = Storage::url($path);
-        }
-        if ($request->filled('qr_code_description')) {
-            $qrCode['description'] = $request->qr_code_description;
-        }
-        
-        if (!empty($qrCode)) {
-            $data['qr_code'] = $qrCode;
-        }
-
-        PaymentInfo::create($data);
-
-        return redirect()->route('payment-info.index')->with('success', 'Informasi pembayaran berhasil dibuat.');
     }
 
     /**
-     * Show the form for editing payment info
-     */
-    public function edit(PaymentInfo $paymentInfo)
-    {
-        if (!$this->canAccessRt($paymentInfo->rt)) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk mengedit informasi pembayaran ini.');
-        }
-
-        $user = Auth::user();
-        $rts = collect();
-
-        switch ($user->role) {
-            case 'rt':
-                if ($user->penduduk && $user->penduduk->rtKetua) {
-                    $rts = collect([$user->penduduk->rtKetua]);
-                }
-                break;
-            case 'rw':
-                if ($user->penduduk && $user->penduduk->rwKetua) {
-                    $rts = $user->penduduk->rwKetua->rts;
-                }
-                break;
-            case 'kades':
-            case 'admin':
-                $rts = Rt::with('rw')->get();
-                break;
-        }
-
-        return view('payment-info.form', compact('paymentInfo', 'rts'));
-    }
-
-    /**
-     * Update the specified payment info
+     * Update the specified payment info in storage.
      */
     public function update(Request $request, PaymentInfo $paymentInfo)
     {
-        if (!$this->canAccessRt($paymentInfo->rt)) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk mengedit informasi pembayaran ini.');
+        $user = Auth::user();
+        $rt = $this->getUserRt($user);
+
+        if (!$rt || $paymentInfo->rt_id !== $rt->id) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk mengubah informasi pembayaran ini.'], 403);
         }
 
-        $request->validate([
-            'rt_id' => 'required|exists:rts,id',
-            'bank_transfer_bank_name' => 'nullable|string|max:100',
-            'bank_transfer_account_number' => 'nullable|string|max:50',
-            'bank_transfer_account_name' => 'nullable|string|max:100',
-            'e_wallet_dana' => 'nullable|string|max:20',
-            'e_wallet_ovo' => 'nullable|string|max:20',
-            'e_wallet_gopay' => 'nullable|string|max:20',
-            'qr_code_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'qr_code_description' => 'nullable|string|max:255',
-            'payment_notes' => 'nullable|string|max:1000',
+        $validatedData = $request->validate([
+            'bank_name' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:255',
+            'bank_account_name' => 'nullable|string|max:255',
+            'dana_number' => 'nullable|string|max:255',
+            'gopay_number' => 'nullable|string|max:255',
+            'ovo_number' => 'nullable|string|max:255',
+            'shopeepay_number' => 'nullable|string|max:255',
+            'qr_code_file' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'qr_code_description' => 'nullable|string|max:500',
+            'payment_notes' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
-        $data = [
-            'rt_id' => $request->rt_id,
-            'is_active' => $request->boolean('is_active', true),
-            'payment_notes' => $request->payment_notes,
-        ];
-
-        // Bank Transfer
-        if ($request->filled('bank_transfer_account_number')) {
-            $data['bank_transfer'] = [
-                'bank_name' => $request->bank_transfer_bank_name,
-                'account_number' => $request->bank_transfer_account_number,
-                'account_name' => $request->bank_transfer_account_name,
-            ];
-        } else {
-            $data['bank_transfer'] = null;
-        }
-
-        // E-Wallet
-        $eWallet = [];
-        if ($request->filled('e_wallet_dana')) $eWallet['dana'] = $request->e_wallet_dana;
-        if ($request->filled('e_wallet_ovo')) $eWallet['ovo'] = $request->e_wallet_ovo;
-        if ($request->filled('e_wallet_gopay')) $eWallet['gopay'] = $request->e_wallet_gopay;
-        
-        $data['e_wallet'] = !empty($eWallet) ? $eWallet : null;
-
-        // QR Code
-        $qrCode = $paymentInfo->qr_code ?? [];
-        
-        if ($request->hasFile('qr_code_image')) {
-            // Hapus file lama jika ada
-            if (isset($qrCode['image_url'])) {
-                $oldPath = str_replace('/storage/', '', $qrCode['image_url']);
-                Storage::disk('public')->delete($oldPath);
+        DB::beginTransaction();
+        try {
+            // If this payment info is being set to active, deactivate others for this RT
+            if (isset($validatedData['is_active']) && $validatedData['is_active']) {
+                PaymentInfo::where('rt_id', $rt->id)
+                           ->where('id', '!=', $paymentInfo->id)
+                           ->update(['is_active' => false]);
             }
-            
-            $file = $request->file('qr_code_image');
-            $path = $file->store('payment-qr-codes', 'public');
-            $qrCode['image_url'] = Storage::url($path);
-        }
-        
-        if ($request->filled('qr_code_description')) {
-            $qrCode['description'] = $request->qr_code_description;
-        } elseif ($request->has('qr_code_description')) {
-            unset($qrCode['description']);
-        }
-        
-        $data['qr_code'] = !empty($qrCode) ? $qrCode : null;
 
-        $paymentInfo->update($data);
+            // Handle QR code file upload
+            if ($request->hasFile('qr_code_file')) {
+                // Delete old QR code if exists
+                if ($paymentInfo->qr_code_path) {
+                    Storage::delete($paymentInfo->qr_code_path);
+                }
+                $path = $request->file('qr_code_file')->store('public/qrcodes');
+                $paymentInfo->qr_code_path = $path;
+            } elseif ($request->input('clear_qr_code')) { // Allow clearing QR code
+                if ($paymentInfo->qr_code_path) {
+                    Storage::delete($paymentInfo->qr_code_path);
+                }
+                $paymentInfo->qr_code_path = null;
+            }
 
-        return redirect()->route('payment-info.index')->with('success', 'Informasi pembayaran berhasil diperbarui.');
+            $paymentInfo->fill($validatedData);
+            $paymentInfo->save();
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Informasi pembayaran berhasil diperbarui.', 'data' => $paymentInfo]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating payment info: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Gagal memperbarui informasi pembayaran: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
-     * Remove the specified payment info
+     * Remove the specified payment info from storage.
      */
     public function destroy(PaymentInfo $paymentInfo)
     {
-        if (!$this->canAccessRt($paymentInfo->rt)) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk menghapus informasi pembayaran ini.');
+        $user = Auth::user();
+        $rt = $this->getUserRt($user);
+
+        if (!$rt || $paymentInfo->rt_id !== $rt->id) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk menghapus informasi pembayaran ini.'], 403);
         }
 
-        // Hapus file QR code jika ada
-        if ($paymentInfo->qr_code && isset($paymentInfo->qr_code['image_url'])) {
-            $path = str_replace('/storage/', '', $paymentInfo->qr_code['image_url']);
-            Storage::disk('public')->delete($path);
+        DB::beginTransaction();
+        try {
+            if ($paymentInfo->qr_code_path) {
+                Storage::delete($paymentInfo->qr_code_path);
+            }
+            $paymentInfo->delete();
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Informasi pembayaran berhasil dihapus.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting payment info: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus informasi pembayaran: ' . $e->getMessage()], 500);
         }
-
-        $paymentInfo->delete();
-
-        return redirect()->route('payment-info.index')->with('success', 'Informasi pembayaran berhasil dihapus.');
     }
 
     /**
-     * Check if user can access specific RT
+     * Helper to get the RT object for the authenticated user.
      */
-    private function canAccessRt(Rt $rt)
+    private function getUserRt($user)
     {
-        $user = Auth::user();
-
-        switch ($user->role) {
-            case 'admin':
-            case 'kades':
-                return true;
-            case 'rw':
-                if ($user->penduduk && $user->penduduk->rwKetua) {
-                    return $rt->rw_id === $user->penduduk->rwKetua->id;
-                }
-                return false;
-            case 'rt':
-                if ($user->penduduk && $user->penduduk->rtKetua) {
-                    return $rt->id === $user->penduduk->rtKetua->id;
-                }
-                return false;
-            default:
-                return false;
+        if ($user->penduduk && $user->penduduk->rtKetua) {
+            return $user->penduduk->rtKetua;
         }
+        return null;
     }
 }

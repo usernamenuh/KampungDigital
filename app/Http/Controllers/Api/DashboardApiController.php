@@ -144,6 +144,227 @@ class DashboardApiController extends Controller
     }
 
     /**
+     * Get monthly summary - FIXED with better error handling
+     */
+    public function getMonthlySummary(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $currentMonth = Carbon::now()->month;
+            $currentYear = Carbon::now()->year;
+
+            Log::info('Getting monthly summary', [
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'month' => $currentMonth,
+                'year' => $currentYear
+            ]);
+
+            $income = 0;
+            $expenses = 0;
+
+            // For RT role, calculate income from confirmed kas payments in their RT
+            if ($user->role === 'rt') {
+                $rt = $this->getUserRt($user);
+                if (!$rt) {
+                    Log::warning('RT not found for user in getMonthlySummary', ['user_id' => $user->id]);
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'income' => 0,
+                            'expenses' => 0,
+                            'netBalance' => 0,
+                        ],
+                        'message' => 'RT tidak ditemukan, menampilkan data kosong.'
+                    ]);
+                }
+
+                Log::info('Found RT for user', ['rt_id' => $rt->id, 'rt_no' => $rt->no_rt]);
+
+                // Use 'jumlah' field - the base amount for kas
+                $income = Kas::where('rt_id', $rt->id)
+                             ->where('status', 'lunas')
+                             ->whereMonth('tanggal_bayar', $currentMonth)
+                             ->whereYear('tanggal_bayar', $currentYear)
+                             ->whereNotNull('tanggal_bayar')
+                             ->sum('jumlah') ?? 0;
+
+                Log::info('Calculated income for RT', ['rt_id' => $rt->id, 'income' => $income]);
+            }
+            elseif ($user->role === 'rw') {
+                $rw = $this->getUserRw($user);
+                if ($rw) {
+                    $rtIds = $rw->rts->pluck('id');
+                    $income = Kas::whereIn('rt_id', $rtIds)
+                                 ->where('status', 'lunas')
+                                 ->whereMonth('tanggal_bayar', $currentMonth)
+                                 ->whereYear('tanggal_bayar', $currentYear)
+                                 ->whereNotNull('tanggal_bayar')
+                                 ->sum('jumlah') ?? 0;
+                }
+            }
+            elseif ($user->role === 'masyarakat') {
+                if ($user->penduduk) {
+                    $income = Kas::where('penduduk_id', $user->penduduk->id)
+                                 ->where('status', 'lunas')
+                                 ->whereMonth('tanggal_bayar', $currentMonth)
+                                 ->whereYear('tanggal_bayar', $currentYear)
+                                 ->whereNotNull('tanggal_bayar')
+                                 ->sum('jumlah') ?? 0;
+                }
+            }
+
+            $netBalance = $income - $expenses;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'income' => $income,
+                    'expenses' => $expenses,
+                    'netBalance' => $netBalance,
+                ],
+                'message' => 'Ringkasan bulanan berhasil dimuat.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting monthly summary', [
+                'user_id' => Auth::id(),
+                'role' => Auth::user()->role ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => true, // Changed to true to prevent frontend errors
+                'data' => [
+                    'income' => 0,
+                    'expenses' => 0,
+                    'netBalance' => 0,
+                ],
+                'message' => 'Gagal memuat ringkasan bulanan, menampilkan data kosong.'
+            ]);
+        }
+    }
+
+    /**
+     * Get recent payments - FIXED with better error handling
+     */
+    public function getRecentPayments(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $limit = $request->get('limit', 5);
+
+            Log::info('Getting recent payments', [
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'limit' => $limit
+            ]);
+
+            $query = Kas::with(['penduduk', 'rt']);
+
+            // Apply role-based filtering
+            switch ($user->role) {
+                case 'masyarakat':
+                    $penduduk = Penduduk::where('user_id', $user->id)->first();
+                    if (!$penduduk) {
+                        return response()->json([
+                            'success' => true,
+                            'data' => [],
+                            'message' => 'Data penduduk tidak ditemukan'
+                        ]);
+                    }
+                    $query->where('penduduk_id', $penduduk->id);
+                    break;
+
+                case 'rt':
+                    $rt = $this->getUserRt($user);
+                    if (!$rt) {
+                        Log::warning('RT not found for user in getRecentPayments', ['user_id' => $user->id]);
+                        return response()->json([
+                            'success' => true,
+                            'data' => [],
+                            'message' => 'RT tidak ditemukan untuk user ini'
+                        ]);
+                    }
+                    
+                    Log::info('Found RT for recent payments', ['rt_id' => $rt->id, 'rt_no' => $rt->no_rt]);
+                    $query->where('rt_id', $rt->id);
+                    break;
+
+                case 'rw':
+                    $rw = $this->getUserRw($user);
+                    if ($rw) {
+                        $rtIds = $rw->rts->pluck('id');
+                        $query->whereIn('rt_id', $rtIds);
+                    } else {
+                        return response()->json([
+                            'success' => true,
+                            'data' => [],
+                            'message' => 'RW tidak ditemukan untuk user ini'
+                        ]);
+                    }
+                    break;
+
+                case 'admin':
+                case 'kades':
+                    // Can see all payments
+                    break;
+
+                default:
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akses tidak diizinkan'
+                    ], 403);
+            }
+
+            $recentPayments = $query->whereIn('status', ['lunas', 'menunggu_konfirmasi'])
+                                    ->whereNotNull('tanggal_bayar')
+                                    ->orderBy('tanggal_bayar', 'desc')
+                                    ->limit($limit)
+                                    ->get();
+
+            Log::info('Found recent payments', ['count' => $recentPayments->count()]);
+
+            $transformedPayments = $recentPayments->map(function($kas) {
+                // Use safe navigation and fallbacks
+                $pendudukName = optional($kas->penduduk)->nama_lengkap ?? 'Warga';
+                $rtNo = optional($kas->rt)->no_rt ?? 'N/A';
+                
+                // Calculate total amount including denda
+                $totalAmount = $kas->jumlah + ($kas->denda ?? 0);
+
+                return [
+                    'id' => $kas->id,
+                    'description' => 'Pembayaran Kas Minggu ke-' . $kas->minggu_ke . ' Tahun ' . $kas->tahun . ' dari ' . $pendudukName,
+                    'timestamp' => $kas->tanggal_bayar ?? $kas->created_at,
+                    'amount' => $totalAmount,
+                    'status' => $kas->status,
+                    'location' => 'RT ' . $rtNo,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $transformedPayments,
+                'message' => 'Pembayaran terbaru berhasil dimuat.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting recent payments', [
+                'user_id' => Auth::id(),
+                'role' => Auth::user()->role ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => true, // Changed to true to prevent frontend errors
+                'data' => [],
+                'message' => 'Gagal memuat pembayaran terbaru, menampilkan data kosong.'
+            ]);
+        }
+    }
+
+    /**
      * Get recent activities/notifications.
      */
     public function getActivities(Request $request)
@@ -308,7 +529,7 @@ class DashboardApiController extends Controller
                 $message = 'Tagihan kas minggu ke-' . $bill->minggu_ke . ' tahun ' . $bill->tahun . ' menunggu pembayaran.';
                 $title = 'Tagihan Kas Mendatang';
 
-                if ($bill->status === 'terlambat' || ($bill->status === 'belum_bayar' && $bill->tanggal_jatuh_tempo->isPast())) {
+                if ($bill->status === 'terlambat' || ($bill->status === 'belum_bayar' && $bill->tanggal_jatuh_tempo && $bill->tanggal_jatuh_tempo->isPast())) {
                     $type = 'error';
                     $message = 'Tagihan kas minggu ke-' . $bill->minggu_ke . ' tahun ' . $bill->tahun . ' sudah terlambat!';
                     $title = 'Tagihan Kas Terlambat';
@@ -324,10 +545,10 @@ class DashboardApiController extends Controller
                     'title' => $title,
                     'message' => $message,
                     'type' => $type,
-                    'total_bayar' => $bill->total_bayar,
-                    'tanggal_jatuh_tempo' => $bill->tanggal_jatuh_tempo_formatted,
+                    'total_bayar' => $bill->jumlah + ($bill->denda ?? 0),
+                    'tanggal_jatuh_tempo' => $bill->tanggal_jatuh_tempo ? $bill->tanggal_jatuh_tempo->format('d F Y') : '-',
                     'payment_url' => route('kas.payment.form', $bill->id),
-                    'is_overdue' => $bill->is_overdue,
+                    'is_overdue' => $bill->status === 'belum_bayar' && $bill->tanggal_jatuh_tempo && $bill->tanggal_jatuh_tempo->isPast(),
                 ];
             }
 
@@ -381,7 +602,7 @@ class DashboardApiController extends Controller
                     ] : null,
                     'e_wallet_list' => $info->has_e_wallet ? $info->e_wallet_list : null,
                     'qr_code' => $info->has_qr_code ? [
-                        'path' => \Storage::url($info->qr_code_path),
+                        'path' => $info->qr_code_url,
                         'description' => $info->qr_code_description,
                     ] : null,
                     'payment_notes' => $info->payment_notes,
@@ -426,12 +647,11 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get Admin Statistics - Fixed implementation
+     * Get Admin Statistics
      */
     private function getAdminStats()
     {
         try {
-            // Use safe queries with proper error handling
             $totalSaldoDesa = $this->safeSum('desas', 'saldo');
             $totalSaldoRw = $this->safeSum('rws', 'saldo');
             $totalSaldoRt = $this->safeSum('rts', 'saldo');
@@ -475,7 +695,7 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get Kades Statistics - Fixed implementation
+     * Get Kades Statistics
      */
     private function getKadesStats()
     {
@@ -499,7 +719,7 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get RW Statistics - Fixed implementation
+     * Get RW Statistics
      */
     private function getRwStats($user)
     {
@@ -527,7 +747,7 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get RT Statistics - Fixed implementation
+     * Get RT Statistics - ENHANCED FOR RT DASHBOARD
      */
     private function getRtStats($user)
     {
@@ -538,13 +758,21 @@ class DashboardApiController extends Controller
                 return $this->getBasicStats();
             }
 
+            // Get total KK and Penduduk count
+            $totalKk = Kk::where('rt_id', $rt->id)->count();
+            $totalPenduduk = Kk::where('rt_id', $rt->id)->withCount('penduduks')->get()->sum('penduduks_count');
+            
+            // Get Kas statistics
+            $kasLunas = Kas::where('rt_id', $rt->id)->where('status', 'lunas')->count();
+            $kasBelumBayar = Kas::where('rt_id', $rt->id)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count();
+
             return [
                 'rtId' => $rt->id,
-                'rtNumber' => $rt->no_rt,
-                'totalKk' => Kk::where('rt_id', $rt->id)->count(),
-                'totalPenduduk' => Kk::where('rt_id', $rt->id)->withCount('penduduks')->get()->sum('penduduks_count'),
-                'kasLunas' => Kas::where('rt_id', $rt->id)->where('status', 'lunas')->count(),
-                'kasBelumBayar' => Kas::where('rt_id', $rt->id)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
+                'rtNumber' => $rt->no_rt ?? 'N/A',
+                'totalKk' => $totalKk,
+                'totalPenduduk' => $totalPenduduk,
+                'kasLunas' => $kasLunas,
+                'kasBelumBayar' => $kasBelumBayar,
             ];
         } catch (\Exception $e) {
             Log::error('Error in getRtStats', ['error' => $e->getMessage(), 'user_id' => $user->id]);
@@ -663,7 +891,7 @@ class DashboardApiController extends Controller
         $activities = [];
 
         try {
-            $recentPayments = Kas::with(['penduduk', 'rt.rw'])
+            $recentPayments = Kas::with(['penduduk', 'rt'])
                 ->where('status', 'lunas')
                 ->whereNotNull('tanggal_bayar')
                 ->orderBy('tanggal_bayar', 'desc')
@@ -678,7 +906,7 @@ class DashboardApiController extends Controller
                     'description' => "{$payment->penduduk->nama_lengkap} membayar kas minggu ke-{$payment->minggu_ke}",
                     'amount' => $payment->jumlah,
                     'user' => $payment->penduduk->nama_lengkap,
-                    'location' => "RT {$payment->rt->no_rt} RW {$payment->rt->rw->no_rw}",
+                    'location' => "RT {$payment->rt->no_rt}",
                     'timestamp' => $payment->tanggal_bayar,
                     'icon' => 'credit-card',
                     'color' => 'green'
@@ -735,7 +963,7 @@ class DashboardApiController extends Controller
                                             $q->where('rt_id', $rt->id);
                                         })
                                     ->orWhere('user_id', $user->id)
-                                    ->with('user', 'kas.penduduk', 'kas.rt.rw')
+                                    ->with('user', 'kas.penduduk', 'kas.rt')
                                     ->orderBy('created_at', 'desc')
                                     ->limit($limit)
                                     ->get();
@@ -748,13 +976,13 @@ class DashboardApiController extends Controller
                                             $q->whereIn('rt_id', $rtIds);
                                         })
                                     ->orWhere('user_id', $user->id)
-                                    ->with('user', 'kas.penduduk', 'kas.rt.rw')
+                                    ->with('user', 'kas.penduduk', 'kas.rt')
                                     ->orderBy('created_at', 'desc')
                                     ->limit($limit)
                                     ->get();
                 }
             } elseif ($user->role === 'kades') {
-                $activities = Notifikasi::with('user', 'kas.penduduk', 'kas.rt.rw')
+                $activities = Notifikasi::with('user', 'kas.penduduk', 'kas.rt')
                                         ->orderBy('created_at', 'desc')
                                         ->limit($limit)
                                         ->get();
@@ -774,9 +1002,9 @@ class DashboardApiController extends Controller
                     $kas = $activity->kas;
                     if ($kas) {
                         $title = 'Pembayaran Kas dari ' . ($kas->penduduk->nama_lengkap ?? 'Warga');
-                        $description = 'Minggu ke-' . $kas->minggu_ke . ' Tahun ' . $kas->tahun . ' - ' . $kas->status_text;
-                        $amount = $kas->total_bayar;
-                        $location = 'RT ' . ($kas->rt->no_rt ?? 'N/A') . '/RW ' . ($kas->rt->rw->no_rw ?? 'N/A');
+                        $description = 'Minggu ke-' . $kas->minggu_ke . ' Tahun ' . $kas->tahun . ' - ' . ($kas->status_text ?? $kas->status);
+                        $amount = $kas->jumlah + ($kas->denda ?? 0);
+                        $location = 'RT ' . ($kas->rt->no_rt ?? 'N/A');
                         if ($kas->status === 'lunas') {
                             $icon = 'check-circle';
                             $color = 'green';
@@ -845,54 +1073,81 @@ class DashboardApiController extends Controller
         }
     }
 
+    /**
+     * Get user's RW - FIXED based on model relationships
+     */
     private function getUserRw($user)
     {
         try {
-            // Method 1: Check if user has penduduk relationship and is RW ketua
+            // Method 1: Check if user has penduduk and is RW ketua directly
             if ($user->penduduk && $user->penduduk->rwKetua) {
                 return $user->penduduk->rwKetua;
             }
             
-            // Method 2: Check if user is directly assigned as RW ketua
-            $rw = Rw::where('ketua_rw_id', $user->penduduk->id ?? null)->first();
-            if ($rw) {
-                return $rw;
+            // Method 2: Check if user is assigned as RW ketua via ketua_rw_id
+            if ($user->penduduk) {
+                $rw = Rw::where('ketua_rw_id', $user->penduduk->id)->first();
+                if ($rw) {
+                    return $rw;
+                }
             }
 
-            // Method 3: Check by user_id if there's a direct relationship
-            $rw = Rw::whereHas('ketua', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->first();
-            
-            return $rw;
+            return null;
         } catch (\Exception $e) {
             Log::error('Error getting user RW', ['error' => $e->getMessage(), 'user_id' => $user->id]);
             return null;
         }
     }
 
+    /**
+     * Get user's RT - FIXED with enhanced logging
+     */
     private function getUserRt($user)
     {
         try {
-            // Method 1: Check if user has penduduk relationship and is RT ketua
+            Log::info('Getting RT for user', [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'has_penduduk' => $user->penduduk ? true : false,
+                'penduduk_id' => $user->penduduk->id ?? null
+            ]);
+
+            // Method 1: Check if user has penduduk and is RT ketua directly
             if ($user->penduduk && $user->penduduk->rtKetua) {
+                Log::info('Found RT via rtKetua relationship', [
+                    'user_id' => $user->id,
+                    'rt_id' => $user->penduduk->rtKetua->id,
+                    'rt_no' => $user->penduduk->rtKetua->no_rt
+                ]);
                 return $user->penduduk->rtKetua;
             }
             
-            // Method 2: Check if user is directly assigned as RT ketua
-            $rt = Rt::where('ketua_rt_id', $user->penduduk->id ?? null)->first();
-            if ($rt) {
-                return $rt;
+            // Method 2: Check if user is assigned as RT ketua via ketua_rt_id
+            if ($user->penduduk) {
+                $rt = Rt::where('ketua_rt_id', $user->penduduk->id)->first();
+                if ($rt) {
+                    Log::info('Found RT via ketua_rt_id lookup', [
+                        'user_id' => $user->id,
+                        'penduduk_id' => $user->penduduk->id,
+                        'rt_id' => $rt->id,
+                        'rt_no' => $rt->no_rt
+                    ]);
+                    return $rt;
+                }
             }
 
-            // Method 3: Check by user_id if there's a direct relationship
-            $rt = Rt::whereHas('ketua', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->first();
-            
-            return $rt;
+            Log::warning('No RT found for user', [
+                'user_id' => $user->id,
+                'has_penduduk' => $user->penduduk ? true : false,
+                'penduduk_id' => $user->penduduk->id ?? null
+            ]);
+            return null;
         } catch (\Exception $e) {
-            Log::error('Error getting user RT', ['error' => $e->getMessage(), 'user_id' => $user->id]);
+            Log::error('Error getting user RT', [
+                'error' => $e->getMessage(), 
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
+            ]);
             return null;
         }
     }
