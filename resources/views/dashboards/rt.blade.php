@@ -90,6 +90,63 @@
         </div>
     </div>
 
+    <!-- Payment Information for RT -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Informasi Pembayaran RT Anda</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Detail metode pembayaran yang Anda sediakan.</p>
+            </div>
+            <button @click="loadPaymentInfo()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
+            </button>
+        </div>
+        
+        <div x-show="paymentInfo" class="space-y-4">
+            <template x-if="paymentInfo && paymentInfo.has_bank_transfer">
+                <div class="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                        <i data-lucide="banknote" class="w-5 h-5 text-blue-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-800 dark:text-white">Transfer Bank</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400" x-text="paymentInfo.bank_name + ' - ' + paymentInfo.bank_account_number"></p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400" x-text="'A/N: ' + paymentInfo.bank_account_name"></p>
+                    </div>
+                </div>
+            </template>
+            <template x-if="paymentInfo && paymentInfo.has_e_wallet">
+                <div class="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                        <i data-lucide="wallet" class="w-5 h-5 text-purple-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-800 dark:text-white">E-Wallet</p>
+                        <template x-for="(number, wallet) in (paymentInfo ? paymentInfo.e_wallet_list : {})" :key="wallet">
+                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="wallet.toUpperCase() + ': ' + number"></p>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            <template x-if="paymentInfo && paymentInfo.has_qr_code">
+                <div class="flex flex-col items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <p class="text-sm font-medium text-gray-800 dark:text-white mb-2">QR Code Pembayaran</p>
+                    <img :src="paymentInfo.qr_code_path" alt="QR Code Pembayaran" class="w-32 h-32 object-contain mb-2">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 text-center" x-text="paymentInfo.qr_code_description"></p>
+                </div>
+            </template>
+            <template x-if="paymentInfo && paymentInfo.payment_notes">
+                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <p class="text-sm font-medium text-gray-800 dark:text-white">Catatan Pembayaran</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400" x-text="paymentInfo.payment_notes"></p>
+                </div>
+            </template>
+        </div>
+        <div x-show="!paymentInfo" class="text-center text-gray-500 dark:text-gray-400 py-4">
+            <p>Informasi pembayaran belum diatur untuk RT Anda.</p>
+        </div>
+    </div>
+
     <!-- Monthly Kas Data Chart -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Data Kas Bulanan</h3>
@@ -170,12 +227,14 @@ function rtDashboardData() {
     return {
         currentDate: '',
         rtNumber: 'Loading...',
+        rtId: null, // Initialize rtId
         totalKk: 0,
         totalPenduduk: 0,
         kasLunas: 0,
         kasBelumBayar: 0,
         monthlyKasChart: null,
         activities: [],
+        paymentInfo: null,
         isOnline: true,
         connectionStatus: 'online',
         refreshInterval: null,
@@ -199,7 +258,8 @@ function rtDashboardData() {
             await Promise.all([
                 this.loadDashboardData(),
                 this.loadMonthlyKasData(),
-                this.loadActivities()
+                this.loadActivities(),
+                this.loadPaymentInfo()
             ]);
         },
 
@@ -228,6 +288,7 @@ function rtDashboardData() {
                     this.loadDashboardData();
                     this.loadMonthlyKasData();
                     this.loadActivities();
+                    this.loadPaymentInfo();
                 }
             }, 30000); // Refresh every 30 seconds
         },
@@ -247,6 +308,7 @@ function rtDashboardData() {
                     const data = await response.json();
                     if (data.success) {
                         this.rtNumber = data.data.rtNumber || 'N/A';
+                        this.rtId = data.data.rtId; // Capture the actual RT ID
                         this.totalKk = data.data.totalKk || 0;
                         this.totalPenduduk = data.data.totalPenduduk || 0;
                         this.kasLunas = data.data.kasLunas || 0;
@@ -367,6 +429,39 @@ function rtDashboardData() {
                 }
             } catch (error) {
                 console.error('Error loading activities:', error);
+            }
+        },
+
+        async loadPaymentInfo() {
+            try {
+                console.log('💳 Loading RT payment info...');
+                if (!this.rtId) { // Ensure rtId is available
+                    console.warn('RT ID not available yet. Skipping payment info load.');
+                    return;
+                }
+                const paymentInfoResponse = await fetch(`/api/payment-info/rt/${this.rtId}`, { // Use the actual RT ID
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+                if (paymentInfoResponse.ok) {
+                    const paymentInfoData = await paymentInfoResponse.json();
+                    if (paymentInfoData.success) {
+                        this.paymentInfo = paymentInfoData.data;
+                        console.log('✅ RT Payment info loaded successfully:', paymentInfoData.data);
+                    } else {
+                        this.paymentInfo = null;
+                        console.warn('⚠️ No RT payment info found:', paymentInfoData.message);
+                    }
+                } else {
+                    this.paymentInfo = null;
+                    console.error('❌ Failed to load RT payment info: HTTP ' + paymentInfoResponse.status);
+                }
+            } catch (error) {
+                this.paymentInfo = null;
+                console.error('❌ Error loading RT payment info:', error);
             }
         },
 
