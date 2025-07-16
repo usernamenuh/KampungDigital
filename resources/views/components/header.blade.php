@@ -8,10 +8,6 @@
                 <i data-lucide="menu" class="w-4 h-4 text-gray-600 dark:text-gray-300"></i>
             </button>
 
-            <!-- Personalized Greeting -->
-            <div class="text-lg font-semibold text-gray-800 dark:text-white">
-                Selamat datang, {{ Auth::user()->name ?? 'Pengguna' }} 👋
-            </div>
         </div>
 
         <div class="flex items-center gap-2 sm:gap-3">

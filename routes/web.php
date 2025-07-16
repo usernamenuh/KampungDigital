@@ -34,7 +34,7 @@ use App\Http\Controllers\Api\NotifikasiApiController;
 
 // Public routes
 Route::get('/', function () {
-    return redirect()->route('login');
+    return view ('landing');
 });
 
 // Authentication Routes

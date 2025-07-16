@@ -227,7 +227,7 @@ function navigationData(appStore) {
         
         getCurrentRoute() {
             const path = window.location.pathname;
-            if (path === '{{ route('home') }}' || path === '/') return 'dashboard';
+            if (path === '{{ route('home') }}' || path === '/') return 'home';
             // Updated logic for 'desa' to match 'admin.desas.index' route
             if (path.startsWith('{{ route('desas.index') }}') || path === '/desas') return 'desa';
             if (path.startsWith('{{ route('penduduk.index') }}') || path === '/penduduk') return 'penduduk';

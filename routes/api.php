@@ -44,11 +44,23 @@ Route::get('/health', function () {
 
 // Authentication API routes
 Route::post('/auth/login', [AuthApiController::class, 'login']);
+Route::post('/auth/register', [AuthApiController::class, 'register']);
 
 // Protected API routes (require authentication)
 Route::middleware('auth:sanctum')->group(function () {
+    // Auth routes
     Route::post('/auth/logout', [AuthApiController::class, 'logout']);
     Route::get('/auth/user', [AuthApiController::class, 'user']);
+    Route::put('/auth/profile', [AuthApiController::class, 'updateProfile']);
+    Route::put('/auth/password', [AuthApiController::class, 'updatePassword']);
+    
+    // User management routes (Admin only)
+    Route::prefix('users')->group(function () {
+        Route::get('/search', [AuthApiController::class, 'searchUsers']);
+        Route::get('/', [AuthApiController::class, 'getAllUsers']);
+        Route::post('/', [AuthApiController::class, 'createUser']);
+        Route::put('/{targetUser}/toggle-status', [AuthApiController::class, 'toggleUserStatus']);
+    });
 
     // Dashboard API routes
     Route::prefix('dashboard')->group(function () {
