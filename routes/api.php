@@ -48,7 +48,8 @@ Route::post('/auth/login', [AuthApiController::class, 'login']);
 Route::post('/auth/register', [AuthApiController::class, 'register']);
 
 // Protected API routes (require authentication)
-Route::middleware('auth:web')->group(function () {
+// PERBAIKI: Ganti 'sectum' menjadi 'sanctum'
+Route::middleware('auth:sanctum')->group(function () {
   // Auth routes
   Route::post('/auth/logout', [AuthApiController::class, 'logout']);
   Route::get('/auth/user', [AuthApiController::class, 'user']);

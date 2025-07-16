@@ -23,6 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\UpdateLastActivity::class,
         ]);
+
+        // Middleware untuk API routes (penting untuk Sanctum)
+        // Pastikan middleware ini ditambahkan ke grup 'api'
+        $middleware->api(prepend: [
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        ]);
     })
     ->withSchedule(function (Schedule $schedule) {
         // Generate weekly kas every Monday at 6 AM
