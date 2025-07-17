@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-          Schema::create('payment_infos', function (Blueprint $table) {
+        Schema::create('payment_infos', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rt_id')->constrained('rts')->onDelete('cascade');
             $table->string('bank_name')->nullable();
@@ -25,12 +25,13 @@ return new class extends Migration
             $table->text('qr_code_description')->nullable();
             $table->text('payment_notes')->nullable(); // Catatan tambahan untuk pembayaran
             $table->boolean('is_active')->default(true);
+            $table->string('dana_account_name')->nullable();
+            $table->string('ovo_account_name')->nullable();
+            $table->string('gopay_account_name')->nullable();
+            $table->string('shopeepay_account_name')->nullable();
+            $table->string('qr_code_account_name')->nullable();
             $table->timestamps();
-            
-            // Satu RT hanya boleh punya satu payment info aktif
-            $table->unique(['rt_id', 'is_active']);
         });
-        
     }
 
     /**
@@ -41,3 +42,4 @@ return new class extends Migration
         Schema::dropIfExists('payment_infos');
     }
 };
+

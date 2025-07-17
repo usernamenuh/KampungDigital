@@ -18,6 +18,31 @@
                 $user = Auth::user();
                 $isRtRole = $user->hasRole('rt');
                 $isAdminOrKadesOrRw = $user->hasRole('admin') || $user->hasRole('kades') || $user->hasRole('rw');
+
+                $indonesianBanks = [
+                    'Bank Central Asia (BCA)',
+                    'Bank Mandiri',
+                    'Bank Rakyat Indonesia (BRI)',
+                    'Bank Negara Indonesia (BNI)',
+                    'Bank Syariah Indonesia (BSI)',
+                    'CIMB Niaga',
+                    'Bank Danamon',
+                    'PermataBank',
+                    'Bank OCBC NISP',
+                    'Bank BTN',
+                    'Bank Mega',
+                    'Bank BTPN',
+                    'Bank Panin',
+                    'Bank Maybank Indonesia',
+                    'Bank UOB Indonesia',
+                    'Bank Sinarmas',
+                    'Bank Commonwealth',
+                    'Bank Jago',
+                    'SeaBank',
+                    'Bank Neo Commerce (BNC)',
+                    'Allo Bank',
+                    'Bank Lainnya', // Option for other banks not listed
+                ];
             @endphp
 
             @if($isAdminOrKadesOrRw)
@@ -41,14 +66,23 @@
             <input type="hidden" name="rt_id" value="{{ Auth::user()->penduduk->rtKetua->id ?? '' }}">
             @endif
 
-            <!-- Bank Transfer Section -->
+            <!-- Bank Transfer Section (Single Bank Account) -->
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
-                <h3 class="text-lg font-medium text-gray-800 dark:text-white mb-4 flex items-center"><i data-lucide="banknote" class="w-5 h-5 mr-2 text-blue-500"></i>Transfer Bank</h3>
+                <h3 class="text-lg font-medium text-gray-800 dark:text-white mb-4 flex items-center">
+                    <span><i data-lucide="banknote" class="w-5 h-5 mr-2 text-blue-500"></i>Transfer Bank</span>
+                </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label for="bank_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Bank</label>
-                        <input type="text" name="bank_name" id="bank_name" value="{{ old('bank_name', $paymentInfo->bank_name ?? '') }}"
-                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                        <select name="bank_name" id="bank_name"
+                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:text-white">
+                            <option value="">Pilih Bank</option>
+                            @foreach($indonesianBanks as $bank)
+                                <option value="{{ $bank }}" {{ old('bank_name', $paymentInfo->bank_name ?? '') == $bank ? 'selected' : '' }}>
+                                    {{ $bank }}
+                                </option>
+                            @endforeach
+                        </select>
                         @error('bank_name')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -153,7 +187,7 @@
                 @if(isset($paymentInfo) && $paymentInfo->qr_code_path)
                     <div class="mb-4 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
                         <p class="block text-sm font-medium text-gray-700 dark:text-gray-300">QR Code Saat Ini:</p>
-                        <img src="{{ Storage::url($paymentInfo->qr_code_path) }}" alt="Current QR Code" class="w-28 h-28 object-contain border border-gray-200 dark:border-gray-600 rounded-md p-1 shadow-sm">
+                        <img src="{{ Storage::url($paymentInfo->qr_code_path) }}" alt="Current QR Code" class="w-28 h-28 object-contain rounded-md p-1 shadow-sm">
                         <div class="flex items-center mt-2 sm:mt-0">
                             <input type="checkbox" name="clear_qr_code" id="clear_qr_code" value="1" class="h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500 dark:bg-gray-700 dark:border-gray-600 dark:checked:bg-red-600 cursor-pointer">
                             <label for="clear_qr_code" class="ml-2 text-sm text-red-600 dark:text-red-400 font-medium">Hapus QR Code Ini</label>
@@ -218,3 +252,14 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Ensure Lucide icons are created when the DOM is ready
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
+</script>
+@endpush

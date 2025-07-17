@@ -6,10 +6,10 @@ use App\Models\PaymentInfo;
 use App\Models\Rt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log; // Added for logging
 
 class PaymentInfoController extends Controller
 {
@@ -19,9 +19,8 @@ class PaymentInfoController extends Controller
      */
     public function index(Request $request)
     {
-        Log::info('PaymentInfoController@index hit.'); // DEBUG LOG
         $user = Auth::user();
-        $query = PaymentInfo::with('rt.rw')->orderBy('rt_id');
+        $query = PaymentInfo::with('rt.rw');
         $rtsForSelection = collect(); // Initialize an empty collection for RTs dropdown
 
         // Apply role-based filtering for the list
@@ -61,7 +60,7 @@ class PaymentInfoController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $paymentInfos->map(function($info) {
-                    // Map to include accessors for frontend and new fields
+                    // Map to include accessors for frontend
                     return [
                         'id' => $info->id,
                         'rt_id' => $info->rt_id,
@@ -113,7 +112,6 @@ class PaymentInfoController extends Controller
      */
     public function store(Request $request)
     {
-        Log::info('PaymentInfoController@store hit.'); // DEBUG LOG
         $user = Auth::user();
         $targetRtId = $request->input('rt_id'); // Get rt_id from request
 
@@ -169,14 +167,14 @@ class PaymentInfoController extends Controller
             $paymentInfo->is_active = $validatedData['is_active'] ?? true; // Default to active if not provided
 
             if ($request->hasFile('qr_code_file')) {
-                $path = $request->file('qr_code_file')->store('public/qrcodes');
+                $path = $request->file('qr_code_file')->store('qrcodes', 'public');
                 $paymentInfo->qr_code_path = $path;
             }
 
             $paymentInfo->save();
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Informasi pembayaran berhasil ditambahkan.', 'data' => $paymentInfo]);
+            return response()->json(['success' => true, 'message' => 'Informasi pembayaran berhasil ditambahkan.', 'data' => $paymentInfo->load('rt.rw')->append(['qr_code_url', 'e_wallet_list', 'has_bank_transfer', 'has_e_wallet', 'has_qr_code'])]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error storing payment info: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
@@ -189,7 +187,6 @@ class PaymentInfoController extends Controller
      */
     public function update(Request $request, PaymentInfo $paymentInfo)
     {
-        Log::info('PaymentInfoController@update hit for ID: ' . $paymentInfo->id); // DEBUG LOG
         $user = Auth::user();
         
         // Authorization check: Ensure user has permission to update THIS paymentInfo
@@ -232,8 +229,8 @@ class PaymentInfoController extends Controller
             // If this payment info is being set to active, deactivate others for this RT
             if (isset($validatedData['is_active']) && $validatedData['is_active']) {
                 PaymentInfo::where('rt_id', $paymentInfo->rt_id)
-                       ->where('id', '!=', $paymentInfo->id)
-                       ->update(['is_active' => false]);
+                    ->where('id', '!=', $paymentInfo->id)
+                    ->update(['is_active' => false]);
             }
 
             // Handle QR code file upload
@@ -242,20 +239,23 @@ class PaymentInfoController extends Controller
                 if ($paymentInfo->qr_code_path) {
                     Storage::delete($paymentInfo->qr_code_path);
                 }
-                $path = $request->file('qr_code_file')->store('public/qrcodes');
+                // Store directly in 'qrcodes' subdirectory of the 'public' disk
+                $path = $request->file('qr_code_file')->store('qrcodes', 'public');
                 $paymentInfo->qr_code_path = $path;
             } elseif ($request->input('clear_qr_code')) { // Allow clearing QR code
                 if ($paymentInfo->qr_code_path) {
                     Storage::delete($paymentInfo->qr_code_path);
                 }
                 $paymentInfo->qr_code_path = null;
+                $paymentInfo->qr_code_description = null; // Clear description and account name too
+                $paymentInfo->qr_code_account_name = null;
             }
 
             $paymentInfo->fill($validatedData);
             $paymentInfo->save();
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Informasi pembayaran berhasil diperbarui.', 'data' => $paymentInfo]);
+            return response()->json(['success' => true, 'message' => 'Informasi pembayaran berhasil diperbarui.', 'data' => $paymentInfo->load('rt.rw')->append(['qr_code_url', 'e_wallet_list', 'has_bank_transfer', 'has_e_wallet', 'has_qr_code'])]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating payment info: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
@@ -268,7 +268,6 @@ class PaymentInfoController extends Controller
      */
     public function destroy(PaymentInfo $paymentInfo)
     {
-        Log::info('PaymentInfoController@destroy hit for ID: ' . $paymentInfo->id); // DEBUG LOG
         $user = Auth::user();
 
         // Authorization check: Ensure user has permission to delete THIS paymentInfo
@@ -299,5 +298,72 @@ class PaymentInfoController extends Controller
             Log::error('Error deleting payment info: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Gagal menghapus informasi pembayaran: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Test QR code URL generation and file existence.
+     */
+    public function testQrCodeUrl(Request $request)
+    {
+        $path = $request->query('path'); // Get the path from query parameter, e.g., ?path=qrcodes/your-image.png
+
+        if (!$path) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter "path" diperlukan. Contoh: /test-qr-url?path=qrcodes/namafile.png'
+            ], 400);
+        }
+
+        $exists = Storage::disk('public')->exists($path);
+        $url = Storage::disk('public')->url($path);
+
+        return response()->json([
+            'success' => true,
+            'requested_path' => $path,
+            'file_exists_in_storage_disk' => $exists,
+            'generated_public_url' => $url,
+            'message' => $exists ? 'File ditemukan dan URL berhasil dibuat.' : 'File TIDAK ditemukan di direktori storage/app/public.'
+        ]);
+    }
+
+    /**
+     * API endpoint to get payment info for the authenticated RT user.
+     */
+    public function getPaymentInfoForUserRt()
+    {
+        $user = Auth::user();
+        if (!$user->hasRole('rt')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Hanya Ketua RT yang dapat melihat informasi pembayaran mereka.',
+            ], 403);
+        }
+
+        $rt = $user->penduduk->rtKetua;
+        if (!$rt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda bukan Ketua RT atau data RT tidak ditemukan.',
+            ], 404);
+        }
+
+        $paymentInfo = PaymentInfo::with('rt.rw')->where('rt_id', $rt->id)->first();
+
+        if (!$paymentInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Informasi pembayaran untuk RT Anda belum diatur.',
+                'data' => null,
+            ], 404);
+        }
+
+        // Append accessors for API response
+        $paymentInfo->append(['qr_code_url', 'e_wallet_list', 'has_bank_transfer', 'has_e_wallet', 'has_qr_code']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Informasi pembayaran RT berhasil diambil.',
+            'data' => $paymentInfo,
+        ]);
     }
 }

@@ -12,9 +12,9 @@ class PaymentInfo extends Model
 
     protected $fillable = [
         'rt_id',
-        'bank_name',
-        'bank_account_number',
-        'bank_account_name',
+        'bank_name', // Single bank name
+        'bank_account_number', // Single bank account number
+        'bank_account_name', // Single bank account name
         'dana_number',
         'dana_account_name',
         'gopay_number',
@@ -34,31 +34,47 @@ class PaymentInfo extends Model
         'is_active' => 'boolean',
     ];
 
-    protected $appends = [
-        'has_bank_transfer',
-        'has_e_wallet',
-        'has_qr_code',
-        'e_wallet_list',
-        'qr_code_url',
-        'rt_no',
-        'rw_no',
-    ];
-
+    // Define relationship to RT
     public function rt()
     {
-        return $this->belongsTo(Rt::class);
+        return $this->belongsTo(Rt::class, 'rt_id');
+    }
+
+    // Accessor for qr_code_url
+    public function getQrCodeUrlAttribute()
+    {
+        return $this->qr_code_path ? Storage::url($this->qr_code_path) : null;
+    }
+
+    // Accessor for e_wallet_list (to maintain existing display logic)
+    public function getEWalletListAttribute()
+    {
+        $list = [];
+        if ($this->dana_number) {
+            $list['dana'] = ['number' => $this->dana_number, 'name' => $this->dana_account_name];
+        }
+        if ($this->gopay_number) {
+            $list['gopay'] = ['number' => $this->gopay_number, 'name' => $this->gopay_account_name];
+        }
+        if ($this->ovo_number) {
+            $list['ovo'] = ['number' => $this->ovo_number, 'name' => $this->ovo_account_name];
+        }
+        if ($this->shopeepay_number) {
+            $list['shopeepay'] = ['number' => $this->shopeepay_number, 'name' => $this->shopeepay_account_name];
+        }
+        return $list;
     }
 
     // Accessor for has_bank_transfer
     public function getHasBankTransferAttribute()
     {
-        return !empty($this->bank_name) || !empty($this->bank_account_number) || !empty($this->bank_account_name);
+        return !empty($this->bank_name) && !empty($this->bank_account_number) && !empty($this->bank_account_name);
     }
 
     // Accessor for has_e_wallet
     public function getHasEWalletAttribute()
     {
-        return !empty($this->dana_number) || !empty($this->gopay_number) || !empty($this->ovo_number) || !empty($this->shopeepay_number);
+        return $this->dana_number || $this->gopay_number || $this->ovo_number || $this->shopeepay_number;
     }
 
     // Accessor for has_qr_code
@@ -67,30 +83,6 @@ class PaymentInfo extends Model
         return !empty($this->qr_code_path);
     }
 
-    // Accessor for e_wallet_list
-    public function getEWalletListAttribute()
-    {
-        $list = [];
-        if (!empty($this->dana_number)) {
-            $list['dana'] = ['number' => $this->dana_number, 'name' => $this->dana_account_name];
-        }
-        if (!empty($this->gopay_number)) {
-            $list['gopay'] = ['number' => $this->gopay_number, 'name' => $this->gopay_account_name];
-        }
-        if (!empty($this->ovo_number)) {
-            $list['ovo'] = ['number' => $this->ovo_number, 'name' => $this->ovo_account_name];
-        }
-        if (!empty($this->shopeepay_number)) {
-            $list['shopeepay'] = ['number' => $this->shopeepay_number, 'name' => $this->shopeepay_account_name];
-        }
-        return $list;
-    }
-
-    // Accessor for qr_code_url
-    public function getQrCodeUrlAttribute()
-    {
-        return $this->qr_code_path ? Storage::url($this->qr_code_path) : null;
-    }
 
     // Accessor for rt_no
     public function getRtNoAttribute()
