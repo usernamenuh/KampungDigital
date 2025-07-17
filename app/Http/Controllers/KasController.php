@@ -7,732 +7,801 @@ use App\Models\Penduduk;
 use App\Models\Rt;
 use App\Models\Rw;
 use App\Models\User;
-use App\Models\PengaturanKas;
+use App\Models\Notifikasi;
+use App\Models\Kk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use App\Models\Notifikasi; // Add this line
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator; // Added Validator for explicit use
 
 class KasController extends Controller
 {
-  public function __construct()
-  {
-      $this->middleware('auth');
-  }
-
-  /**
-   * Display a listing of the resource.
-   */
-  public function index(Request $request)
-  {
-      $user = Auth::user();
-      $query = Kas::with(['penduduk.user', 'rt.rw', 'confirmedBy']);
-
-      // Apply role-based filters
-      switch ($user->role) {
-          case 'masyarakat':
-              if ($user->penduduk) {
-                  $query->where('penduduk_id', $user->penduduk->id);
-              } else {
-                  return redirect()->back()->with('error', 'Data penduduk tidak ditemukan.');
-              }
-              break;
-          case 'rt':
-              if ($user->penduduk && $user->penduduk->rtKetua) {
-                  $query->where('rt_id', $user->penduduk->rtKetua->id);
-              } else {
-                  return redirect()->back()->with('error', 'Data RT tidak ditemukan.');
-              }
-              break;
-          case 'rw':
-              if ($user->penduduk && $user->penduduk->rwKetua) {
-                  $rtIds = $user->penduduk->rwKetua->rts->pluck('id');
-                  $query->whereIn('rt_id', $rtIds);
-              } else {
-                  return redirect()->back()->with('error', 'Data RW tidak ditemukan.');
-              }
-              break;
-          // admin dan kades bisa lihat semua
-      }
-
-      // Apply filters from request
-      if ($request->filled('status')) {
-          $statuses = explode(',', $request->status);
-          $query->whereIn('status', $statuses);
-      }
-      if ($request->filled('rt_id')) {
-          $query->where('rt_id', $request->rt_id);
-      }
-      if ($request->filled('tahun')) {
-          $query->where('tahun', $request->tahun);
-      }
-      if ($request->filled('minggu_ke')) {
-          $query->where('minggu_ke', $request->minggu_ke);
-      }
-      if ($request->filled('nama')) {
-          $search = $request->nama;
-          $query->whereHas('penduduk', function($q) use ($search) {
-              $q->where('nama_lengkap', 'like', '%' . $search . '%')
-                ->orWhere('nik', 'like', '%' . $search . '%');
-          });
-      }
-      if ($request->filled('email')) {
-          $searchEmail = $request->email;
-          $query->whereHas('penduduk.user', function($q) use ($searchEmail) {
-              $q->where('email', 'like', '%' . $searchEmail . '%');
-          });
-      }
-
-      $kas = $query->orderBy('tahun', 'desc')
-                   ->orderBy('minggu_ke', 'desc')
-                   ->paginate(10);
-
-      $rtList = [];
-      if (in_array($user->role, ['admin', 'kades'])) {
-          $rtList = Rt::with('rw')->get();
-      } elseif ($user->role === 'rw' && $user->penduduk && $user->penduduk->rwKetua) {
-          $rtList = $user->penduduk->rwKetua->rts()->with('rw')->get();
-      } elseif ($user->role === 'rt' && $user->penduduk && $user->penduduk->rtKetua) {
-          $rtList = collect([$user->penduduk->rtKetua->load('rw')]);
-      }
-
-      // Calculate statistics for the cards
-      $stats = $this->getKasStats($user);
-
-      return view('kas.index', compact('kas', 'rtList', 'stats'));
-  }
-
-  /**
-   * Show the form for creating a new resource.
-   */
-  public function create()
-  {
-      $user = Auth::user();
-      $rtList = [];
-      if (in_array($user->role, ['admin', 'kades'])) {
-          $rtList = Rt::with('rw')->get();
-      } elseif ($user->role === 'rw' && $user->penduduk && $user->penduduk->rwKetua) {
-          $rtList = $user->penduduk->rwKetua->rts()->with('rw')->get();
-      } elseif ($user->role === 'rt' && $user->penduduk && $user->penduduk->rtKetua) {
-          $rtList = collect([$user->penduduk->rtKetua->load('rw')]);
-      } else {
-          return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk membuat kas.');
-      }
-      
-      // Fetch PengaturanKas to pass to the view for default values
-      $pengaturanKas = PengaturanKas::getDefault();
-      
-      return view('kas.create', compact('rtList', 'pengaturanKas'));
-  }
-
-  /**
-   * Store a newly created resource in storage.
-   */
-  public function store(Request $request)
-  {
-      $validator = Validator::make($request->all(), [
-          'penduduk_id' => 'required|exists:penduduk,id',
-          'rt_id' => 'required|exists:rts,id',
-          'minggu_ke' => 'required|integer|min:1|max:52',
-          'tahun' => 'required|integer|min:2000|max:' . (date('Y') + 1),
-          'jumlah' => 'required|numeric|min:0',
-          'tanggal_jatuh_tempo' => 'required|date',
-          'status' => 'required|in:belum_bayar,lunas,menunggu_konfirmasi,terlambat',
-          'tanggal_bayar' => 'nullable|date',
-          'metode_bayar' => 'nullable|string|max:50',
-          'bukti_bayar_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB
-          'bukti_bayar_notes' => 'nullable|string|max:500',
-          'confirmed_by' => 'nullable|exists:users,id',
-          'confirmed_at' => 'nullable|date',
-          'confirmation_notes' => 'nullable|string|max:500',
-      ]);
-
-      if ($validator->fails()) {
-          return redirect()->back()->withErrors($validator)->withInput();
-      }
-
-      DB::beginTransaction();
-      try {
-          $kas = Kas::create($validator->validated());
-
-          if ($request->hasFile('bukti_bayar_file')) {
-              $path = $request->file('bukti_bayar_file')->store('public/bukti_bayar');
-              $kas->bukti_bayar_file = str_replace('public/', 'storage/', $path);
-              $kas->bukti_bayar_uploaded_at = now();
-              $kas->save();
-          }
-
-          // Create notification if status is 'menunggu_konfirmasi' or 'lunas'
-          if ($kas->status === 'menunggu_konfirmasi') {
-              $this->createPaymentNotification($kas, 'pending');
-          } elseif ($kas->status === 'lunas') {
-              $this->createPaymentNotification($kas, 'approved');
-          }
-
-          DB::commit();
-          return redirect()->route('kas.index')->with('success', 'Data kas berhasil ditambahkan.');
-      } catch (\Exception $e) {
-          DB::rollback();
-          Log::error('Error creating kas: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-          return redirect()->back()->with('error', 'Gagal menambahkan data kas: ' . $e->getMessage())->withInput();
-      }
-  }
-
-  /**
-   * Display the specified resource.
-   */
-  public function show(Kas $kas)
-  {
-      // Authorization check
-      if (!$this->canAccessKas($kas)) {
-          return redirect()->back()->with('error', 'Anda tidak memiliki akses ke data kas ini.');
-      }
-      return view('kas.show', compact('kas'));
-  }
-
-  /**
-   * Show the form for editing the specified resource.
-   */
-  public function edit(Kas $kas)
-  {
-      // Authorization check
-      if (!$this->canAccessKas($kas)) {
-          return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk mengedit data kas ini.');
-      }
-
-      $user = Auth::user();
-      $rtList = [];
-      if (in_array($user->role, ['admin', 'kades'])) {
-          $rtList = Rt::with('rw')->get();
-      } elseif ($user->role === 'rw' && $user->penduduk && $user->penduduk->rwKetua) {
-          $rtList = $user->penduduk->rwKetua->rts()->with('rw')->get();
-      } elseif ($user->role === 'rt' && $user->penduduk && $user->penduduk->rtKetua) {
-          $rtList = collect([$user->penduduk->rtKetua->load('rw')]);
-      } else {
-          return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk mengedit kas.');
-      }
-      return view('kas.edit', compact('kas', 'rtList'));
-  }
-
-  /**
-   * Update the specified resource in storage.
-   */
-  public function update(Request $request, Kas $kas)
-  {
-      // Authorization check
-      if (!$this->canAccessKas($kas)) {
-          return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk memperbarui data kas ini.');
-      }
-
-      $validator = Validator::make($request->all(), [
-          'penduduk_id' => 'required|exists:penduduk,id',
-          'rt_id' => 'required|exists:rts,id',
-          'minggu_ke' => 'required|integer|min:1|max:52',
-          'tahun' => 'required|integer|min:2000|max:' . (date('Y') + 1),
-          'jumlah' => 'required|numeric|min:0',
-          'tanggal_jatuh_tempo' => 'required|date',
-          'status' => 'required|in:belum_bayar,lunas,menunggu_konfirmasi,terlambat',
-          'tanggal_bayar' => 'nullable|date',
-          'metode_bayar' => 'nullable|string|max:50',
-          'bukti_bayar_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB
-          'bukti_bayar_notes' => 'nullable|string|max:500',
-          'confirmed_by' => 'nullable|exists:users,id',
-          'confirmed_at' => 'nullable|date',
-          'confirmation_notes' => 'nullable|string|max:500',
-      ]);
-
-      if ($validator->fails()) {
-          return redirect()->back()->withErrors($validator)->withInput();
-      }
-
-      DB::beginTransaction();
-      try {
-          $oldStatus = $kas->status;
-          $kas->fill($validator->validated());
-
-          if ($request->hasFile('bukti_bayar_file')) {
-              // Delete old file if exists
-              if ($kas->bukti_bayar_file) {
-                  $oldPath = str_replace('storage/', 'public/', $kas->bukti_bayar_file);
-                  if (file_exists(storage_path('app/' . $oldPath))) {
-                      unlink(storage_path('app/' . $oldPath));
-                  }
-              }
-              $path = $request->file('bukti_bayar_file')->store('public/bukti_bayar');
-              $kas->bukti_bayar_file = str_replace('public/', 'storage/', $path);
-              $kas->bukti_bayar_uploaded_at = now();
-          }
-
-          $kas->save();
-
-          // Create notification if status changes to 'menunggu_konfirmasi' or 'lunas'
-          if ($oldStatus !== 'menunggu_konfirmasi' && $kas->status === 'menunggu_konfirmasi') {
-              $this->createPaymentNotification($kas, 'pending');
-          } elseif ($oldStatus !== 'lunas' && $kas->status === 'lunas') {
-              $this->createPaymentNotification($kas, 'approved');
-          }
-
-          DB::commit();
-          return redirect()->route('kas.index')->with('success', 'Data kas berhasil diperbarui.');
-      } catch (\Exception $e) {
-          DB::rollback();
-          Log::error('Error updating kas: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-          return redirect()->back()->with('error', 'Gagal memperbarui data kas: ' . $e->getMessage())->withInput();
-      }
-  }
-
-  /**
-   * Remove the specified resource from storage.
-   */
-  public function destroy(Kas $kas)
-  {
-      // Authorization check
-      if (!$this->canAccessKas($kas)) {
-          return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk menghapus data kas ini.');
-      }
-
-      DB::beginTransaction();
-      try {
-          if ($kas->bukti_bayar_file) {
-              $path = str_replace('storage/', 'public/', $kas->bukti_bayar_file);
-              if (file_exists(storage_path('app/' . $path))) {
-                  unlink(storage_path('app/' . $path));
-              }
-          }
-          $kas->delete();
-          DB::commit();
-          return redirect()->route('kas.index')->with('success', 'Data kas berhasil dihapus.');
-      } catch (\Exception $e) {
-          DB::rollback();
-          Log::error('Error deleting kas: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-          return redirect()->back()->with('error', 'Gagal menghapus data kas: ' . $e->getMessage());
-      }
-  }
-
-  /**
-   * Get resident info for kas creation (AJAX)
-   */
-  public function getResidentInfo(Request $request)
-  {
-      $user = Auth::user();
-      $query = Penduduk::query();
-
-      // Filter by role
-      if ($user->role === 'rt' && $user->penduduk && $user->penduduk->rtKetua) {
-          $query->where('rt_id', $user->penduduk->rtKetua->id);
-      } elseif ($user->role === 'rw' && $user->penduduk && $user->penduduk->rwKetua) {
-          $rtIds = $user->penduduk->rwKetua->rts->pluck('id');
-          $query->whereIn('rt_id', $rtIds);
-      } elseif (!in_array($user->role, ['admin', 'kades'])) {
-          return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
-      }
-
-      if ($request->filled('search')) {
-          $search = $request->search;
-          $query->where(function($q) use ($search) {
-              $q->where('nama_lengkap', 'like', '%' . $search . '%')
-                ->orWhere('nik', 'like', '%' . $search . '%');
-          });
-      }
-
-      $penduduk = $query->limit(10)->get()->map(function($p) {
-          return [
-              'id' => $p->id,
-              'text' => $p->nama_lengkap . ' (NIK: ' . $p->nik . ') - RT ' . ($p->rt->no_rt ?? 'N/A') . ' RW ' . ($p->rt->rw->no_rw ?? 'N/A'),
-              'rt_id' => $p->rt_id,
-          ];
-      });
-
-      return response()->json(['success' => true, 'data' => $penduduk]);
-  }
-
-  /**
-   * Generate weekly kas for all residents in a specific RT.
-   */
-  public function generateWeekly(Request $request)
-  {
-      $validator = Validator::make($request->all(), [
-          'rt_id' => 'required|exists:rts,id',
-          'minggu_mulai' => 'required|integer|min:1|max:52',
-          'minggu_selesai' => 'required|integer|min:1|max:52|gte:minggu_mulai',
-          'tahun' => 'required|integer|min:2000|max:' . (date('Y') + 1),
-          'jumlah' => 'required|numeric|min:0',
-      ]);
-
-      if ($validator->fails()) {
-          return redirect()->back()->withErrors($validator)->withInput();
-      }
-
-      $rt = Rt::find($request->rt_id);
-      if (!$rt) {
-          return redirect()->back()->with('error', 'RT tidak ditemukan.')->withInput();
-      }
-
-      // Authorization check
-      $user = Auth::user();
-      if ($user->role === 'rt' && $user->penduduk && $user->penduduk->rtKetua && $user->penduduk->rtKetua->id !== $rt->id) {
-          return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk RT ini.')->withInput();
-      } elseif ($user->role === 'rw' && $user->penduduk && $user->penduduk->rwKetua && !$user->penduduk->rwKetua->rts->contains('id', $rt->id)) {
-          return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk RT ini.')->withInput();
-      } elseif (!in_array($user->role, ['admin', 'kades', 'rt', 'rw'])) {
-          return redirect()->back()->with('error', 'Akses ditolak.')->withInput();
-      }
-
-      $iuranMingguan = $request->jumlah; // Use provided amount, not from PengaturanKas
-
-      if ($iuranMingguan <= 0) {
-          return redirect()->back()->with('error', 'Jumlah iuran mingguan harus lebih dari nol.')->withInput();
-      }
-
-      $penduduks = Penduduk::whereHas('kk', function($query) use ($rt) {
-          $query->where('rt_id', $rt->id);
-      })->get();
-
-      if ($penduduks->isEmpty()) {
-          return redirect()->back()->with('warning', 'Tidak ada penduduk di RT ini untuk dibuatkan kas.')->withInput();
-      }
-
-      $createdCount = 0;
-      $totalAmountGenerated = 0;
-      DB::beginTransaction();
-      try {
-          for ($minggu = $request->minggu_mulai; $minggu <= $request->minggu_selesai; $minggu++) {
-              // Calculate tanggal_jatuh_tempo for each week
-              $tanggalJatuhTempo = Carbon::now()->setISODate($request->tahun, $minggu)->endOfWeek(Carbon::SUNDAY);
-
-              foreach ($penduduks as $penduduk) {
-                  // Check if kas for this week and year already exists for this resident
-                  $existingKas = Kas::where('penduduk_id', $penduduk->id)
-                                    ->where('minggu_ke', $minggu)
-                                    ->where('tahun', $request->tahun)
-                                    ->first();
-
-                  if (!$existingKas) {
-                      Kas::create([
-                          'penduduk_id' => $penduduk->id,
-                          'rt_id' => $rt->id,
-                          'minggu_ke' => $minggu,
-                          'tahun' => $request->tahun,
-                          'jumlah' => $iuranMingguan,
-                          'tanggal_jatuh_tempo' => $tanggalJatuhTempo,
-                          'status' => 'belum_bayar',
-                      ]);
-                      $createdCount++;
-                      $totalAmountGenerated += $iuranMingguan;
-                  }
-              }
-          }
-          DB::commit();
-          return redirect()->back()->with('success', "Berhasil membuat $createdCount tagihan kas mingguan untuk RT {$rt->no_rt}.")
-                           ->with('show_success_modal', true)
-                           ->with('kas_created', $createdCount)
-                           ->with('total_amount', $totalAmountGenerated);
-      } catch (\Exception $e) {
-          DB::rollback();
-          Log::error('Error generating weekly kas: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-          return redirect()->back()->with('error', 'Gagal membuat tagihan kas mingguan: ' . $e->getMessage())->withInput();
-      }
-  }
-
-  /**
-   * Mark kas as paid by RT/RW/Admin.
-   */
-  public function bayar(Request $request, Kas $kas)
-  {
-      // Authorization check
-      if (!$this->canAccessKas($kas)) {
-          return back()->with('error', 'Anda tidak memiliki akses untuk kas ini.');
-      }
-
-      if (!in_array(Auth::user()->role, ['rt', 'rw', 'kades', 'admin'])) {
-          return back()->with('error', 'Akses ditolak.');
-      }
-
-      if ($kas->status === 'lunas') {
-          return back()->with('error', 'Kas ini sudah lunas.');
-      }
-
-      $validator = Validator::make($request->all(), [
-          'metode_bayar' => 'required|string|max:50',
-          'tanggal_bayar' => 'nullable|date',
-          'bukti_bayar_notes' => 'nullable|string|max:500',
-      ]);
-
-      if ($validator->fails()) {
-          return back()->withErrors($validator)->withInput();
-      }
-
-      DB::beginTransaction();
-      try {
-          $kas->update([
-              'status' => 'lunas',
-              'tanggal_bayar' => $request->tanggal_bayar ?? now(),
-              'metode_bayar' => $request->metode_bayar,
-              'bukti_bayar_notes' => $request->bukti_bayar_notes,
-              'confirmed_by' => Auth::id(),
-              'confirmed_at' => now(),
-          ]);
-
-          // Update RT saldo
-          $rt = Rt::find($kas->rt_id);
-          if ($rt) {
-              $rt->saldo += $kas->jumlah;
-              $rt->save();
-          }
-
-          // Create notification for masyarakat
-          $this->createPaymentNotification($kas, 'approved');
-
-          DB::commit();
-          return back()->with('success', 'Kas berhasil ditandai lunas.'); // Changed to redirect back
-      } catch (\Exception $e) {
-          DB::rollback();
-          Log::error('Error marking kas as paid: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-          return back()->with('error', 'Gagal menandai kas lunas: ' . $e->getMessage());
-      }
-  }
-
-  /**
-   * Bulk create kas records.
-   */
-  public function bulkCreate(Request $request)
-  {
-      $validator = Validator::make($request->all(), [
-          'kas_data' => 'required|array',
-          'kas_data.*.penduduk_id' => 'required|exists:penduduk,id',
-          'kas_data.*.rt_id' => 'required|exists:rts,id',
-          'kas_data.*.minggu_ke' => 'required|integer|min:1|max:52',
-          'kas_data.*.tahun' => 'required|integer|min:2000|max:' . (date('Y') + 1),
-          'kas_data.*.jumlah' => 'required|numeric|min:0',
-          'kas_data.*.tanggal_jatuh_tempo' => 'required|date',
-          'kas_data.*.status' => 'required|in:belum_bayar,lunas,menunggu_konfirmasi,terlambat',
-      ]);
-
-      if ($validator->fails()) {
-          return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
-      }
-
-      DB::beginTransaction();
-      try {
-          $createdCount = 0;
-          foreach ($request->kas_data as $data) {
-              // Check if kas for this week and year already exists for this resident
-              $existingKas = Kas::where('penduduk_id', $data['penduduk_id'])
-                                ->where('minggu_ke', $data['minggu_ke'])
-                                ->where('tahun', $data['tahun'])
-                                ->first();
-
-              if (!$existingKas) {
-                  Kas::create($data);
-                  $createdCount++;
-              }
-          }
-          DB::commit();
-          return response()->json(['success' => true, 'message' => "$createdCount data kas berhasil ditambahkan."]);
-      } catch (\Exception $e) {
-          DB::rollback();
-          Log::error('Error bulk creating kas: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-          return response()->json(['success' => false, 'message' => 'Gagal menambahkan data kas secara massal: ' . $e->getMessage()], 500);
-      }
-  }
-
-  /**
-   * Bulk update kas records.
-   */
-  public function bulkUpdate(Request $request)
-  {
-      $validator = Validator::make($request->all(), [
-          'kas_data' => 'required|array',
-          'kas_data.*.id' => 'required|exists:kas,id',
-          'kas_data.*.status' => 'required|in:belum_bayar,lunas,menunggu_konfirmasi,terlambat',
-          'kas_data.*.tanggal_bayar' => 'nullable|date',
-          'kas_data.*.metode_bayar' => 'nullable|string|max:50',
-          'kas_data.*.confirmed_by' => 'nullable|exists:users,id',
-          'kas_data.*.confirmed_at' => 'nullable|date',
-          'kas_data.*.confirmation_notes' => 'nullable|string|max:500',
-      ]);
-
-      if ($validator->fails()) {
-          return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
-      }
-
-      DB::beginTransaction();
-      try {
-          $updatedCount = 0;
-          foreach ($request->kas_data as $data) {
-              $kas = Kas::find($data['id']);
-              if ($kas && $this->canAccessKas($kas)) {
-                  $oldStatus = $kas->status;
-                  $kas->fill($data);
-                  $kas->save();
-
-                  if ($oldStatus !== 'menunggu_konfirmasi' && $kas->status === 'menunggu_konfirmasi') {
-                      $this->createPaymentNotification($kas, 'pending');
-                  } elseif ($oldStatus !== 'lunas' && $kas->status === 'lunas') {
-                      $this->createPaymentNotification($kas, 'approved');
-                  }
-                  $updatedCount++;
-              }
-          }
-          DB::commit();
-          return response()->json(['success' => true, 'message' => "$updatedCount data kas berhasil diperbarui."]);
-      } catch (\Exception $e) {
-          DB::rollback();
-          Log::error('Error bulk updating kas: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-          return response()->json(['success' => false, 'message' => 'Gagal memperbarui data kas secara massal: ' . $e->getMessage()], 500);
-      }
-  }
-
-  /**
-   * Bulk delete kas records.
-   */
-  public function bulkDelete(Request $request)
-  {
-      $validator = Validator::make($request->all(), [
-          'kas_ids' => 'required|array',
-          'kas_ids.*' => 'required|exists:kas,id',
-      ]);
-
-      if ($validator->fails()) {
-          return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
-      }
-
-      DB::beginTransaction();
-      try {
-          $deletedCount = 0;
-          foreach ($request->kas_ids as $kasId) {
-              $kas = Kas::find($kasId);
-              if ($kas && $this->canAccessKas($kas)) {
-                  if ($kas->bukti_bayar_file) {
-                      $path = str_replace('storage/', 'public/', $kas->bukti_bayar_file);
-                      if (file_exists(storage_path('app/' . $path))) {
-                          unlink(storage_path('app/' . $path));
-                      }
-                  }
-                  $kas->delete();
-                  $deletedCount++;
-              }
-          }
-          DB::commit();
-          return response()->json(['success' => true, 'message' => "$deletedCount data kas berhasil dihapus."]);
-      } catch (\Exception $e) {
-          DB::rollback();
-          Log::error('Error bulk deleting kas: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-          return response()->json(['success' => false, 'message' => 'Gagal menghapus data kas secara massal: ' . $e->getMessage()], 500);
-      }
-  }
-
-  /**
-   * Helper function to check if user can access a specific kas record.
-   */
-  private function canAccessKas(Kas $kas)
-  {
-      $user = Auth::user();
-      switch ($user->role) {
-          case 'masyarakat':
-              return $kas->penduduk_id === $user->penduduk->id;
-          case 'rt':
-              return $kas->rt_id === $user->penduduk->rtKetua->id;
-          case 'rw':
-              return $user->penduduk->rwKetua->rts->contains('id', $kas->rt_id);
-          case 'admin':
-          case 'kades':
-              return true;
-          default:
-              return false;
-      }
-  }
-
-  /**
-   * Helper function to create payment notification
-   */
-  private function createPaymentNotification(Kas $payment, $status)
-  {
-      Notifikasi::create([
-          'user_id' => $payment->penduduk->user->id ?? null,
-          'judul' => 'Pembayaran Kas ' . ($status === 'approved' ? 'Disetujui' : ($status === 'pending' ? 'Menunggu Konfirmasi' : 'Ditolak')),
-          'pesan' => 'Pembayaran kas minggu ke-' . $payment->minggu_ke . ' telah ' . ($status === 'approved' ? 'disetujui' : ($status === 'pending' ? 'menunggu konfirmasi' : 'ditolak')),
-          'tipe' => $status === 'approved' ? 'success' : ($status === 'pending' ? 'warning' : 'error'),
-          'kategori' => 'pembayaran',
-          'data' => json_encode([
-              'kas_id' => $payment->id,
-              'minggu_ke' => $payment->minggu_ke,
-              'jumlah' => $payment->jumlah,
-          ]),
-          'dibaca' => false,
-      ]);
-  }
-
-  /**
-   * Helper function to get kas statistics based on user role.
-   */
-  private function getKasStats($user)
-  {
-      $query = Kas::query();
-
-      switch ($user->role) {
-          case 'masyarakat':
-              if ($user->penduduk) {
-                  $query->where('penduduk_id', $user->penduduk->id);
-              } else {
-                  return $this->getDefaultKasStats();
-              }
-              break;
-          case 'rt':
-              if ($user->penduduk && $user->penduduk->rtKetua) {
-                  $query->where('rt_id', $user->penduduk->rtKetua->id);
-              } else {
-                  return $this->getDefaultKasStats();
-              }
-              break;
-          case 'rw':
-              if ($user->penduduk && $user->penduduk->rwKetua) {
-                  $rtIds = $user->penduduk->rwKetua->rts->pluck('id');
-                  $query->whereIn('rt_id', $rtIds);
-              } else {
-                  return $this->getDefaultKasStats();
-              }
-              break;
-          // admin dan kades bisa lihat semua
-      }
-
-      $totalNominalTertagih = (clone $query)->sum('jumlah');
-      $lunas = (clone $query)->where('status', 'lunas')->count();
-      $belumBayar = (clone $query)->where('status', 'belum_bayar')->count();
-      $menungguKonfirmasi = (clone $query)->where('status', 'menunggu_konfirmasi')->count();
-      $terlambat = (clone $query)->where('status', 'belum_bayar')
-                                 ->where('tanggal_jatuh_tempo', '<', Carbon::now())
-                                 ->count();
-      $totalTerkumpul = (clone $query)->where('status', 'lunas')->sum('jumlah');
-      $totalOutstanding = (clone $query)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->sum('jumlah');
-
-      return [
-          'total_nominal_tertagih' => $totalNominalTertagih,
-          'lunas' => $lunas,
-          'belum_bayar' => $belumBayar,
-          'menunggu_konfirmasi' => $menungguKonfirmasi,
-          'terlambat' => $terlambat,
-          'total_terkumpul' => $totalTerkumpul,
-          'total_outstanding' => $totalOutstanding,
-      ];
-  }
-
-  /**
-   * Helper function to get default kas statistics.
-   */
-  private function getDefaultKasStats()
-  {
-      return [
-          'total_nominal_tertagih' => 0,
-          'lunas' => 0,
-          'belum_bayar' => 0,
-          'menunggu_konfirmasi' => 0,
-          'terlambat' => 0,
-          'total_terkumpul' => 0,
-          'total_outstanding' => 0,
-      ];
-  }
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+
+    /**
+     * Tampilkan daftar kas
+     */
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $query = Kas::with(['penduduk.user', 'penduduk.kk.rt.rw', 'rt.rw']);
+
+        // Filter berdasarkan role
+        switch ($user->role) {
+            case 'admin':
+            case 'kades':
+                // Admin dan Kades bisa lihat semua kas
+                break;
+            case 'rw':
+                // RW hanya bisa lihat kas di RW mereka
+                if ($user->penduduk && $user->penduduk->kk && $user->penduduk->kk->rt) {
+                    $rwId = $user->penduduk->kk->rt->rw_id;
+                    $query->whereHas('rt', function($q) use ($rwId) {
+                        $q->where('rw_id', $rwId);
+                    });
+                }
+                break;
+            case 'rt':
+                // RT hanya bisa lihat kas di RT mereka
+                if ($user->penduduk && $user->penduduk->kk) {
+                    $rtId = $user->penduduk->kk->rt_id;
+                    $query->where('rt_id', $rtId);
+                }
+                break;
+            case 'masyarakat':
+                // Masyarakat hanya bisa lihat kas mereka sendiri
+                if ($user->penduduk) {
+                    $query->where('penduduk_id', $user->penduduk->id);
+                }
+                break;
+        }
+
+        // Filter berdasarkan parameter
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('rt_id')) {
+            $query->where('rt_id', $request->rt_id);
+        }
+
+        if ($request->filled('minggu_ke')) {
+            $query->where('minggu_ke', $request->minggu_ke);
+        }
+
+        if ($request->filled('tahun')) {
+            $query->where('tahun', $request->tahun);
+        }
+
+        // Filter berdasarkan email (khusus admin)
+        if ($request->filled('email') && in_array($user->role, ['admin', 'kades'])) {
+            $query->whereHas('penduduk.user', function($q) use ($request) {
+                $q->where('email', 'like', '%' . $request->email . '%');
+            });
+        }
+
+        // Filter berdasarkan nama penduduk
+        if ($request->filled('nama')) {
+            $query->whereHas('penduduk', function($q) use ($request) {
+                $q->where('nama_lengkap', 'like', '%' . $request->nama . '%');
+            });
+        }
+
+        // Urutkan berdasarkan terbaru
+        $kas = $query->orderBy('created_at', 'desc')->paginate(20);
+
+        // Calculate statistics with same filtering - Create a fresh query for stats
+        $statsQuery = Kas::query();
+        
+        // Apply same role-based filtering for stats
+        switch ($user->role) {
+            case 'admin':
+            case 'kades':
+                // Admin dan Kades bisa lihat semua kas
+                break;
+            case 'rw':
+                if ($user->penduduk && $user->penduduk->kk && $user->penduduk->kk->rt) {
+                    $rwId = $user->penduduk->kk->rt->rw_id;
+                    $statsQuery->whereHas('rt', function($q) use ($rwId) {
+                        $q->where('rw_id', $rwId);
+                    });
+                }
+                break;
+            case 'rt':
+                if ($user->penduduk && $user->penduduk->kk) {
+                    $rtId = $user->penduduk->kk->rt_id;
+                    $statsQuery->where('rt_id', $rtId);
+                }
+                break;
+            case 'masyarakat':
+                if ($user->penduduk) {
+                    $statsQuery->where('penduduk_id', $user->penduduk->id);
+                }
+                break;
+        }
+
+        // Apply same filters to stats
+        if ($request->filled('status')) {
+            $statsQuery->where('status', $request->status);
+        }
+        if ($request->filled('rt_id')) {
+            $statsQuery->where('rt_id', $request->rt_id);
+        }
+        if ($request->filled('minggu_ke')) {
+            $statsQuery->where('minggu_ke', $request->minggu_ke);
+        }
+        if ($request->filled('tahun')) {
+            $statsQuery->where('tahun', $request->tahun);
+        }
+        if ($request->filled('email') && in_array($user->role, ['admin', 'kades'])) {
+            $statsQuery->whereHas('penduduk.user', function($q) use ($request) {
+                $q->where('email', 'like', '%' . $request->email . '%');
+            });
+        }
+        if ($request->filled('nama')) {
+            $statsQuery->whereHas('penduduk', function($q) use ($request) {
+                $q->where('nama_lengkap', 'like', '%' . $request->nama . '%');
+            });
+        }
+
+        // Calculate statistics
+        $totalKas = $statsQuery->count();
+        $lunasCount = (clone $statsQuery)->where('status', 'lunas')->count();
+        $belumBayarCount = (clone $statsQuery)->where('status', 'belum_bayar')->count();
+        $terlambatCount = (clone $statsQuery)->where('status', 'terlambat')->count();
+        
+        // Calculate amounts
+        $totalTerkumpul = (clone $statsQuery)->where('status', 'lunas')->sum('jumlah');
+        $totalOutstanding = (clone $statsQuery)->whereIn('status', ['belum_bayar', 'terlambat'])->sum('jumlah');
+
+        $stats = [
+            'total' => $totalKas,
+            'lunas' => $lunasCount,
+            'belum_bayar' => $belumBayarCount,
+            'terlambat' => $terlambatCount,
+            'total_terkumpul' => $totalTerkumpul ?: 0,
+            'total_outstanding' => $totalOutstanding ?: 0,
+        ];
+
+        // Daftar RT untuk filter (berdasarkan role)
+        $rtList = collect();
+        if (in_array($user->role, ['admin', 'kades'])) {
+            $rtList = Rt::with('rw')->orderBy('no_rt')->get();
+        } elseif ($user->role === 'rw' && $user->penduduk && $user->penduduk->kk) {
+            $rwId = $user->penduduk->kk->rt->rw_id;
+            $rtList = Rt::where('rw_id', $rwId)->with('rw')->orderBy('no_rt')->get();
+        } elseif ($user->role === 'rt' && $user->penduduk && $user->penduduk->kk) {
+            $rtId = $user->penduduk->kk->rt_id;
+            $rtList = Rt::where('id', $rtId)->with('rw')->get();
+        }
+
+        return view('kas.index', compact('kas', 'stats', 'rtList'));
+    }
+
+    /**
+     * Form buat kas baru
+     */
+    public function create()
+    {
+        $user = Auth::user();
+        
+        // Hanya admin, kades, rw, rt yang bisa buat kas
+        if (!in_array($user->role, ['admin', 'kades', 'rw', 'rt'])) {
+            abort(403, 'Anda tidak memiliki akses untuk membuat kas');
+        }
+
+        // Daftar RT berdasarkan role
+        $rtList = collect();
+        if (in_array($user->role, ['admin', 'kades'])) {
+            // Admin dan Kades bisa lihat semua RT
+            $rtList = Rt::with(['rw.desa'])
+                ->join('rws', 'rts.rw_id', '=', 'rws.id')
+                ->orderBy('rws.no_rw')
+                ->orderBy('rts.no_rt')
+                ->select('rts.*')
+                ->get();
+        } elseif ($user->role === 'rw' && $user->penduduk && $user->penduduk->kk) {
+            $rwId = $user->penduduk->kk->rt->rw_id;
+            $rtList = Rt::where('rw_id', $rwId)->with('rw')->orderBy('no_rt')->get();
+        } elseif ($user->role === 'rt' && $user->penduduk && $user->penduduk->kk) {
+            $rtId = $user->penduduk->kk->rt_id;
+            $rtList = Rt::where('id', $rtId)->with('rw')->get();
+        }
+
+        return view('kas.create', compact('rtList'));
+    }
+
+    /**
+     * Get resident info by RT (AJAX)
+     */
+    public function getResidentInfo(Request $request)
+    {
+        try {
+            $rtId = $request->rt_id;
+            
+            if (!$rtId) {
+                return response()->json(['success' => false, 'message' => 'RT tidak dipilih']);
+            }
+
+            // Ambil detail RT
+            $rt = Rt::with('rw')->find($rtId);
+            
+            if (!$rt) {
+                return response()->json(['success' => false, 'message' => 'RT tidak ditemukan']);
+            }
+
+            // Ambil semua penduduk di RT ini melalui KK
+            $residents = Penduduk::with(['user', 'kk'])
+                ->whereHas('kk', function($query) use ($rtId) {
+                    $query->where('rt_id', $rtId);
+                })
+                ->where('status', 'aktif')
+                ->orderBy('nama_lengkap')
+                ->get();
+
+            // Hitung statistik
+            $stats = [
+                'total' => $residents->count(),
+                'active' => $residents->where('status', 'aktif')->count(),
+                'with_accounts' => $residents->filter(function($resident) {
+                    return $resident->user !== null;
+                })->count()
+            ];
+
+            return response()->json([
+                'success' => true,
+                'rt_info' => "RT {$rt->no_rt} / RW {$rt->rw->no_rw}",
+                'stats' => $stats,
+                'residents' => $residents->map(function($resident) {
+                    return [
+                        'id' => $resident->id,
+                        'nama_lengkap' => $resident->nama_lengkap,
+                        'nik' => $resident->nik,
+                        'user' => $resident->user ? [
+                            'email' => $resident->user->email,
+                            'status' => $resident->user->status
+                        ] : null
+                    ];
+                })
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error in getResidentInfo: ' . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Simpan kas baru
+     */
+    public function store(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Validasi akses
+        if (!in_array($user->role, ['admin', 'kades', 'rw', 'rt'])) {
+            abort(403, 'Anda tidak memiliki akses untuk membuat kas');
+        }
+
+        $request->validate([
+            'rt_id' => 'required|exists:rts,id',
+            'jumlah' => 'required|numeric|min:1000',
+            'minggu_ke' => 'required|integer|min:1|max:53',
+            'tahun' => 'required|integer|min:2020|max:2030',
+            'tanggal_jatuh_tempo' => 'required|date|after:today',
+            'keterangan' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $rt = Rt::findOrFail($request->rt_id);
+        
+            // Validasi akses RT berdasarkan role (admin bisa akses semua)
+            if ($user->role === 'rw' && $user->penduduk && $user->penduduk->kk) {
+                $userRwId = $user->penduduk->kk->rt->rw_id;
+                if ($rt->rw_id !== $userRwId) {
+                    throw new \Exception('Anda hanya bisa membuat kas untuk RT di RW Anda');
+                }
+            } elseif ($user->role === 'rt' && $user->penduduk && $user->penduduk->kk) {
+                $userRtId = $user->penduduk->kk->rt_id;
+                if ($rt->id !== $userRtId) {
+                    throw new \Exception('Anda hanya bisa membuat kas untuk RT Anda');
+                }
+            }
+            // Admin dan Kades tidak perlu validasi RT
+
+            // Ambil semua penduduk aktif di RT ini melalui KK
+            $pendudukList = Penduduk::whereHas('kk', function($query) use ($request) {
+                $query->where('rt_id', $request->rt_id)
+                      ->where('status', 'aktif');
+            })->where('status', 'aktif')->get();
+
+            if ($pendudukList->isEmpty()) {
+                throw new \Exception('Tidak ada penduduk aktif di RT ini. Pastikan ada KK aktif dengan penduduk aktif di RT yang dipilih.');
+            }
+
+            $createdCount = 0;
+            $notificationCount = 0;
+            $duplicateCount = 0;
+
+            foreach ($pendudukList as $penduduk) {
+                // Cek apakah kas untuk periode ini sudah ada
+                $existingKas = Kas::where('penduduk_id', $penduduk->id)
+                    ->where('minggu_ke', $request->minggu_ke)
+                    ->where('tahun', $request->tahun)
+                    ->first();
+
+                if (!$existingKas) {
+                    // Buat kas baru
+                    $kas = Kas::create([
+                        'penduduk_id' => $penduduk->id,
+                        'rt_id' => $request->rt_id,
+                        'rw_id' => $rt->rw_id,
+                        'minggu_ke' => $request->minggu_ke,
+                        'tahun' => $request->tahun,
+                        'jumlah' => $request->jumlah,
+                        'tanggal_jatuh_tempo' => $request->tanggal_jatuh_tempo,
+                        'status' => 'belum_bayar',
+                        'keterangan' => $request->keterangan,
+                    ]);
+
+                    $createdCount++;
+
+                    // Kirim notifikasi ke warga jika punya akun dan aktif
+                    if ($penduduk->user && $penduduk->user->status === 'active') {
+                        Notifikasi::create([
+                            'user_id' => $penduduk->user->id,
+                            'judul' => 'Tagihan Kas Baru',
+                            'pesan' => "Tagihan kas minggu ke-{$request->minggu_ke} sebesar Rp " . number_format($request->jumlah, 0, ',', '.') . " telah dibuat. Jatuh tempo: " . Carbon::parse($request->tanggal_jatuh_tempo)->format('d/m/Y') . ($request->keterangan ? ". {$request->keterangan}" : ''),
+                            'tipe' => 'info',
+                            'kategori' => 'kas',
+                            'data' => json_encode([
+                                'kas_id' => $kas->id,
+                                'jumlah' => $request->jumlah,
+                                'minggu_ke' => $request->minggu_ke,
+                                'tahun' => $request->tahun,
+                                'tanggal_jatuh_tempo' => $request->tanggal_jatuh_tempo,
+                            ])
+                        ]);
+
+                        $notificationCount++;
+                    }
+                } else {
+                    $duplicateCount++;
+                }
+            }
+
+            DB::commit();
+
+            $message = "Berhasil membuat {$createdCount} tagihan kas dan mengirim {$notificationCount} notifikasi";
+            if ($duplicateCount > 0) {
+                $message .= ". {$duplicateCount} kas sudah ada sebelumnya";
+            }
+
+            return redirect()->route('kas.index')->with([
+                'success' => $message,
+                'kas_created' => $createdCount,
+                'notifications_sent' => $notificationCount,
+                'total_amount' => $createdCount * $request->jumlah,
+                'show_success_modal' => true
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creating kas: ' . $e->getMessage());
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Generate kas mingguan
+     */
+    public function generateWeekly(Request $request)
+    {
+        $user = Auth::user();
+        
+        if (!in_array($user->role, ['admin', 'kades', 'rw', 'rt'])) {
+            abort(403, 'Anda tidak memiliki akses untuk generate kas mingguan');
+        }
+
+        $request->validate([
+            'rt_id' => 'required|exists:rts,id',
+            'jumlah' => 'required|numeric|min:1000',
+            'tahun' => 'required|integer|min:2020|max:2030',
+            'minggu_mulai' => 'required|integer|min:1|max:52',
+            'minggu_selesai' => 'required|integer|min:1|max:52|gte:minggu_mulai',
+            'tanggal_jatuh_tempo_awal' => 'required|date', // Added for initial due date
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $rt = Rt::findOrFail($request->rt_id);
+        
+            // Validasi akses RT berdasarkan role (admin bisa akses semua)
+            if ($user->role === 'rw' && $user->penduduk && $user->penduduk->kk) {
+                $userRwId = $user->penduduk->kk->rt->rw_id;
+                if ($rt->rw_id !== $userRwId) {
+                    throw new \Exception('Anda hanya bisa generate kas untuk RT di RW Anda');
+                }
+            } elseif ($user->role === 'rt' && $user->penduduk && $user->penduduk->kk) {
+                $userRtId = $user->penduduk->kk->rt_id;
+                if ($rt->id !== $userRtId) {
+                    throw new \Exception('Anda hanya bisa generate kas untuk RT Anda');
+                }
+            }
+            // Admin dan Kades tidak perlu validasi RT
+        
+            $totalCreated = 0;
+            $totalNotifications = 0;
+            $totalWeeks = $request->minggu_selesai - $request->minggu_mulai + 1;
+
+            // Ambil semua penduduk aktif di RT ini melalui KK
+            $pendudukList = Penduduk::whereHas('kk', function($query) use ($request) {
+                $query->where('rt_id', $request->rt_id)
+                      ->where('status', 'aktif');
+            })->where('status', 'aktif')->get();
+
+            if ($pendudukList->isEmpty()) {
+                throw new \Exception('Tidak ada penduduk aktif di RT ini. Pastikan ada KK aktif dengan penduduk aktif di RT yang dipilih.');
+            }
+
+            // Calculate initial due date
+            $initialDueDate = Carbon::parse($request->tanggal_jatuh_tempo_awal);
+
+            for ($minggu = $request->minggu_mulai; $minggu <= $request->minggu_selesai; $minggu++) {
+                // Calculate due date for each week based on the initial date
+                // This assumes initialDueDate is for minggu_mulai.
+                // If initialDueDate is for the *first* kas generated, then subsequent weeks add 7 days.
+                // For simplicity, let's assume initialDueDate is the base, and we adjust based on week difference.
+                // A more robust way might be to calculate the date for the *actual* week number.
+                // For now, let's use the previous logic but ensure it's based on the form's input.
+                // If the form provides a single 'tanggal_jatuh_tempo', it should be used for all generated kas.
+                // If it's 'tanggal_jatuh_tempo_awal' for 'minggu_mulai', then subsequent weeks are +7 days.
+                // Let's adjust to use the provided 'tanggal_jatuh_tempo_awal' as the base for the first week,
+                // and then increment by 7 days for subsequent weeks.
+
+                // Let's simplify: if the form has a single 'tanggal_jatuh_tempo', use that for all.
+                // If the form is for generating multiple weeks, it's more common to have a 'start date'
+                // and then calculate subsequent dates.
+                // Given the validation `tanggal_jatuh_tempo_awal`, I'll assume it's the start date for `minggu_mulai`.
+                $jatuhTempo = $initialDueDate->copy()->addWeeks($minggu - $request->minggu_mulai);
+
+
+                foreach ($pendudukList as $penduduk) {
+                    // Cek apakah kas untuk minggu ini sudah ada
+                    $existingKas = Kas::where('penduduk_id', $penduduk->id)
+                        ->where('minggu_ke', $minggu)
+                        ->where('tahun', $request->tahun)
+                        ->first();
+
+                    if (!$existingKas) {
+                        $kas = Kas::create([
+                            'penduduk_id' => $penduduk->id,
+                            'rt_id' => $request->rt_id,
+                            'rw_id' => $rt->rw_id,
+                            'minggu_ke' => $minggu,
+                            'tahun' => $request->tahun,
+                            'jumlah' => $request->jumlah,
+                            'tanggal_jatuh_tempo' => $jatuhTempo,
+                            'status' => 'belum_bayar',
+                            'keterangan' => $request->keterangan ?? "Generate kas mingguan oleh {$user->name}", // Use request keterangan if available
+                        ]);
+
+                        $totalCreated++;
+
+                        // Kirim notifikasi ke warga jika punya akun dan aktif
+                        if ($penduduk->user && $penduduk->user->status === 'active') {
+                            Notifikasi::create([
+                                'user_id' => $penduduk->user->id,
+                                'judul' => 'Tagihan Kas Mingguan',
+                                'pesan' => "Tagihan kas minggu ke-{$minggu} tahun {$request->tahun} sebesar Rp " . number_format($request->jumlah, 0, ',', '.') . " telah dibuat. Jatuh tempo: " . $jatuhTempo->format('d/m/Y'),
+                                'tipe' => 'info',
+                                'kategori' => 'kas',
+                                'data' => json_encode([
+                                    'kas_id' => $kas->id,
+                                    'jumlah' => $request->jumlah,
+                                    'minggu_ke' => $minggu,
+                                    'tahun' => $request->tahun,
+                                    'tanggal_jatuh_tempo' => $jatuhTempo->toDateString(),
+                                ])
+                            ]);
+
+                            $totalNotifications++;
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('kas.index')->with([
+                'success' => "Berhasil generate {$totalCreated} tagihan kas mingguan dan mengirim {$totalNotifications} notifikasi",
+                'total_weeks' => $totalWeeks,
+                'kas_created' => $totalCreated,
+                'notifications_sent' => $totalNotifications,
+                'total_amount' => $totalCreated * $request->jumlah,
+                'show_success_modal' => true
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error generating weekly kas: ' . $e->getMessage());
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Show kas details
+     */
+    public function show(Kas $kas)
+    {
+        $user = Auth::user();
+        
+        // Check access permission
+        if (!$this->canAccessKas($kas, $user)) {
+            abort(403, 'Anda tidak memiliki akses untuk melihat kas ini');
+        }
+
+        $kas->load(['penduduk.user', 'rt.rw']);
+        
+        return view('kas.show', compact('kas'));
+    }
+
+    /**
+     * Show edit form
+     */
+    public function edit(Kas $kas)
+    {
+        $user = Auth::user();
+        
+        // Only admin, kades, rw, rt can edit
+        if (!in_array($user->role, ['admin', 'kades', 'rw', 'rt'])) {
+            abort(403, 'Anda tidak memiliki akses untuk mengedit kas');
+        }
+
+        // Check access permission
+        if (!$this->canAccessKas($kas, $user)) {
+            abort(403, 'Anda tidak memiliki akses untuk mengedit kas ini');
+        }
+
+        $kas->load(['penduduk.user', 'rt.rw']);
+        
+        return view('kas.edit', compact('kas'));
+    }
+
+    /**
+     * Update kas
+     */
+    public function update(Request $request, Kas $kas)
+    {
+        $user = Auth::user();
+        
+        // Only admin, kades, rw, rt can update
+        if (!in_array($user->role, ['admin', 'kades', 'rw', 'rt'])) {
+            abort(403, 'Anda tidak memiliki akses untuk mengupdate kas');
+        }
+
+        // Check access permission
+        if (!$this->canAccessKas($kas, $user)) {
+            abort(403, 'Anda tidak memiliki akses untuk mengupdate kas ini');
+        }
+
+        $request->validate([
+            'jumlah' => 'required|numeric|min:1000',
+            'status' => 'required|in:belum_bayar,lunas,terlambat',
+            'minggu_ke' => 'required|integer|min:1|max:53',
+            'tahun' => 'required|integer|min:2020|max:2030',
+            'tanggal_jatuh_tempo' => 'required|date',
+            'tanggal_bayar' => 'nullable|date',
+            'metode_bayar' => 'nullable|string|max:50',
+            'keterangan' => 'nullable|string|max:500',
+            'bukti_bayar' => 'nullable|string|max:1000', // This is a string, not a file upload
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $updateData = [
+                'jumlah' => $request->jumlah,
+                'status' => $request->status,
+                'minggu_ke' => $request->minggu_ke,
+                'tahun' => $request->tahun,
+                'tanggal_jatuh_tempo' => $request->tanggal_jatuh_tempo,
+                'keterangan' => $request->keterangan,
+                'bukti_bayar' => $request->bukti_bayar,
+            ];
+
+            // If status is lunas, set payment details
+            if ($request->status === 'lunas') {
+                $updateData['tanggal_bayar'] = $request->tanggal_bayar ?: now();
+                $updateData['metode_bayar'] = $request->metode_bayar;
+            } else {
+                // If status is not lunas, clear payment details
+                $updateData['tanggal_bayar'] = null;
+                $updateData['metode_bayar'] = null;
+            }
+
+            $kas->update($updateData);
+
+            // Send notification if status changed to lunas
+            if ($request->status === 'lunas' && $kas->penduduk->user) {
+                Notifikasi::create([
+                    'user_id' => $kas->penduduk->user->id,
+                    'judul' => 'Kas Telah Lunas',
+                    'pesan' => "Kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " telah dikonfirmasi lunas.",
+                    'tipe' => 'success',
+                    'kategori' => 'kas',
+                    'data' => json_encode([
+                        'kas_id' => $kas->id,
+                        'jumlah' => $kas->jumlah,
+                        'tanggal_bayar' => $kas->tanggal_bayar,
+                    ])
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('kas.show', $kas)->with('success', 'Kas berhasil diupdate');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating kas: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat mengupdate kas: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Delete kas
+     */
+    public function destroy(Kas $kas)
+    {
+        $user = Auth::user();
+        
+        // Only admin can delete
+        if ($user->role !== 'admin') {
+            abort(403, 'Hanya admin yang dapat menghapus kas');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Send notification to resident if they have an account
+            if ($kas->penduduk->user) {
+                Notifikasi::create([
+                    'user_id' => $kas->penduduk->user->id,
+                    'judul' => 'Kas Dihapus',
+                    'pesan' => "Kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " telah dihapus oleh administrator.",
+                    'tipe' => 'warning',
+                    'kategori' => 'kas',
+                    'data' => json_encode([
+                        'kas_id' => $kas->id,
+                        'jumlah' => $kas->jumlah,
+                        'minggu_ke' => $kas->minggu_ke,
+                        'tahun' => $kas->tahun,
+                    ])
+                ]);
+            }
+
+            $kas->delete();
+
+            DB::commit();
+
+            return redirect()->route('kas.index')->with([
+                'success' => 'Kas berhasil dihapus',
+                'show_success_modal' => true
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting kas: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus kas: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Confirm payment (AJAX)
+     */
+    public function bayar(Request $request, Kas $kas)
+    {
+        $user = Auth::user();
+        
+        // Only admin, kades, rw, rt can confirm payment
+        if (!in_array($user->role, ['admin', 'kades', 'rw', 'rt'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk konfirmasi pembayaran'
+            ], 403);
+        }
+
+        // Check access permission
+        if (!$this->canAccessKas($kas, $user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk kas ini'
+            ], 403);
+        }
+
+        $request->validate([
+            'metode_pembayaran' => 'required|string|max:50',
+            'bukti_pembayaran' => 'nullable|string|max:1000', // This is a string, not a file upload
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $kas->update([
+                'status' => 'lunas',
+                'tanggal_bayar' => now(),
+                'metode_bayar' => $request->metode_pembayaran,
+                'bukti_bayar' => $request->bukti_pembayaran,
+            ]);
+
+            // Send notification to resident
+            if ($kas->penduduk->user) {
+                Notifikasi::create([
+                    'user_id' => $kas->penduduk->user->id,
+                    'judul' => 'Pembayaran Kas Dikonfirmasi',
+                    'pesan' => "Pembayaran kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " telah dikonfirmasi lunas via {$request->metode_pembayaran}.",
+                    'tipe' => 'success',
+                    'kategori' => 'kas',
+                    'data' => json_encode([
+                        'kas_id' => $kas->id,
+                        'jumlah' => $kas->jumlah,
+                        'metode_bayar' => $request->metode_pembayaran,
+                        'tanggal_bayar' => now(),
+                    ])
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('kas.show', $kas)->with([
+                'success' => 'Pembayaran kas berhasil dikonfirmasi',
+                'show_success_modal' => true
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error confirming payment: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat konfirmasi pembayaran: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Check if user can access specific kas
+     */
+    private function canAccessKas(Kas $kas, User $user)
+    {
+        switch ($user->role) {
+            case 'admin':
+            case 'kades':
+                return true;
+            case 'rw':
+                if ($user->penduduk && $user->penduduk->kk) {
+                    $userRwId = $user->penduduk->kk->rt->rw_id;
+                    return $kas->rt->rw_id === $userRwId;
+                }
+                return false;
+            case 'rt':
+                if ($user->penduduk && $user->penduduk->kk) {
+                    $userRtId = $user->penduduk->kk->rt_id;
+                    return $kas->rt_id === $userRtId;
+                }
+                return false;
+            case 'masyarakat':
+                return $kas->penduduk_id === $user->penduduk->id;
+            default:
+                return false;
+        }
+    }
 }

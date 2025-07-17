@@ -36,6 +36,7 @@ return new class extends Migration
             $table->index(['rt_id', 'status']);
             $table->index(['status', 'tanggal_jatuh_tempo']);
         });
+        
     }
 
     /**

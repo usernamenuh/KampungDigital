@@ -1,158 +1,329 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Pembayaran Kas</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-</head>
-<body class="bg-gray-100 p-6">
-    <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-        <h1 class="text-2xl font-bold mb-6 text-center">Form Pembayaran Kas</h1>
+@extends('layouts.app')
 
-        @if (session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong class="font-bold">Error!</strong>
-                <span class="block sm:inline">{{ session('error') }}</span>
+@section('content')
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-credit-card me-2"></i>
+                        Form Pembayaran Kas
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if ($errors->any())
+                        <div class="alert alert-danger">
+                            <strong>Error!</strong> Ada kesalahan dalam input:
+                            <ul class="mb-0 mt-2">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="alert alert-danger">
+                            <strong>Error!</strong> {{ session('error') }}
+                        </div>
+                    @endif
+
+                    <!-- Detail Kas -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Detail Kas</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Minggu ke:</strong> {{ $kas->minggu_ke }}</p>
+                                    <p><strong>Tahun:</strong> {{ $kas->tahun }}</p>
+                                    <p><strong>Jumlah:</strong> Rp {{ number_format($kas->jumlah, 0, ',', '.') }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Keterangan:</strong> Kas Mingguan RT {{ $kas->rt->no_rt ?? 'N/A' }}</p>
+                                    <p><strong>Jatuh Tempo:</strong> {{ $kas->tanggal_jatuh_tempo_formatted }}</p>
+                                    <p><strong>Status:</strong> 
+                                        <span class="badge bg-warning">{{ $kas->status_text }}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Form -->
+                    <form action="{{ route('kas.payment.process', $kas->id) }}" method="POST" enctype="multipart/form-data" id="paymentForm">
+                        @csrf
+                        
+                        <!-- Payment Method Selection -->
+                        <div class="mb-4">
+                            <label for="payment_method" class="form-label">
+                                <strong>Metode Pembayaran</strong>
+                            </label>
+                            <select class="form-select" id="payment_method" name="payment_method" required>
+                                <option value="">Pilih Metode Pembayaran</option>
+                                <option value="Tunai (Bayar Langsung)">💰 Tunai (Bayar Langsung)</option>
+                                @if($paymentInfo)
+                                    @if($paymentInfo->has_bank_transfer)
+                                        <option value="{{ $paymentInfo->bank_name }}">🏦 {{ $paymentInfo->bank_name }} - {{ $paymentInfo->bank_account_number }}</option>
+                                    @endif
+                                    @if($paymentInfo->has_e_wallet)
+                                        @if($paymentInfo->dana_number)
+                                            <option value="DANA">💳 DANA - {{ $paymentInfo->dana_number }}</option>
+                                        @endif
+                                        @if($paymentInfo->gopay_number)
+                                            <option value="GoPay">💳 GoPay - {{ $paymentInfo->gopay_number }}</option>
+                                        @endif
+                                        @if($paymentInfo->ovo_number)
+                                            <option value="OVO">💳 OVO - {{ $paymentInfo->ovo_number }}</option>
+                                        @endif
+                                        @if($paymentInfo->shopeepay_number)
+                                            <option value="ShopeePay">💳 ShopeePay - {{ $paymentInfo->shopeepay_number }}</option>
+                                        @endif
+                                    @endif
+                                    @if($paymentInfo->has_qr_code)
+                                        <option value="QR Code">📱 QR Code</option>
+                                    @endif
+                                @endif
+                            </select>
+                        </div>
+
+                        <!-- Payment Info Display -->
+                        @if($paymentInfo)
+                            <div id="paymentInfoDisplay" class="mb-4" style="display: none;">
+                                <!-- Bank Transfer Info -->
+                                <div id="bankInfo" class="payment-info" style="display: none;">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h6><i class="fas fa-university me-2"></i>Informasi Transfer Bank</h6>
+                                            <p><strong>Bank:</strong> {{ $paymentInfo->bank_name }}</p>
+                                            <p><strong>No. Rekening:</strong> {{ $paymentInfo->bank_account_number }}</p>
+                                            <p><strong>Atas Nama:</strong> {{ $paymentInfo->bank_account_name }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- E-Wallet Info -->
+                                @if($paymentInfo->dana_number)
+                                    <div id="danaInfo" class="payment-info" style="display: none;">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6><i class="fas fa-wallet me-2"></i>Informasi DANA</h6>
+                                                <p><strong>Nomor:</strong> {{ $paymentInfo->dana_number }}</p>
+                                                <p><strong>Atas Nama:</strong> {{ $paymentInfo->dana_account_name }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if($paymentInfo->gopay_number)
+                                    <div id="gopayInfo" class="payment-info" style="display: none;">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6><i class="fas fa-wallet me-2"></i>Informasi GoPay</h6>
+                                                <p><strong>Nomor:</strong> {{ $paymentInfo->gopay_number }}</p>
+                                                <p><strong>Atas Nama:</strong> {{ $paymentInfo->gopay_account_name }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if($paymentInfo->ovo_number)
+                                    <div id="ovoInfo" class="payment-info" style="display: none;">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6><i class="fas fa-wallet me-2"></i>Informasi OVO</h6>
+                                                <p><strong>Nomor:</strong> {{ $paymentInfo->ovo_number }}</p>
+                                                <p><strong>Atas Nama:</strong> {{ $paymentInfo->ovo_account_name }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if($paymentInfo->shopeepay_number)
+                                    <div id="shopeepayInfo" class="payment-info" style="display: none;">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6><i class="fas fa-wallet me-2"></i>Informasi ShopeePay</h6>
+                                                <p><strong>Nomor:</strong> {{ $paymentInfo->shopeepay_number }}</p>
+                                                <p><strong>Atas Nama:</strong> {{ $paymentInfo->shopeepay_account_name }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <!-- QR Code Info -->
+                                @if($paymentInfo->has_qr_code)
+                                    <div id="qrInfo" class="payment-info" style="display: none;">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center">
+                                                <h6><i class="fas fa-qrcode me-2"></i>QR Code Payment</h6>
+                                                @if($paymentInfo->qr_code_url)
+                                                    <img src="{{ $paymentInfo->qr_code_url }}" alt="QR Code" class="img-fluid mb-3" style="max-width: 200px;">
+                                                @endif
+                                                @if($paymentInfo->qr_code_description)
+                                                    <p>{{ $paymentInfo->qr_code_description }}</p>
+                                                @endif
+                                                @if($paymentInfo->qr_code_account_name)
+                                                    <p><strong>Atas Nama:</strong> {{ $paymentInfo->qr_code_account_name }}</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <!-- Cash Payment Info -->
+                                <div id="cashInfo" class="payment-info" style="display: none;">
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-money-bill-wave me-2"></i>Pembayaran Tunai</h6>
+                                        <p class="mb-0">Silakan bayar langsung kepada Ketua RT atau petugas yang ditunjuk. Pembayaran tunai akan langsung dikonfirmasi sebagai lunas.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        <!-- Amount -->
+                        <div class="mb-3">
+                            <label for="amount_paid" class="form-label">
+                                <strong>Jumlah Dibayar</strong>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="number" class="form-control" id="amount_paid" name="amount_paid" 
+                                       value="{{ $kas->total_bayar }}" min="0" step="0.01" required>
+                            </div>
+                            <small class="text-muted">Jumlah yang harus dibayar: Rp {{ number_format($kas->total_bayar, 0, ',', '.') }}</small>
+                        </div>
+
+                        <!-- Proof of Payment -->
+                        <div class="mb-3" id="proofSection">
+                            <label for="proof_of_payment" class="form-label">
+                                <strong>Unggah Bukti Pembayaran</strong> <span class="text-muted">(Opsional untuk tunai)</span>
+                            </label>
+                            <input type="file" class="form-control" id="proof_of_payment" name="proof_of_payment" 
+                                   accept="image/*,.pdf" onchange="previewFile()">
+                            <small class="text-muted">Format: JPG, PNG, PDF. Maksimal 5MB</small>
+                            <div id="filePreview" class="mt-2"></div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">
+                                <strong>Catatan</strong> <span class="text-muted">(Opsional)</span>
+                            </label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Tambahkan catatan jika diperlukan..."></textarea>
+                        </div>
+
+                        <!-- Payment Notes from RT -->
+                        @if($paymentInfo && $paymentInfo->payment_notes)
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle me-2"></i>Catatan dari RT:</h6>
+                                <p class="mb-0">{{ $paymentInfo->payment_notes }}</p>
+                            </div>
+                        @endif
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ route('kas.index') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Batal
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="fas fa-paper-plane me-1"></i> Ajukan Pembayaran
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        @endif
-
-        @if ($errors->any())
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong class="font-bold">Whoops!</strong>
-                <span class="block sm:inline">Ada beberapa masalah dengan input Anda.</span>
-                <ul class="mt-3 list-disc list-inside">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        <div class="mb-4 p-4 border rounded-md bg-gray-50">
-            <h2 class="text-lg font-semibold mb-2">Detail Kas</h2>
-            <p><strong>Tanggal:</strong> {{ $kas->tanggal }}</p>
-            <p><strong>Jenis:</strong> {{ ucfirst($kas->jenis) }}</p>
-            <p><strong>Jumlah:</strong> Rp{{ number_format($kas->jumlah, 2, ',', '.') }}</p>
-            <p><strong>Keterangan:</strong> {{ $kas->keterangan }}</p>
         </div>
-
-        <form action="{{ route('kas.payment.process', $kas->id) }}" method="POST" enctype="multipart/form-data"
-            class="space-y-4" x-data="{
-                paymentMethod: '{{ old('payment_method', '') }}',
-                qrCodeUrl: '{{ $paymentInfo->qr_code_url ?? '' }}',
-                init() {
-                    // Ensure QR code visibility is correctly set on page load if old input exists
-                    this.showQrCode = (this.paymentMethod === 'QRIS' || this.paymentMethod === 'QR Code');
-                    this.$watch('paymentMethod', value => {
-                        this.showQrCode = (value === 'QRIS' || value === 'QR Code');
-                    });
-                },
-                showQrCode: false,
-            }">
-            @csrf
-
-            <input type="hidden" name="amount_paid" value="{{ $kas->jumlah }}">
-
-            <div>
-                <label for="payment_method" class="block text-sm font-medium text-gray-700">Metode Pembayaran</label>
-                <select id="payment_method" name="payment_method" x-model="paymentMethod"
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    required>
-                    <option value="">Pilih Metode Pembayaran</option>
-                    @if ($paymentInfo->has_bank_transfer)
-                        <option value="Bank Transfer">Bank Transfer</option>
-                    @endif
-                    @if ($paymentInfo->has_e_wallet)
-                        @if ($paymentInfo->dana_number)
-                            <option value="DANA">DANA</option>
-                        @endif
-                        @if ($paymentInfo->gopay_number)
-                            <option value="GoPay">GoPay</option>
-                        @endif
-                        @if ($paymentInfo->ovo_number)
-                            <option value="OVO">OVO</option>
-                        @endif
-                        @if ($paymentInfo->shopeepay_number)
-                            <option value="ShopeePay">ShopeePay</option>
-                        @endif
-                    @endif
-                    @if ($paymentInfo->has_qr_code)
-                        <option value="QRIS">QRIS</option>
-                    @endif
-                    <option value="Cash">Tunai (Bayar Langsung)</option>
-                </select>
-            </div>
-
-            <div x-show="paymentMethod === 'Bank Transfer'" class="border p-4 rounded-md bg-blue-50">
-                <h3 class="text-md font-semibold mb-2">Detail Bank Transfer</h3>
-                <p><strong>Nama Bank:</strong> {{ $paymentInfo->bank_name }}</p>
-                <p><strong>Nomor Rekening:</strong> {{ $paymentInfo->bank_account_number }}</p>
-                <p><strong>Atas Nama:</strong> {{ $paymentInfo->bank_account_name }}</p>
-            </div>
-
-            @if ($paymentInfo->has_e_wallet)
-                <div x-show="paymentMethod === 'DANA'" class="border p-4 rounded-md bg-green-50">
-                    <h3 class="text-md font-semibold mb-2">Detail E-Wallet DANA</h3>
-                    <p><strong>Nomor:</strong> {{ $paymentInfo->dana_number }}</p>
-                    <p><strong>Atas Nama:</strong> {{ $paymentInfo->dana_account_name }}</p>
-                </div>
-                <div x-show="paymentMethod === 'GoPay'" class="border p-4 rounded-md bg-green-50">
-                    <h3 class="text-md font-semibold mb-2">Detail E-Wallet GoPay</h3>
-                    <p><strong>Nomor:</strong> {{ $paymentInfo->gopay_number }}</p>
-                    <p><strong>Atas Nama:</strong> {{ $paymentInfo->gopay_account_name }}</p>
-                </div>
-                <div x-show="paymentMethod === 'OVO'" class="border p-4 rounded-md bg-green-50">
-                    <h3 class="text-md font-semibold mb-2">Detail E-Wallet OVO</h3>
-                    <p><strong>Nomor:</strong> {{ $paymentInfo->ovo_number }}</p>
-                    <p><strong>Atas Nama:</strong> {{ $paymentInfo->ovo_account_name }}</p>
-                </div>
-                <div x-show="paymentMethod === 'ShopeePay'" class="border p-4 rounded-md bg-green-50">
-                    <h3 class="text-md font-semibold mb-2">Detail E-Wallet ShopeePay</h3>
-                    <p><strong>Nomor:</strong> {{ $paymentInfo->shopeepay_number }}</p>
-                    <p><strong>Atas Nama:</strong> {{ $paymentInfo->shopeepay_account_name }}</p>
-                </div>
-            @endif
-
-            <div x-show="showQrCode" class="border p-4 rounded-md bg-purple-50">
-                <h3 class="text-md font-semibold mb-2">QR Code Pembayaran</h3>
-                @if ($paymentInfo->qr_code_url)
-                    <img :src="qrCodeUrl" alt="QR Code Pembayaran" class="max-w-full h-auto mx-auto my-4">
-                    <p class="text-center text-sm text-gray-600">
-                        {{ $paymentInfo->qr_code_description }}
-                        @if ($paymentInfo->qr_code_account_name)
-                            <br>A/N: {{ $paymentInfo->qr_code_account_name }}
-                        @endif
-                    </p>
-                @else
-                    <p class="text-center text-gray-500">QR Code tidak tersedia.</p>
-                @endif
-            </div>
-
-            <div>
-                <label for="proof_of_payment" class="block text-sm font-medium text-gray-700">Unggah Bukti Pembayaran (Opsional)</label>
-                <input type="file" id="proof_of_payment" name="proof_of_payment"
-                    class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-            </div>
-
-            <div>
-                <label for="notes" class="block text-sm font-medium text-gray-700">Catatan (Opsional)</label>
-                <textarea id="notes" name="notes" rows="3"
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">{{ old('notes') }}</textarea>
-            </div>
-
-            <div class="flex justify-end space-x-3">
-                <a href="{{ route('kas.index') }}"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Batal
-                </a>
-                <button type="submit"
-                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Ajukan Pembayaran
-                </button>
-            </div>
-        </form>
     </div>
-</body>
-</html>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentMethodSelect = document.getElementById('payment_method');
+    const paymentInfoDisplay = document.getElementById('paymentInfoDisplay');
+    const proofSection = document.getElementById('proofSection');
+    const proofInput = document.getElementById('proof_of_payment');
+    const submitBtn = document.getElementById('submitBtn');
+
+    paymentMethodSelect.addEventListener('change', function() {
+        const selectedMethod = this.value;
+        
+        // Hide all payment info sections
+        document.querySelectorAll('.payment-info').forEach(info => {
+            info.style.display = 'none';
+        });
+
+        if (selectedMethod) {
+            paymentInfoDisplay.style.display = 'block';
+            
+            // Show relevant payment info
+            if (selectedMethod.includes('{{ $paymentInfo->bank_name ?? "" }}')) {
+                document.getElementById('bankInfo').style.display = 'block';
+                proofInput.required = true;
+                submitBtn.innerHTML = '<i class="fas fa-clock me-1"></i> Ajukan Pembayaran (Menunggu Konfirmasi)';
+            } else if (selectedMethod.includes('DANA')) {
+                document.getElementById('danaInfo').style.display = 'block';
+                proofInput.required = true;
+                submitBtn.innerHTML = '<i class="fas fa-clock me-1"></i> Ajukan Pembayaran (Menunggu Konfirmasi)';
+            } else if (selectedMethod.includes('GoPay')) {
+                document.getElementById('gopayInfo').style.display = 'block';
+                proofInput.required = true;
+                submitBtn.innerHTML = '<i class="fas fa-clock me-1"></i> Ajukan Pembayaran (Menunggu Konfirmasi)';
+            } else if (selectedMethod.includes('OVO')) {
+                document.getElementById('ovoInfo').style.display = 'block';
+                proofInput.required = true;
+                submitBtn.innerHTML = '<i class="fas fa-clock me-1"></i> Ajukan Pembayaran (Menunggu Konfirmasi)';
+            } else if (selectedMethod.includes('ShopeePay')) {
+                document.getElementById('shopeepayInfo').style.display = 'block';
+                proofInput.required = true;
+                submitBtn.innerHTML = '<i class="fas fa-clock me-1"></i> Ajukan Pembayaran (Menunggu Konfirmasi)';
+            } else if (selectedMethod.includes('QR Code')) {
+                document.getElementById('qrInfo').style.display = 'block';
+                proofInput.required = true;
+                submitBtn.innerHTML = '<i class="fas fa-clock me-1"></i> Ajukan Pembayaran (Menunggu Konfirmasi)';
+            } else if (selectedMethod.includes('Tunai')) {
+                document.getElementById('cashInfo').style.display = 'block';
+                proofInput.required = false;
+                submitBtn.innerHTML = '<i class="fas fa-check me-1"></i> Konfirmasi Pembayaran Tunai';
+            }
+        } else {
+            paymentInfoDisplay.style.display = 'none';
+            proofInput.required = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Ajukan Pembayaran';
+        }
+    });
+});
+
+function previewFile() {
+    const file = document.getElementById('proof_of_payment').files[0];
+    const preview = document.getElementById('filePreview');
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (file.type.startsWith('image/')) {
+                preview.innerHTML = `
+                    <div class="mt-2">
+                        <p class="text-success"><i class="fas fa-check"></i> File terpilih: ${file.name}</p>
+                        <img src="${e.target.result}" alt="Preview" class="img-thumbnail" style="max-width: 200px;">
+                    </div>
+                `;
+            } else {
+                preview.innerHTML = `
+                    <div class="mt-2">
+                        <p class="text-success"><i class="fas fa-check"></i> File terpilih: ${file.name}</p>
+                        <p class="text-muted">File PDF berhasil dipilih</p>
+                    </div>
+                `;
+            }
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.innerHTML = '';
+    }
+}
+</script>
+@endsection

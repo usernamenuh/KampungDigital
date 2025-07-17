@@ -21,7 +21,11 @@ use App\Http\Controllers\Api\PaymentApiController;
 use App\Http\Controllers\Api\KasApiController;
 use App\Http\Controllers\Api\NotifikasiApiController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +40,7 @@ use App\Http\Controllers\ProfileController;
 
 // Public routes
 Route::get('/', function () {
-  return view('landing');
+    return view('landing');
 });
 
 // Authentication Routes
@@ -79,6 +83,8 @@ Route::middleware(['auth', 'user.status'])->group(function () {
           Route::get('/{kas}/payment-form', [KasPaymentController::class, 'showPaymentForm'])->name('payment.form');
           Route::post('/{kas}/submit-payment', [KasPaymentController::class, 'submitPayment'])->name('payment.submit');
           Route::get('/{kas}/payment-success', [KasPaymentController::class, 'paymentSuccess'])->name('payment.success');
+          // Add the missing route that the form is looking for
+          Route::post('/{kas}/payment-process', [KasPaymentController::class, 'processPayment'])->name('payment.process');
       });
       
       // RT/RW/Kades/Admin specific routes (custom routes not covered by resource)
@@ -161,49 +167,6 @@ Route::middleware(['auth', 'user.status'])->group(function () {
       Route::resource('kk', KkController::class);
       Route::post('kk/{kk}/set-kepala-keluarga', [KkController::class, 'setKepalaKeluarga'])->name('kk.set-kepala-keluarga');
       Route::resource('pengaturan-kas', PengaturanKasController::class);
-  });
-
-  // API routes for dashboard data - Fixed routing
-  Route::prefix('api/dashboard')->group(function () {
-      Route::get('/stats', [DashboardApiController::class, 'getStats']);
-      Route::get('/monthly-kas', [DashboardApiController::class, 'getMonthlyKasData']);
-      Route::get('/activities', [DashboardApiController::class, 'getActivities']);
-      Route::get('/system-monitoring', [DashboardApiController::class, 'getSystemMonitoring']);
-      Route::post('/clear-cache', [DashboardApiController::class, 'clearCache']);
-      Route::get('/system-health', [DashboardApiController::class, 'getSystemHealth']);
-      Route::post('/update-activity', [DashboardApiController::class, 'updateActivity']);
-      Route::get('/payment-alerts', [DashboardApiController::class, 'getPaymentAlerts']); // New route for payment alerts
-  });
-
-  // API routes for Kas - Fixed for masyarakat dashboard
-  Route::prefix('api/kas')->group(function () {
-      Route::get('/stats', [KasApiController::class, 'getStats']);
-      Route::get('/user/{user_id}', [KasApiController::class, 'getUserKas']);
-      Route::get('/recent-payments', [KasApiController::class, 'getRecentPayments']);
-  });
-
-  // API routes for Notifications - Fixed routing
-  Route::prefix('api/notifications')->group(function () {
-      Route::get('/', [NotifikasiApiController::class, 'index']);
-      Route::get('/unread', [NotifikasiApiController::class, 'getUnread']);
-      Route::get('/unread-count', [NotifikasiApiController::class, 'getUnreadCount']);
-      Route::get('/recent', [NotifikasiApiController::class, 'getRecent']);
-      Route::post('/{notification}/read', [NotifikasiApiController::class, 'markAsRead']);
-      Route::post('/mark-all-read', [NotifikasiApiController::class, 'markAllAsRead']);
-      Route::delete('/{notification}', [NotifikasiApiController::class, 'destroy']);
-      Route::delete('/clear-all', [NotifikasiApiController::class, 'destroyAll']);
-  });
-
-  // API routes for Payment Info - Fixed routing
-  Route::prefix('api/payment-info')->group(function () {
-      Route::get('/rt/{rt_id}', [PaymentApiController::class, 'getPaymentInfoByRt']);
-      Route::get('/for-user-rt', [PaymentApiController::class, 'getPaymentInfoForUserRt']);
-  });
-
-  // API routes for Payments - Fixed routing
-  Route::prefix('api/payment')->group(function () {
-      Route::get('/index', [PaymentApiController::class, 'index']);
-      Route::post('/{kas}/confirm', [PaymentApiController::class, 'confirmPayment']);
   });
 });
 
