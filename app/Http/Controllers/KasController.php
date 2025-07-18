@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Validator; // Added Validator for explicit use
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class KasController extends Controller
 {
@@ -154,18 +155,75 @@ class KasController extends Controller
         $lunasCount = (clone $statsQuery)->where('status', 'lunas')->count();
         $belumBayarCount = (clone $statsQuery)->where('status', 'belum_bayar')->count();
         $terlambatCount = (clone $statsQuery)->where('status', 'terlambat')->count();
+        $ditolakCount = (clone $statsQuery)->where('status', 'ditolak')->count(); // Added ditolak count
+        $menungguKonfirmasiCount = (clone $statsQuery)->where('status', 'menunggu_konfirmasi')->count(); // Added menunggu_konfirmasi count
         
         // Calculate amounts
         $totalTerkumpul = (clone $statsQuery)->where('status', 'lunas')->sum('jumlah');
-        $totalOutstanding = (clone $statsQuery)->whereIn('status', ['belum_bayar', 'terlambat'])->sum('jumlah');
+        $totalOutstanding = (clone $statsQuery)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->sum('jumlah');
+
+        // Calculate total nominal tertagih (sum of all kas amounts, regardless of status)
+        $totalNominalTertagihQuery = Kas::query();
+        // Apply same role-based filtering for total nominal tertagih
+        switch ($user->role) {
+            case 'admin':
+            case 'kades':
+                break;
+            case 'rw':
+                if ($user->penduduk && $user->penduduk->kk && $user->penduduk->kk->rt) {
+                    $rwId = $user->penduduk->kk->rt->rw_id;
+                    $totalNominalTertagihQuery->whereHas('rt', function($q) use ($rwId) {
+                        $q->where('rw_id', $rwId);
+                    });
+                }
+                break;
+            case 'rt':
+                if ($user->penduduk && $user->penduduk->kk) {
+                    $rtId = $user->penduduk->kk->rt_id;
+                    $totalNominalTertagihQuery->where('rt_id', $rtId);
+                }
+                break;
+            case 'masyarakat':
+                if ($user->penduduk) {
+                    $totalNominalTertagihQuery->where('penduduk_id', $user->penduduk->id);
+                }
+                break;
+        }
+        // Apply same request filters for total nominal tertagih
+        if ($request->filled('status')) {
+            $totalNominalTertagihQuery->where('status', $request->status);
+        }
+        if ($request->filled('rt_id')) {
+            $totalNominalTertagihQuery->where('rt_id', $request->rt_id);
+        }
+        if ($request->filled('minggu_ke')) {
+            $totalNominalTertagihQuery->where('minggu_ke', $request->minggu_ke);
+        }
+        if ($request->filled('tahun')) {
+            $totalNominalTertagihQuery->where('tahun', $request->tahun);
+        }
+        if ($request->filled('email') && in_array($user->role, ['admin', 'kades'])) {
+            $totalNominalTertagihQuery->whereHas('penduduk.user', function($q) use ($request) {
+                $q->where('email', 'like', '%' . $request->email . '%');
+            });
+        }
+        if ($request->filled('nama')) {
+            $totalNominalTertagihQuery->whereHas('penduduk', function($q) use ($request) {
+                $q->where('nama_lengkap', 'like', '%' . $request->nama . '%');
+            });
+        }
+        $totalNominalTertagih = $totalNominalTertagihQuery->sum('jumlah');
 
         $stats = [
             'total' => $totalKas,
             'lunas' => $lunasCount,
             'belum_bayar' => $belumBayarCount,
             'terlambat' => $terlambatCount,
+            'ditolak' => $ditolakCount, // Add ditolak to stats
+            'menunggu_konfirmasi' => $menungguKonfirmasiCount, // Add menunggu_konfirmasi to stats
             'total_terkumpul' => $totalTerkumpul ?: 0,
             'total_outstanding' => $totalOutstanding ?: 0,
+            'total_nominal_tertagih' => $totalNominalTertagih ?: 0, // Add total nominal tertagih
         ];
 
         // Daftar RT untuk filter (berdasarkan role)
@@ -460,22 +518,7 @@ class KasController extends Controller
 
             for ($minggu = $request->minggu_mulai; $minggu <= $request->minggu_selesai; $minggu++) {
                 // Calculate due date for each week based on the initial date
-                // This assumes initialDueDate is for minggu_mulai.
-                // If initialDueDate is for the *first* kas generated, then subsequent weeks add 7 days.
-                // For simplicity, let's assume initialDueDate is the base, and we adjust based on week difference.
-                // A more robust way might be to calculate the date for the *actual* week number.
-                // For now, let's use the previous logic but ensure it's based on the form's input.
-                // If the form provides a single 'tanggal_jatuh_tempo', it should be used for all generated kas.
-                // If it's 'tanggal_jatuh_tempo_awal' for 'minggu_mulai', then subsequent weeks are +7 days.
-                // Let's adjust to use the provided 'tanggal_jatuh_tempo_awal' as the base for the first week,
-                // and then increment by 7 days for subsequent weeks.
-
-                // Let's simplify: if the form has a single 'tanggal_jatuh_tempo', use that for all.
-                // If the form is for generating multiple weeks, it's more common to have a 'start date'
-                // and then calculate subsequent dates.
-                // Given the validation `tanggal_jatuh_tempo_awal`, I'll assume it's the start date for `minggu_mulai`.
                 $jatuhTempo = $initialDueDate->copy()->addWeeks($minggu - $request->minggu_mulai);
-
 
                 foreach ($pendudukList as $penduduk) {
                     // Cek apakah kas untuk minggu ini sudah ada
@@ -598,7 +641,7 @@ class KasController extends Controller
 
         $request->validate([
             'jumlah' => 'required|numeric|min:1000',
-            'status' => 'required|in:belum_bayar,lunas,terlambat',
+            'status' => ['required', Rule::in(['belum_bayar', 'lunas', 'terlambat', 'ditolak', 'menunggu_konfirmasi'])], // Added ditolak and menunggu_konfirmasi
             'minggu_ke' => 'required|integer|min:1|max:53',
             'tahun' => 'required|integer|min:2020|max:2030',
             'tanggal_jatuh_tempo' => 'required|date',
@@ -633,20 +676,36 @@ class KasController extends Controller
 
             $kas->update($updateData);
 
-            // Send notification if status changed to lunas
-            if ($request->status === 'lunas' && $kas->penduduk->user) {
-                Notifikasi::create([
-                    'user_id' => $kas->penduduk->user->id,
-                    'judul' => 'Kas Telah Lunas',
-                    'pesan' => "Kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " telah dikonfirmasi lunas.",
-                    'tipe' => 'success',
-                    'kategori' => 'kas',
-                    'data' => json_encode([
-                        'kas_id' => $kas->id,
-                        'jumlah' => $kas->jumlah,
-                        'tanggal_bayar' => $kas->tanggal_bayar,
-                    ])
-                ]);
+            // Send notification if status changed to lunas or ditolak
+            if ($kas->penduduk->user) {
+                if ($request->status === 'lunas') {
+                    Notifikasi::create([
+                        'user_id' => $kas->penduduk->user->id,
+                        'judul' => 'Kas Telah Lunas',
+                        'pesan' => "Kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " telah dikonfirmasi lunas.",
+                        'tipe' => 'success',
+                        'kategori' => 'kas',
+                        'data' => json_encode([
+                            'kas_id' => $kas->id,
+                            'jumlah' => $kas->jumlah,
+                            'tanggal_bayar' => $kas->tanggal_bayar,
+                        ])
+                    ]);
+                } elseif ($request->status === 'ditolak') {
+                    Notifikasi::create([
+                        'user_id' => $kas->penduduk->user->id,
+                        'judul' => 'Pembayaran Kas Ditolak',
+                        'pesan' => "Pembayaran kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " ditolak. Silakan periksa kembali bukti pembayaran Anda.",
+                        'tipe' => 'error',
+                        'kategori' => 'kas',
+                        'data' => json_encode([
+                            'kas_id' => $kas->id,
+                            'jumlah' => $kas->jumlah,
+                            'minggu_ke' => $kas->minggu_ke,
+                            'tahun' => $kas->tahun,
+                        ])
+                    ]);
+                }
             }
 
             DB::commit();

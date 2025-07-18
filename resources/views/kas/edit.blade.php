@@ -141,23 +141,6 @@
                             <div class="form-section p-6 rounded-xl space-y-6">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label for="penduduk_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                            <i data-lucide="user" class="w-4 h-4 inline mr-2"></i>
-                                            Penduduk <span class="text-red-500">*</span>
-                                        </label>
-                                        <select name="penduduk_id" id="penduduk_id" 
-                                                class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-yellow-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200" 
-                                                required>
-                                            <option value="">Pilih Penduduk</option>
-                                            @foreach($pendudukList as $penduduk)
-                                                <option value="{{ $penduduk->id }}" {{ old('penduduk_id', $kas->penduduk_id) == $penduduk->id ? 'selected' : '' }}>
-                                                    {{ $penduduk->nama_lengkap }} (RT {{ $penduduk->kk->rt->no_rt ?? '-' }} / RW {{ $penduduk->kk->rt->rw->no_rw ?? '-' }})
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    
-                                    <div>
                                         <label for="jumlah" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                                             <i data-lucide="banknote" class="w-4 h-4 inline mr-2"></i>
                                             Jumlah Kas <span class="text-red-500">*</span>
@@ -170,6 +153,22 @@
                                                    class="w-full pl-10 pr-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-yellow-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200"
                                                    value="{{ old('jumlah', $kas->jumlah) }}" min="0" step="1000" required>
                                         </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="status" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                            <i data-lucide="check-circle" class="w-4 h-4 inline mr-2"></i>
+                                            Status <span class="text-red-500">*</span>
+                                        </label>
+                                        <select name="status" id="status" 
+                                                class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-yellow-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200" 
+                                                required>
+                                            <option value="belum_bayar" {{ old('status', $kas->status) == 'belum_bayar' ? 'selected' : '' }}>Belum Bayar</option>
+                                            <option value="menunggu_konfirmasi" {{ old('status', $kas->status) == 'menunggu_konfirmasi' ? 'selected' : '' }}>Menunggu Konfirmasi</option>
+                                            <option value="lunas" {{ old('status', $kas->status) == 'lunas' ? 'selected' : '' }}>Lunas</option>
+                                            <option value="terlambat" {{ old('status', $kas->status) == 'terlambat' ? 'selected' : '' }}>Terlambat</option>
+                                            <option value="ditolak" {{ old('status', $kas->status) == 'ditolak' ? 'selected' : '' }}>Ditolak</option>
+                                        </select>
                                     </div>
                                 </div>
 
@@ -205,19 +204,29 @@
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label for="status" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                        <i data-lucide="check-circle" class="w-4 h-4 inline mr-2"></i>
-                                        Status <span class="text-red-500">*</span>
-                                    </label>
-                                    <select name="status" id="status" 
-                                            class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-yellow-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200" 
-                                            required>
-                                        <option value="belum_bayar" {{ old('status', $kas->status) == 'belum_bayar' ? 'selected' : '' }}>Belum Bayar</option>
-                                        <option value="menunggu_konfirmasi" {{ old('status', $kas->status) == 'menunggu_konfirmasi' ? 'selected' : '' }}>Menunggu Konfirmasi</option>
-                                        <option value="lunas" {{ old('status', $kas->status) == 'lunas' ? 'selected' : '' }}>Lunas</option>
-                                        <option value="terlambat" {{ old('status', $kas->status) == 'terlambat' ? 'selected' : '' }}>Terlambat</option>
-                                    </select>
+                                <!-- Payment Details (shown when status is lunas) -->
+                                <div id="paymentDetails" style="display: {{ old('status', $kas->status) === 'lunas' ? 'block' : 'none' }};">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label for="tanggal_bayar" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                                <i data-lucide="calendar-check" class="w-4 h-4 inline mr-2"></i>
+                                                Tanggal Bayar
+                                            </label>
+                                            <input type="datetime-local" name="tanggal_bayar" id="tanggal_bayar" 
+                                                   class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-yellow-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200"
+                                                   value="{{ old('tanggal_bayar', $kas->tanggal_bayar ? $kas->tanggal_bayar->format('Y-m-d\TH:i') : '') }}">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="metode_bayar" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                                <i data-lucide="credit-card" class="w-4 h-4 inline mr-2"></i>
+                                                Metode Bayar
+                                            </label>
+                                            <input type="text" name="metode_bayar" id="metode_bayar" 
+                                                   class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-yellow-500 rounded-xl text-gray-900 dark:text-gray-100 focus:border-transparent transition-all duration-200"
+                                                   value="{{ old('metode_bayar', $kas->metode_bayar) }}" placeholder="Contoh: Tunai, Transfer Bank, E-Wallet">
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -250,7 +259,7 @@
                 </div>
             </div>
 
-            <!-- Resident Info Panel (similar to create, but for selected resident) -->
+            <!-- Resident Info Panel -->
             <div class="lg:col-span-1">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 sticky top-6" 
                      id="residentInfoPanel">
@@ -301,25 +310,27 @@ function kasEdit() {
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
-            // No AJAX load needed on init for edit, as data is pre-filled
-            // However, if you want to dynamically update RT/RW info based on selected penduduk,
-            // you would add an event listener here for #penduduk_id change and call a similar AJAX function.
+            
+            // Show/hide payment details based on status
+            const statusSelect = document.getElementById('status');
+            const paymentDetails = document.getElementById('paymentDetails');
+            
+            statusSelect.addEventListener('change', function() {
+                if (this.value === 'lunas') {
+                    paymentDetails.style.display = 'block';
+                } else {
+                    paymentDetails.style.display = 'none';
+                }
+            });
         },
 
         handleSubmit(event) {
             // Basic client-side validation before submission
-            const pendudukId = $('#penduduk_id').val();
             const jumlah = $('#jumlah').val();
             const mingguKe = $('#minggu_ke').val();
             const tahun = $('#tahun').val();
             const tanggalJatuhTempo = $('#tanggal_jatuh_tempo').val();
             const status = $('#status').val();
-
-            if (!pendudukId) {
-                event.preventDefault();
-                alert('Silakan pilih penduduk terlebih dahulu');
-                return false;
-            }
 
             if (jumlah === null || jumlah < 0) {
                 event.preventDefault();

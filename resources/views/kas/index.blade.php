@@ -28,17 +28,17 @@
         <!-- Statistics Cards -->
         <div class="mb-8">
             <!-- Main Stats Row -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
                 <!-- Total Kas Card -->
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Total Kas Tertagih</p>
-                            <p class="text-3xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($stats['total_nominal_tertagih'] ?? 0, 0, ',', '.') }}</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($stats['total_nominal_tertagih'] ?? 0, 0, ',', '.') }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total keseluruhan tagihan</p>
                         </div>
                         <div class="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                            <i data-lucide="wallet" class="w-8 h-8 text-blue-600 dark:text-blue-400"></i>
+                            <i data-lucide="wallet" class="w-6 h-6 text-blue-600 dark:text-blue-400"></i>
                         </div>
                     </div>
                 </div>
@@ -48,11 +48,11 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Lunas</p>
-                            <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ number_format($stats['lunas'] ?? 0) }}</p>
+                            <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ number_format($stats['lunas'] ?? 0) }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Jumlah kas lunas</p>
                         </div>
                         <div class="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                            <i data-lucide="check-circle" class="w-8 h-8 text-green-600 dark:text-green-400"></i>
+                            <i data-lucide="check-circle" class="w-6 h-6 text-green-600 dark:text-green-400"></i>
                         </div>
                     </div>
                 </div>
@@ -62,11 +62,11 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Belum Bayar</p>
-                            <p class="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{{ number_format($stats['belum_bayar'] ?? 0) }}</p>
+                            <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ number_format($stats['belum_bayar'] ?? 0) }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Jumlah kas belum dibayar</p>
                         </div>
                         <div class="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl">
-                            <i data-lucide="clock" class="w-8 h-8 text-yellow-600 dark:text-yellow-400"></i>
+                            <i data-lucide="clock" class="w-6 h-6 text-yellow-600 dark:text-yellow-400"></i>
                         </div>
                     </div>
                 </div>
@@ -76,11 +76,25 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Terlambat</p>
-                            <p class="text-3xl font-bold text-red-600 dark:text-red-400">{{ number_format($stats['terlambat'] ?? 0) }}</p>
+                            <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ number_format($stats['terlambat'] ?? 0) }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Jumlah kas terlambat</p>
                         </div>
                         <div class="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl">
-                            <i data-lucide="alert-circle" class="w-8 h-8 text-red-600 dark:text-red-400"></i>
+                            <i data-lucide="alert-circle" class="w-6 h-6 text-red-600 dark:text-red-400"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ditolak Card -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Ditolak</p>
+                            <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ number_format($stats['ditolak'] ?? 0) }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Jumlah kas ditolak</p>
+                        </div>
+                        <div class="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl">
+                            <i data-lucide="x-circle" class="w-6 h-6 text-red-600 dark:text-red-400"></i>
                         </div>
                     </div>
                 </div>
@@ -192,6 +206,9 @@
                                 </option>
                                 <option value="menunggu_konfirmasi" {{ request('status') == 'menunggu_konfirmasi' ? 'selected' : '' }}>
                                     🟠 Menunggu Konfirmasi
+                                </option>
+                                <option value="ditolak" {{ request('status') == 'ditolak' ? 'selected' : '' }}>
+                                    🔴 Ditolak
                                 </option>
                             </select>
                         </div>
@@ -403,6 +420,11 @@
                                         <i data-lucide="hourglass" class="w-3 h-3 mr-1"></i>
                                         Menunggu Konfirmasi
                                     </span>
+                                @elseif($item->status == 'ditolak')
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                                        <i data-lucide="x-circle" class="w-3 h-3 mr-1"></i>
+                                        Ditolak
+                                    </span>
                                 @else {{-- terlambat --}}
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
                                         <i data-lucide="alert-circle" class="w-3 h-3 mr-1"></i>
@@ -522,6 +544,12 @@
                                 <option value="{{ $i }}" {{ $i == 52 ? 'selected' : '' }}>Minggu {{ $i }}</option>
                             @endfor
                         </select>
+                    </div>
+                    
+                    <div>
+                        <label for="tanggal_jatuh_tempo_awal" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal Jatuh Tempo Awal</label>
+                        <input type="date" name="tanggal_jatuh_tempo_awal" id="tanggal_jatuh_tempo_awal" required 
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                 </div>
                 
