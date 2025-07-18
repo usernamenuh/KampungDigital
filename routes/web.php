@@ -16,10 +16,6 @@ use App\Http\Controllers\NotifikasiController;
 use App\Http\Controllers\PengaturanKasController;
 use App\Http\Controllers\PaymentInfoController;
 use App\Http\Controllers\KasPaymentController;
-use App\Http\Controllers\Api\DashboardApiController;
-use App\Http\Controllers\Api\PaymentApiController;
-use App\Http\Controllers\Api\KasApiController;
-use App\Http\Controllers\Api\NotifikasiApiController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -101,8 +97,10 @@ Route::middleware(['auth', 'user.status'])->group(function () {
   // Payment Management Routes
   Route::prefix('payments')->name('payments.')->middleware('role:rt,rw,kades,admin')->group(function () {
       Route::get('/list', [KasPaymentController::class, 'paymentsList'])->name('list');
-      Route::post('/{kas}/confirm', [KasPaymentController::class, 'confirmPayment'])->name('confirm'); // Changed to KasPaymentController
+      // This is the web route for confirmation, used by AJAX from list.blade.php and proof.blade.php
+      Route::post('/{kas}/confirm', [KasPaymentController::class, 'confirmPayment'])->name('confirm'); 
       Route::get('/{kas}/proof', [KasPaymentController::class, 'showProof'])->name('proof');
+      // Corrected route name from 'payments.download-proof' to 'payments.download.proof'
       Route::get('/{kas}/download-proof', [KasPaymentController::class, 'downloadProof'])->name('download.proof');
   });
 

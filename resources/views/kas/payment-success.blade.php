@@ -1,104 +1,169 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Pembayaran Berhasil')</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4">
-    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-        <div class="bg-green-600 text-white px-6 py-4">
-            <h4 class="text-xl font-semibold flex items-center justify-center">
-                <i class="fas fa-check-circle mr-3"></i>
-                Pembayaran Berhasil
-            </h4>
-        </div>
-        <div class="p-6 sm:p-8 text-center">
-            <div class="mb-6">
-                <i class="fas fa-check-circle text-green-500" style="font-size: 4.5rem;"></i>
-            </div>
-            
-            <h5 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Pembayaran Kas Berhasil Diproses!</h5>
-            
-            <div class="p-4 rounded-md relative mb-6 text-sm
-                @if($kas->status === 'lunas')
-                    bg-green-100 border border-green-400 text-green-700 dark:bg-green-900 dark:text-green-300
-                @else
-                    bg-blue-100 border border-blue-400 text-blue-700 dark:bg-blue-900 dark:text-blue-300
-                @endif
-            " role="alert">
-                @if($kas->status === 'lunas')
-                    <p class="mb-0 font-medium">
-                        <i class="fas fa-thumbs-up mr-2"></i>
-                        Pembayaran tunai Anda telah dikonfirmasi dan tercatat sebagai <strong class="uppercase">LUNAS</strong>.
-                    </p>
-                @else
-                    <p class="mb-0 font-medium">
-                        <i class="fas fa-clock mr-2"></i>
-                        Pembayaran Anda sedang <strong class="uppercase">MENUNGGU KONFIRMASI</strong> dari pengurus RT.
-                    </p>
-                @endif
-            </div>
+@extends('layouts.app')
 
-            <!-- Payment Details -->
-            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5 mb-6">
-                <div class="flex items-center mb-4">
-                    <h6 class="text-lg font-semibold text-gray-800 dark:text-white flex items-center">
-                        <i class="fas fa-receipt mr-2 text-gray-600 dark:text-gray-400"></i>
+@section('title', 'Pembayaran Berhasil')
+
+@push('styles')
+<style>
+    .success-card {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+        border: 1px solid rgba(34, 197, 94, 0.1);
+    }
+    .dark .success-card {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .icon-bounce {
+        animation: bounce 1s infinite;
+    }
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px; /* full rounded */
+        font-size: 0.75rem; /* text-xs */
+        font-weight: 600; /* font-semibold */
+        display: inline-block;
+    }
+    .status-belum_bayar {
+        background-color: #fef3c7; /* yellow-100 */
+        color: #b45309; /* yellow-800 */
+    }
+    .dark .status-belum_bayar {
+        background-color: #422006; /* yellow-900 */
+        color: #fcd34d; /* yellow-300 */
+    }
+    .status-lunas {
+        background-color: #d1fae5; /* green-100 */
+        color: #065f46; /* green-800 */
+    }
+    .dark .status-lunas {
+        background-color: #064e3b; /* green-900 */
+        color: #a7f3d0; /* green-300 */
+    }
+    .status-menunggu_konfirmasi {
+        background-color: #bfdbfe; /* blue-200 */
+        color: #1e40af; /* blue-800 */
+    }
+    .dark .status-menunggu_konfirmasi {
+        background-color: #1e3a8a; /* blue-900 */
+        color: #93c5fd; /* blue-300 */
+    }
+    .status-terlambat {
+        background-color: #fee2e2; /* red-100 */
+        color: #991b1b; /* red-800 */
+    }
+    .dark .status-terlambat {
+        background-color: #7f1d1d; /* red-900 */
+        color: #fca5a5; /* red-300 */
+    }
+    .status-ditolak {
+        background-color: #fecaca; /* red-200 */
+        color: #b91c1c; /* red-800 */
+    }
+    .dark .status-ditolak {
+        background-color: #991b1b; /* red-900 */
+        color: #f87171; /* red-400 */
+    }
+</style>
+@endpush
+
+@section('content')
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-6 flex items-center justify-center animate-fade-in">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden success-card">
+            <div class="p-8 text-center">
+                <div class="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6 icon-bounce">
+                    <i data-lucide="check-circle" class="w-10 h-10 text-green-600 dark:text-green-400"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">Pembayaran Berhasil!</h1>
+                <p class="text-gray-600 dark:text-gray-400 text-lg mb-6">
+                    Terima kasih, pembayaran kas Anda untuk minggu ke-{{ $kas->minggu_ke }} tahun {{ $kas->tahun }} telah berhasil diajukan.
+                </p>
+
+                <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-xl border border-gray-200 dark:border-gray-700 mb-8 text-left">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                        <i data-lucide="receipt" class="w-5 h-5 mr-2 text-blue-500"></i>
                         Detail Pembayaran
-                    </h6>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300 text-left">
-                    <div>
-                        <p><strong class="font-medium">Minggu ke:</strong> {{ $kas->minggu_ke }}</p>
-                        <p><strong class="font-medium">Tahun:</strong> {{ $kas->tahun }}</p>
-                        <p><strong class="font-medium">Jumlah Dibayar:</strong> Rp {{ number_format($kas->jumlah_dibayar ?? $kas->jumlah, 0, ',', '.') }}</p>
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">Nama Penduduk:</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ $kas->penduduk->nama_lengkap ?? 'N/A' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">RT/RW:</p>
+                            <p class="font-medium text-gray-900 dark:text-white">RT {{ $kas->rt->no_rt ?? 'N/A' }} / RW {{ $kas->rt->rw->no_rw ?? 'N/A' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">Jumlah Dibayar:</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ $kas->formatted_amount }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">Metode Pembayaran:</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ $kas->metode_bayar_formatted }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">Tanggal Pembayaran:</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ $kas->tanggal_bayar_formatted }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">Status:</p>
+                            <p class="font-medium text-gray-900 dark:text-white">
+                                <span class="status-badge status-{{ $kas->status }}">
+                                    {{ $kas->status_text }}
+                                </span>
+                            </p>
+                        </div>
+                        @if($kas->bukti_bayar_notes)
+                        <div class="col-span-full">
+                            <p class="text-gray-500 dark:text-gray-400">Catatan:</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ $kas->bukti_bayar_notes }}</p>
+                        </div>
+                        @endif
+                        @if($kas->bukti_bayar_file)
+                        <div class="col-span-full mt-4">
+                            <a href="{{ route('payments.proof', $kas->id) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg shadow-md transition-colors duration-200">
+                                <i data-lucide="image" class="w-4 h-4 mr-2"></i>
+                                Lihat Bukti Pembayaran
+                            </a>
+                        </div>
+                        @endif
                     </div>
-                    <div>
-                        <p><strong class="font-medium">Metode Bayar:</strong> {{ $kas->metode_bayar_formatted }}</p>
-                        <p><strong class="font-medium">Tanggal Bayar:</strong> {{ $kas->tanggal_bayar_formatted }}</p>
-                        <p><strong class="font-medium">Status:</strong> 
-                            @if($kas->status === 'lunas')
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">{{ $kas->status_text }}</span>
-                            @else
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">{{ $kas->status_text }}</span>
-                            @endif
-                        </p>
-                    </div>
                 </div>
-            </div>
 
-            <!-- Next Steps -->
-            <div class="bg-gray-100 border border-gray-300 text-gray-800 px-4 py-3 rounded-md relative mb-6 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300" role="alert">
-                <h6 class="font-bold mb-1 flex items-center"><i class="fas fa-info-circle mr-2"></i>Langkah Selanjutnya:</h6>
-                @if($kas->status === 'lunas')
-                    <p class="mb-0">Pembayaran Anda sudah selesai. Terima kasih atas partisipasi Anda dalam kas RT.</p>
-                @else
-                    <p class="mb-0">
-                        Silakan tunggu konfirmasi dari pengurus RT. Anda akan mendapat notifikasi setelah pembayaran dikonfirmasi.
-                        Jika ada pertanyaan, silakan hubungi pengurus RT.
-                    </p>
-                @endif
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-3">
-                <a href="{{ route('dashboard.masyarakat') }}" class="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800 dark:focus:ring-offset-gray-800 w-full sm:w-auto">
-                    <i class="fas fa-home mr-2"></i> Kembali ke Dashboard
-                </a>
-                <a href="{{ route('kas.index') }}" class="inline-flex items-center justify-center px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-offset-gray-800 w-full sm:w-auto">
-                    <i class="fas fa-list mr-2"></i> Lihat Daftar Kas
-                </a>
+                <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <a href="{{ route('dashboard.masyarakat') }}" 
+                       class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4 mr-2"></i>
+                        Kembali ke Dashboard
+                    </a>
+                    <a href="{{ route('kas.index') }}" 
+                       class="inline-flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 shadow-sm hover:shadow-md">
+                        <i data-lucide="list-checks" class="w-4 h-4 mr-2"></i>
+                        Lihat Daftar Kas
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
+</div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
             lucide.createIcons();
-        });
-    </script>
-</body>
-</html>
+        }
+    });
+</script>
+@endpush
+@endsection
