@@ -11,6 +11,8 @@ class Penduduk extends Model
 {
     use HasFactory;
 
+    protected $table = 'penduduks';
+
     protected $fillable = [
         'nik',
         'kk_id',
@@ -23,19 +25,11 @@ class Penduduk extends Model
         'pendidikan',
         'pekerjaan',
         'status_perkawinan',
-        'hubungan_keluarga',
-        'kewarganegaraan',
-        'no_paspor',
-        'tanggal_expired_paspor',
-        'nama_ayah',
-        'nama_ibu',
-        'status_penduduk',
-        'tanggal_pindah',
-        'alamat_sebelumnya',
-        'status',
-        'tanggal_meninggal',
-        'keterangan',
-        'foto',
+        'status_hidup',
+        'alamat',
+        'rt_id',
+        'rw_id',
+        'status', // 'aktif', 'nonaktif', 'meninggal', 'pindah'
     ];
 
     protected $casts = [
@@ -86,7 +80,23 @@ class Penduduk extends Model
      */
     public function kk()
     {
-        return $this->belongsTo(Kk::class);
+        return $this->belongsTo(Kk::class, 'kk_id');
+    }
+
+    /**
+     * Relasi dengan RT (One to One)
+     */
+    public function rt()
+    {
+        return $this->belongsTo(Rt::class, 'rt_id');
+    }
+
+    /**
+     * Relasi dengan RW (One to One)
+     */
+    public function rw()
+    {
+        return $this->belongsTo(Rw::class, 'rw_id');
     }
 
     /**
@@ -94,15 +104,15 @@ class Penduduk extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
-     * Relasi sebagai Kepala Keluarga (One to One)
+     * Relasi dengan Kas (One to Many) - DITAMBAHKAN
      */
-    public function kkAsKepala()
+    public function kas()
     {
-        return $this->hasOne(Kk::class, 'kepala_keluarga_id');
+        return $this->hasMany(Kas::class, 'penduduk_id');
     }
 
     /**
@@ -110,7 +120,7 @@ class Penduduk extends Model
      */
     public function getUmurAttribute()
     {
-        return Carbon::parse($this->tanggal_lahir)->age;
+        return $this->tanggal_lahir ? $this->tanggal_lahir->age : null;
     }
 
     /**
@@ -118,7 +128,7 @@ class Penduduk extends Model
      */
     public function getTempatTanggalLahirAttribute()
     {
-        return $this->tempat_lahir . ', ' . $this->tanggal_lahir->format('d-m-Y');
+        return $this->tempat_lahir . ', ' . ($this->tanggal_lahir ? $this->tanggal_lahir->format('d-m-Y') : '-');
     }
 
     /**
@@ -141,7 +151,7 @@ class Penduduk extends Model
      */
     public function isKepalaKeluarga()
     {
-        return $this->hubungan_keluarga === 'Kepala Keluarga';
+        return $this->status_hidup === 'Kepala Keluarga';
     }
 
     /**
@@ -178,6 +188,22 @@ class Penduduk extends Model
         return $query;
     }
 
+    /**
+     * Scope untuk filter berdasarkan RT
+     */
+    public function scopeByRt($query, $rtId)
+    {
+        return $query->where('rt_id', $rtId);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan RW
+     */
+    public function scopeByRw($query, $rwId)
+    {
+        return $query->where('rw_id', $rwId);
+    }
+
     // Relationships for leadership roles
     public function rwKetua()
     {
@@ -192,5 +218,161 @@ class Penduduk extends Model
     public function kepalaDesa()
     {
         return $this->hasOne(Desa::class, 'kepala_desa_id');
+    }
+
+    /**
+     * Helper method untuk mendapatkan nama lengkap dengan null check - DITAMBAHKAN
+     */
+    public function getNamaLengkapSafeAttribute()
+    {
+        return $this->nama_lengkap ?? 'Data tidak tersedia';
+    }
+
+    /**
+     * Helper method untuk mendapatkan NIK dengan null check - DITAMBAHKAN
+     */
+    public function getNikSafeAttribute()
+    {
+        return $this->nik ?? '-';
+    }
+
+    /**
+     * Helper method untuk mendapatkan info RT/RW dengan null check - DITAMBAHKAN
+     */
+    public function getRtRwInfoAttribute()
+    {
+        if ($this->rt && $this->rw) {
+            $info = "RT " . ($this->rt->no_rt ?? '-') . " / RW " . ($this->rw->no_rw ?? '-');
+            return $info;
+        }
+        return 'Data tidak tersedia';
+    }
+
+    /**
+     * Check if penduduk has active user account - DITAMBAHKAN
+     */
+    public function getHasActiveUserAttribute()
+    {
+        return $this->user && $this->user->status === 'active';
+    }
+
+    /**
+     * Get kas statistics for this penduduk - DITAMBAHKAN
+     */
+    public function getKasStatsAttribute()
+    {
+        if (!$this->relationLoaded('kas')) {
+            $this->load('kas');
+        }
+
+        return [
+            'total' => $this->kas->count(),
+            'lunas' => $this->kas->where('status', 'lunas')->count(),
+            'belum_bayar' => $this->kas->where('status', 'belum_bayar')->count(),
+            'terlambat' => $this->kas->where('status', 'terlambat')->count(),
+            'ditolak' => $this->kas->where('status', 'ditolak')->count(),
+            'menunggu_konfirmasi' => $this->kas->where('status', 'menunggu_konfirmasi')->count(),
+        ];
+    }
+
+    /**
+     * Static methods untuk dropdown options
+     */
+    public static function getJenisKelaminOptions()
+    {
+        return [
+            'laki-laki' => 'Laki-laki',
+            'perempuan' => 'Perempuan'
+        ];
+    }
+
+    public static function getAgamaOptions()
+    {
+        return [
+            'islam' => 'Islam',
+            'kristen' => 'Kristen',
+            'katolik' => 'Katolik',
+            'hindu' => 'Hindu',
+            'buddha' => 'Buddha',
+            'konghucu' => 'Konghucu'
+        ];
+    }
+
+    public static function getStatusPerkawinanOptions()
+    {
+        return [
+            'belum_kawin' => 'Belum Kawin',
+            'kawin' => 'Kawin',
+            'cerai_hidup' => 'Cerai Hidup',
+            'cerai_mati' => 'Cerai Mati'
+        ];
+    }
+
+    public static function getHubunganKeluargaOptions()
+    {
+        return [
+            'kepala_keluarga' => 'Kepala Keluarga',
+            'istri' => 'Istri',
+            'anak' => 'Anak',
+            'menantu' => 'Menantu',
+            'cucu' => 'Cucu',
+            'orangtua' => 'Orangtua',
+            'mertua' => 'Mertua',
+            'famili_lain' => 'Famili Lain',
+            'pembantu' => 'Pembantu',
+            'lainnya' => 'Lainnya'
+        ];
+    }
+
+    public static function getStatusOptions()
+    {
+        return [
+            'aktif' => 'Aktif',
+            'tidak_aktif' => 'Tidak Aktif',
+            'pindah' => 'Pindah',
+            'meninggal' => 'Meninggal'
+        ];
+    }
+
+    public static function getDropdownOptions()
+    {
+        return self::with(['kk.rt', 'kk.rt.rw'])
+            ->aktif()
+            ->orderBy('nama_lengkap')
+            ->get();
+    }
+
+    /**
+     * Helper methods dengan null safety
+     */
+    public function getUmurSafe()
+    {
+        if (!$this->tanggal_lahir) {
+            return null;
+        }
+        return $this->tanggal_lahir->age;
+    }
+
+    public function getFullAddress()
+    {
+        $address = [];
+        
+        if ($this->alamat) {
+            $address[] = $this->alamat;
+        }
+        
+        if ($this->rt && $this->rw) {
+            $address[] = "RT " . $this->rt->no_rt;
+            $address[] = "RW " . $this->rw->no_rw;
+        }
+        
+        return implode(', ', array_filter($address));
+    }
+
+    public function canHaveUser()
+    {
+        // Hanya yang berusia 17+ yang bisa punya akun
+        $umur = $this->getUmurSafe();
+        return $umur && $umur >= 17;
     }
 }

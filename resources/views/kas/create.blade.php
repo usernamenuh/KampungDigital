@@ -378,9 +378,9 @@ function kasCreate() {
             // Show loading panel
             this.showLoadingPanel();
 
-            // Make AJAX request
+            // Make AJAX request - using the new route
             $.ajax({
-                url: '{{ route("kas.get-resident-info") }}',
+                url: '{{ route("kas.ajax.get-resident-info") }}',
                 method: 'GET',
                 data: { rt_id: rtId },
                 headers: {
@@ -402,7 +402,7 @@ function kasCreate() {
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
                     } else if (xhr.status === 404) {
-                        errorMessage = 'Route tidak ditemukan. Pastikan route kas.get-resident-info sudah didefinisikan.';
+                        errorMessage = 'Route tidak ditemukan. Pastikan route kas.ajax.get-resident-info sudah didefinisikan.';
                     } else if (xhr.status === 500) {
                         errorMessage = 'Terjadi kesalahan server. Periksa log aplikasi.';
                     }
@@ -542,6 +542,8 @@ function kasCreate() {
 
             if (!tanggalJatuhTempo) {
                 event.preventDefault();
+                alert('Silakan pilih tan')  
+                event.preventDefault();
                 alert('Silakan pilih tanggal jatuh tempo');
                 return false;
             }
@@ -551,6 +553,13 @@ function kasCreate() {
         }
     }
 }
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
 </script>
 @endpush
 @endsection

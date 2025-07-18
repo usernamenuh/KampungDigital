@@ -595,6 +595,7 @@ class KasController extends Controller
             abort(403, 'Anda tidak memiliki akses untuk melihat kas ini');
         }
 
+        // Load relasi dengan null checks
         $kas->load(['penduduk.user', 'rt.rw']);
         
         return view('kas.show', compact('kas'));
@@ -617,9 +618,16 @@ class KasController extends Controller
             abort(403, 'Anda tidak memiliki akses untuk mengedit kas ini');
         }
 
+        // Load relasi dengan null checks
         $kas->load(['penduduk.user', 'rt.rw']);
         
-        return view('kas.edit', compact('kas'));
+        // Get all penduduk for dropdown
+        $penduduk = Penduduk::with('kk.rt')->where('status', 'aktif')->get();
+        
+        // Get all RT for dropdown
+        $rt = Rt::with('rw')->get();
+        
+        return view('kas.edit', compact('kas', 'penduduk', 'rt'));
     }
 
     /**
@@ -640,21 +648,31 @@ class KasController extends Controller
         }
 
         $request->validate([
+            'penduduk_id' => 'required|exists:penduduks,id',
+            'rt_id' => 'required|exists:rts,id',
             'jumlah' => 'required|numeric|min:1000',
-            'status' => ['required', Rule::in(['belum_bayar', 'lunas', 'terlambat', 'ditolak', 'menunggu_konfirmasi'])], // Added ditolak and menunggu_konfirmasi
+            'status' => ['required', Rule::in(['belum_bayar', 'lunas', 'terlambat', 'ditolak', 'menunggu_konfirmasi'])],
             'minggu_ke' => 'required|integer|min:1|max:53',
             'tahun' => 'required|integer|min:2020|max:2030',
             'tanggal_jatuh_tempo' => 'required|date',
             'tanggal_bayar' => 'nullable|date',
             'metode_bayar' => 'nullable|string|max:50',
             'keterangan' => 'nullable|string|max:500',
-            'bukti_bayar' => 'nullable|string|max:1000', // This is a string, not a file upload
+            'bukti_bayar' => 'nullable|string|max:1000',
+        ], [
+            
         ]);
 
         try {
             DB::beginTransaction();
 
+            // Get RT info for rw_id
+            $rt = Rt::findOrFail($request->rt_id);
+
             $updateData = [
+                'penduduk_id' => $request->penduduk_id,
+                'rt_id' => $request->rt_id,
+                'rw_id' => $rt->rw_id,
                 'jumlah' => $request->jumlah,
                 'status' => $request->status,
                 'minggu_ke' => $request->minggu_ke,
@@ -676,8 +694,8 @@ class KasController extends Controller
 
             $kas->update($updateData);
 
-            // Send notification if status changed to lunas or ditolak
-            if ($kas->penduduk->user) {
+            // Send notification if status changed to lunas or ditolak - dengan null check
+            if ($kas->penduduk && $kas->penduduk->user) {
                 if ($request->status === 'lunas') {
                     Notifikasi::create([
                         'user_id' => $kas->penduduk->user->id,
@@ -734,8 +752,8 @@ class KasController extends Controller
         try {
             DB::beginTransaction();
 
-            // Send notification to resident if they have an account
-            if ($kas->penduduk->user) {
+            // Send notification to resident if they have an account - dengan null check
+            if ($kas->penduduk && $kas->penduduk->user) {
                 Notifikasi::create([
                     'user_id' => $kas->penduduk->user->id,
                     'judul' => 'Kas Dihapus',
@@ -805,8 +823,8 @@ class KasController extends Controller
                 'bukti_bayar' => $request->bukti_pembayaran,
             ]);
 
-            // Send notification to resident
-            if ($kas->penduduk->user) {
+            // Send notification to resident - dengan null check
+            if ($kas->penduduk && $kas->penduduk->user) {
                 Notifikasi::create([
                     'user_id' => $kas->penduduk->user->id,
                     'judul' => 'Pembayaran Kas Dikonfirmasi',
@@ -837,30 +855,109 @@ class KasController extends Controller
     }
 
     /**
-     * Check if user can access specific kas
+     * Check if user can access specific kas - dengan null checks yang lebih baik
      */
     private function canAccessKas(Kas $kas, User $user)
     {
-        switch ($user->role) {
-            case 'admin':
-            case 'kades':
-                return true;
-            case 'rw':
-                if ($user->penduduk && $user->penduduk->kk) {
-                    $userRwId = $user->penduduk->kk->rt->rw_id;
-                    return $kas->rt->rw_id === $userRwId;
-                }
-                return false;
-            case 'rt':
-                if ($user->penduduk && $user->penduduk->kk) {
-                    $userRtId = $user->penduduk->kk->rt_id;
-                    return $kas->rt_id === $userRtId;
-                }
-                return false;
-            case 'masyarakat':
-                return $kas->penduduk_id === $user->penduduk->id;
-            default:
-                return false;
+        try {
+            switch ($user->role) {
+                case 'admin':
+                case 'kades':
+                    return true;
+                case 'rw':
+                    if ($user->penduduk && $user->penduduk->kk && $user->penduduk->kk->rt && $kas->rt) {
+                        $userRwId = $user->penduduk->kk->rt->rw_id;
+                        return $kas->rt->rw_id === $userRwId;
+                    }
+                    return false;
+                case 'rt':
+                    if ($user->penduduk && $user->penduduk->kk) {
+                        $userRtId = $user->penduduk->kk->rt_id;
+                        return $kas->rt_id === $userRtId;
+                    }
+                    return false;
+                case 'masyarakat':
+                    return $kas->penduduk_id === ($user->penduduk ? $user->penduduk->id : null);
+                default:
+                    return false;
+            }
+        } catch (\Exception $e) {
+            Log::error('Error in canAccessKas: ' . $e->getMessage());
+            return false;
         }
+    }
+
+    /**
+     * Helper method untuk mendapatkan nama penduduk dengan null check
+     */
+    private function getPendudukName($kas)
+    {
+        if ($kas && $kas->penduduk && $kas->penduduk->nama_lengkap) {
+            return $kas->penduduk->nama_lengkap;
+        }
+        return 'Data tidak tersedia';
+    }
+
+    /**
+     * Helper method untuk mendapatkan NIK penduduk dengan null check
+     */
+    private function getPendudukNik($kas)
+    {
+        if ($kas && $kas->penduduk && $kas->penduduk->nik) {
+            return $kas->penduduk->nik;
+        }
+        return '-';
+    }
+
+    /**
+     * Helper method untuk mendapatkan RT/RW info dengan null check
+     */
+    private function getRtRwInfo($kas)
+    {
+        if ($kas && $kas->rt) {
+            $rtInfo = "RT " . ($kas->rt->no_rt ?? '-');
+            if ($kas->rt->rw) {
+                $rtInfo .= " / RW " . ($kas->rt->rw->no_rw ?? '-');
+            }
+            return $rtInfo;
+        }
+        return 'Data tidak tersedia';
+    }
+
+    /**
+     * Method untuk validasi data kas sebelum operasi
+     */
+    private function validateKasData(Kas $kas)
+    {
+        $errors = [];
+        
+        if (!$kas->penduduk) {
+            $errors[] = 'Data penduduk tidak ditemukan untuk kas ini';
+        }
+        
+        if (!$kas->rt) {
+            $errors[] = 'Data RT tidak ditemukan untuk kas ini';
+        }
+        
+        return $errors;
+    }
+
+    /**
+     * Method untuk log error dengan context yang lebih baik
+     */
+    private function logKasError($message, $kas = null, $exception = null)
+    {
+        $context = [
+            'kas_id' => $kas ? $kas->id : null,
+            'penduduk_id' => $kas ? $kas->penduduk_id : null,
+            'rt_id' => $kas ? $kas->rt_id : null,
+        ];
+        
+        if ($exception) {
+            $context['exception'] = $exception->getMessage();
+            $context['trace'] = $exception->getTraceAsString();
+        }
+        
+        Log::error($message, $context);
     }
 }

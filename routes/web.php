@@ -70,37 +70,55 @@ Route::middleware(['auth', 'user.status'])->group(function () {
       ->name('dashboard.admin')
       ->middleware('role:admin');
 
-  // Kas Management Routes
-  Route::resource('kas', KasController::class);
+  // Kas Management Routes - BROKEN DOWN FROM RESOURCE
   Route::prefix('kas')->name('kas.')->group(function () {
+      // Basic CRUD routes
+      Route::get('/', [KasController::class, 'index'])->name('index');
+      Route::get('/create', [KasController::class, 'create'])->name('create')->middleware('role:rt,rw,kades,admin');
+      Route::post('/', [KasController::class, 'store'])->name('store')->middleware('role:rt,rw,kades,admin');
+      Route::get('/{kas}', [KasController::class, 'show'])->name('show');
+      Route::get('/{kas}/edit', [KasController::class, 'edit'])->name('edit')->middleware('role:rt,rw,kades,admin');
+      Route::put('/{kas}', [KasController::class, 'update'])->name('update')->middleware('role:rt,rw,kades,admin');
+      Route::delete('/{kas}', [KasController::class, 'destroy'])->name('destroy')->middleware('role:admin');
+      
+      // AJAX routes - put these BEFORE the resource routes to avoid conflicts
+      Route::get('/ajax/get-resident-info', [KasController::class, 'getResidentInfo'])->name('ajax.get-resident-info')->middleware('role:rt,rw,kades,admin');
+      
       // Masyarakat specific routes
       Route::middleware('role:masyarakat')->group(function () {
-          // Corrected routes to accept {kas} parameter for route model binding
           Route::get('/{kas}/payment-form', [KasPaymentController::class, 'showPaymentForm'])->name('payment.form');
           Route::post('/{kas}/submit-payment', [KasPaymentController::class, 'submitPayment'])->name('payment.submit');
-          Route::get('/{kas}/payment-success', [KasPaymentController::class, 'paymentSuccess'])->name('payment.success');
-          // Add the missing route that the form is looking for
           Route::post('/{kas}/payment-process', [KasPaymentController::class, 'processPayment'])->name('payment.process');
+          Route::get('/{kas}/payment-success', [KasPaymentController::class, 'paymentSuccess'])->name('payment.success');
       });
       
       // RT/RW/Kades/Admin specific routes (custom routes not covered by resource)
       Route::middleware('role:rt,rw,kades,admin')->group(function () {
-          Route::get('/get-resident-info', [KasController::class, 'getResidentInfo'])->name('get-resident-info');
           Route::post('/generate-weekly', [KasController::class, 'generateWeekly'])->name('generate-weekly');
           Route::post('/{kas}/bayar', [KasController::class, 'bayar'])->name('bayar');
           Route::post('/bulk-create', [KasController::class, 'bulkCreate'])->name('bulk.create');
           Route::post('/bulk-update', [KasController::class, 'bulkUpdate'])->name('bulk.update');
           Route::post('/bulk-delete', [KasController::class, 'bulkDelete'])->name('bulk.delete');
       });
+
+      // Payment Management Routes - ALL ROLES CAN ACCESS PAYMENTS LIST
+      Route::middleware('role:rt,rw,kades,admin')->group(function () {
+          Route::get('/payments-list', [KasPaymentController::class, 'paymentsList'])->name('payments.list');
+          Route::get('/{kas}/payment-proof', [KasPaymentController::class, 'showProof'])->name('payments.proof');
+          Route::get('/{kas}/download-proof', [KasPaymentController::class, 'downloadProof'])->name('payments.download.proof');
+      });
+
+      // Payment confirmation - only for RT/RW/Kades/Admin
+      Route::middleware('role:rt,rw,kades,admin')->group(function () {
+          Route::post('/{kas}/confirm-payment', [KasPaymentController::class, 'confirmPayment'])->name('payments.confirm');
+      });
   });
 
   // Payment Management Routes
   Route::prefix('payments')->name('payments.')->middleware('role:rt,rw,kades,admin')->group(function () {
       Route::get('/list', [KasPaymentController::class, 'paymentsList'])->name('list');
-      // This is the web route for confirmation, used by AJAX from list.blade.php and proof.blade.php
       Route::post('/{kas}/confirm', [KasPaymentController::class, 'confirmPayment'])->name('confirm'); 
       Route::get('/{kas}/proof', [KasPaymentController::class, 'showProof'])->name('proof');
-      // Corrected route name from 'payments.download-proof' to 'payments.download.proof'
       Route::get('/{kas}/download-proof', [KasPaymentController::class, 'downloadProof'])->name('download.proof');
   });
 
@@ -110,8 +128,9 @@ Route::middleware(['auth', 'user.status'])->group(function () {
 
   // Payment Info Management Routes
   Route::resource('payment-info', PaymentInfoController::class)->middleware('role:rt,rw,kades,admin');
-  // Add a specific route for toggling status
-  Route::post('payment-info/{payment_info}/toggle-status', [PaymentInfoController::class, 'toggleStatus'])->name('payment-info.toggle-status')->middleware('role:rt,rw,kades,admin');
+  Route::post('payment-info/{payment_info}/toggle-status', [PaymentInfoController::class, 'toggleStatus'])
+      ->name('payment-info.toggle-status')
+      ->middleware('role:rt,rw,kades,admin');
 
   // Notification Routes
   Route::prefix('notifikasi')->name('notifikasi.')->group(function () {

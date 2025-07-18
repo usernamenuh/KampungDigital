@@ -24,7 +24,6 @@ class Kas extends Model
         'tanggal_jatuh_tempo',
         'status',
         'tanggal_bayar',
-        'jumlah',
         'metode_bayar',
         'bukti_bayar_file',
         'bukti_bayar_notes',
