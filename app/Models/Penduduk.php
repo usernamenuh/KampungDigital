@@ -12,6 +12,9 @@ class Penduduk extends Model
     use HasFactory;
 
     protected $table = 'penduduks';
+    protected $primaryKey = 'id';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
         'nik',
@@ -23,12 +26,16 @@ class Penduduk extends Model
         'tanggal_lahir',
         'agama',
         'pendidikan',
-        'pekerjaan',
+        'jenis_pekerjaan',
+        'golongan_darah',
         'status_perkawinan',
-        'status_hidup',
-        'alamat',
-        'rt_id',
-        'rw_id',
+        'tanggal_perkawinan',
+        'status_hubungan_keluarga',
+        'kewarganegaraan',
+        'no_paspor',
+        'no_kitap',
+        'nama_ayah',
+        'nama_ibu',
         'status', // 'aktif', 'nonaktif', 'meninggal', 'pindah'
     ];
 
@@ -37,6 +44,7 @@ class Penduduk extends Model
         'tanggal_expired_paspor' => 'date',
         'tanggal_pindah' => 'date',
         'tanggal_meninggal' => 'date',
+        'tanggal_perkawinan' => 'date',
     ];
 
     /**
@@ -80,7 +88,7 @@ class Penduduk extends Model
      */
     public function kk()
     {
-        return $this->belongsTo(Kk::class, 'kk_id');
+        return $this->belongsTo(Kk::class, 'kk_id', 'id');
     }
 
     /**
@@ -104,15 +112,15 @@ class Penduduk extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     /**
-     * Relasi dengan Kas (One to Many) - DITAMBAHKAN
+     * Relasi dengan Kas (One to Many)
      */
     public function kas()
     {
-        return $this->hasMany(Kas::class, 'penduduk_id');
+        return $this->hasMany(Kas::class, 'penduduk_id', 'id');
     }
 
     /**
@@ -221,7 +229,7 @@ class Penduduk extends Model
     }
 
     /**
-     * Helper method untuk mendapatkan nama lengkap dengan null check - DITAMBAHKAN
+     * Helper method untuk mendapatkan nama lengkap dengan null check
      */
     public function getNamaLengkapSafeAttribute()
     {
@@ -229,7 +237,7 @@ class Penduduk extends Model
     }
 
     /**
-     * Helper method untuk mendapatkan NIK dengan null check - DITAMBAHKAN
+     * Helper method untuk mendapatkan NIK dengan null check
      */
     public function getNikSafeAttribute()
     {
@@ -237,7 +245,7 @@ class Penduduk extends Model
     }
 
     /**
-     * Helper method untuk mendapatkan info RT/RW dengan null check - DITAMBAHKAN
+     * Helper method untuk mendapatkan info RT/RW dengan null check
      */
     public function getRtRwInfoAttribute()
     {
@@ -249,7 +257,7 @@ class Penduduk extends Model
     }
 
     /**
-     * Check if penduduk has active user account - DITAMBAHKAN
+     * Check if penduduk has active user account
      */
     public function getHasActiveUserAttribute()
     {
@@ -257,7 +265,7 @@ class Penduduk extends Model
     }
 
     /**
-     * Get kas statistics for this penduduk - DITAMBAHKAN
+     * Get kas statistics for this penduduk
      */
     public function getKasStatsAttribute()
     {
@@ -281,8 +289,8 @@ class Penduduk extends Model
     public static function getJenisKelaminOptions()
     {
         return [
-            'laki-laki' => 'Laki-laki',
-            'perempuan' => 'Perempuan'
+            'L' => 'Laki-laki',
+            'P' => 'Perempuan'
         ];
     }
 
@@ -308,7 +316,7 @@ class Penduduk extends Model
         ];
     }
 
-    public static function getHubunganKeluargaOptions()
+    public static function getStatusHubunganKeluargaOptions()
     {
         return [
             'kepala_keluarga' => 'Kepala Keluarga',
@@ -321,6 +329,14 @@ class Penduduk extends Model
             'famili_lain' => 'Famili Lain',
             'pembantu' => 'Pembantu',
             'lainnya' => 'Lainnya'
+        ];
+    }
+
+    public static function getKewarganegaraanOptions()
+    {
+        return [
+            'wni' => 'Warga Negara Indonesia',
+            'wna' => 'Warga Negara Asing'
         ];
     }
 
@@ -340,6 +356,33 @@ class Penduduk extends Model
             ->aktif()
             ->orderBy('nama_lengkap')
             ->get();
+    }
+
+    // Accessors
+    public function getJenisKelaminTextAttribute()
+    {
+        return $this->jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan';
+    }
+
+    public function getStatusTextAttribute()
+    {
+        $statusMap = [
+            'aktif' => 'Aktif',
+            'tidak_aktif' => 'Tidak Aktif',
+            'meninggal' => 'Meninggal',
+            'pindah' => 'Pindah',
+        ];
+        return $statusMap[$this->status] ?? 'Tidak Diketahui';
+    }
+
+    public function getTanggalLahirFormattedAttribute()
+    {
+        return $this->tanggal_lahir ? $this->tanggal_lahir->translatedFormat('d F Y') : '-';
+    }
+
+    public function getTanggalPerkawinanFormattedAttribute()
+    {
+        return $this->tanggal_perkawinan ? $this->tanggal_perkawinan->translatedFormat('d F Y') : '-';
     }
 
     /**

@@ -4,22 +4,27 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class Notifikasi extends Model
 {
     use HasFactory;
 
     protected $table = 'notifikasis';
+    protected $primaryKey = 'id';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
         'user_id',
         'judul',
         'pesan',
-        'tipe',
-        'kategori',
-        'data',
-        'dibaca',
-        'dibaca_pada',
+        'tipe', // info, success, warning, error
+        'kategori', // kas, user, system, payment, etc.
+        'data', // JSON string for additional data
+        'dibaca', // boolean
+        'dibaca_pada', // datetime
     ];
 
     protected $casts = [
@@ -31,87 +36,93 @@ class Notifikasi extends Model
     // Relationships
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
-    // Scopes
-    public function scopeUnread($query)
+    public function kas()
     {
-        return $query->where('dibaca', false);
-    }
-
-    public function scopeByTipe($query, $tipe)
-    {
-        return $query->where('tipe', $tipe);
-    }
-
-    public function scopeByKategori($query, $kategori)
-    {
-        return $query->where('kategori', $kategori);
-    }
-
-    public function scopeRecent($query, $limit = 10)
-    {
-        return $query->orderBy('created_at', 'desc')->limit($limit);
+        return $this->belongsTo(Kas::class, 'kas_id', 'id');
     }
 
     // Accessors
-    public function getTipeBadgeAttribute()
+    public function getTipeTextAttribute()
     {
-        $badges = [
-            'info' => 'badge-info',
-            'warning' => 'badge-warning',
-            'success' => 'badge-success',
-            'error' => 'badge-danger',
+        $tipeMap = [
+            'info' => 'Informasi',
+            'success' => 'Berhasil',
+            'warning' => 'Peringatan',
+            'error' => 'Error',
         ];
-
-        return $badges[$this->tipe] ?? 'badge-secondary';
+        return $tipeMap[$this->tipe] ?? 'Informasi';
     }
 
-    public function getTipeIconAttribute()
+    public function getCreatedAtFormattedAttribute()
     {
-        $icons = [
-            'info' => 'fas fa-info-circle',
-            'warning' => 'fas fa-exclamation-triangle',
-            'success' => 'fas fa-check-circle',
-            'error' => 'fas fa-times-circle',
-        ];
-
-        return $icons[$this->tipe] ?? 'fas fa-bell';
+        return $this->created_at->translatedFormat('d F Y H:i');
     }
 
-    // Methods
-    public function markAsRead()
-    {
-        $this->update([
-            'dibaca' => true,
-            'dibaca_pada' => now(),
-        ]);
-
-        return $this;
-    }
-
+    // Static methods for easy creation
     public static function createKasNotification($userId, $kasData)
     {
+        if (!$userId) {
+            Log::warning('Attempted to create kas notification for null user_id', ['kas_data' => $kasData]);
+            return null;
+        }
+
+        $judul = 'Pembaruan Status Kas';
+        $pesan = "Status kas minggu ke-{$kasData['minggu_ke']} sebesar Rp " . number_format($kasData['jumlah'], 0, ',', '.') . " telah diperbarui menjadi " . (new Kas(['status' => $kasData['status']]))->status_text . ".";
+        $tipe = 'info';
+
+        if ($kasData['status'] === 'lunas') {
+            $judul = 'Kas Telah Lunas';
+            $pesan = "Pembayaran kas minggu ke-{$kasData['minggu_ke']} sebesar Rp " . number_format($kasData['jumlah'], 0, ',', '.') . " telah dikonfirmasi lunas.";
+            $tipe = 'success';
+        } elseif ($kasData['status'] === 'ditolak') {
+            $judul = 'Pembayaran Kas Ditolak';
+            $pesan = "Pembayaran kas minggu ke-{$kasData['minggu_ke']} sebesar Rp " . number_format($kasData['jumlah'], 0, ',', '.') . " ditolak. Silakan periksa kembali bukti pembayaran Anda.";
+            $tipe = 'error';
+        } elseif ($kasData['status'] === 'terlambat') {
+            $judul = 'Tagihan Kas Terlambat';
+            $pesan = "Tagihan kas minggu ke-{$kasData['minggu_ke']} sebesar Rp " . number_format($kasData['jumlah'], 0, ',', '.') . " sudah terlambat. Mohon segera lakukan pembayaran.";
+            $tipe = 'warning';
+        } elseif ($kasData['status'] === 'menunggu_konfirmasi') {
+            $judul = 'Pembayaran Menunggu Konfirmasi';
+            $pesan = "Pembayaran kas minggu ke-{$kasData['minggu_ke']} sebesar Rp " . number_format($kasData['jumlah'], 0, ',', '.') . " sedang menunggu konfirmasi.";
+            $tipe = 'info';
+        }
+
         return self::create([
             'user_id' => $userId,
-            'judul' => 'Kas Baru - Minggu ke-' . $kasData['minggu_ke'],
-            'pesan' => 'Kas RT sebesar ' . number_format($kasData['jumlah'], 0, ',', '.') . ' telah dibuat untuk minggu ke-' . $kasData['minggu_ke'],
-            'tipe' => 'info',
+            'judul' => $judul,
+            'pesan' => $pesan,
+            'tipe' => $tipe,
             'kategori' => 'kas',
-            'data' => $kasData,
+            'data' => json_encode($kasData),
+            'dibaca' => false,
         ]);
     }
 
-    public static function createReminderNotification($userId, $kasData)
+    public static function createSystemNotification($userId, $judul, $pesan, $tipe = 'info', $data = [])
     {
         return self::create([
             'user_id' => $userId,
-            'judul' => 'Pengingat Kas - Jatuh Tempo',
-            'pesan' => 'Kas minggu ke-' . $kasData['minggu_ke'] . ' akan jatuh tempo pada ' . $kasData['tanggal_jatuh_tempo'],
-            'tipe' => 'warning',
-            'kategori' => 'reminder',
-            'data' => $kasData,
+            'judul' => $judul,
+            'pesan' => $pesan,
+            'tipe' => $tipe,
+            'kategori' => 'system',
+            'data' => json_encode($data),
+            'dibaca' => false,
         ]);
+    }
+
+    // Mark as read
+    public function markAsRead()
+    {
+        if (!$this->dibaca) {
+            $this->update([
+                'dibaca' => true,
+                'dibaca_pada' => now(),
+            ]);
+        }
     }
 }

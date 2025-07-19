@@ -631,7 +631,7 @@ class KasController extends Controller
     }
 
     /**
-     * Update kas
+     * Update kas - FIXED to use markAsLunas() method
      */
     public function update(Request $request, Kas $kas)
     {
@@ -659,8 +659,6 @@ class KasController extends Controller
             'metode_bayar' => 'nullable|string|max:50',
             'keterangan' => 'nullable|string|max:500',
             'bukti_bayar' => 'nullable|string|max:1000',
-        ], [
-            
         ]);
 
         try {
@@ -668,35 +666,58 @@ class KasController extends Controller
 
             // Get RT info for rw_id
             $rt = Rt::findOrFail($request->rt_id);
+            $previousStatus = $kas->status;
 
             $updateData = [
                 'penduduk_id' => $request->penduduk_id,
                 'rt_id' => $request->rt_id,
                 'rw_id' => $rt->rw_id,
                 'jumlah' => $request->jumlah,
-                'status' => $request->status,
                 'minggu_ke' => $request->minggu_ke,
                 'tahun' => $request->tahun,
                 'tanggal_jatuh_tempo' => $request->tanggal_jatuh_tempo,
                 'keterangan' => $request->keterangan,
-                'bukti_bayar' => $request->bukti_bayar,
+                'bukti_bayar_file' => $request->bukti_bayar,
             ];
 
-            // If status is lunas, set payment details
-            if ($request->status === 'lunas') {
-                $updateData['tanggal_bayar'] = $request->tanggal_bayar ?: now();
-                $updateData['metode_bayar'] = $request->metode_bayar;
-            } else {
-                // If status is not lunas, clear payment details
+            // Handle status changes with proper saldo management
+            if ($request->status === 'lunas' && $previousStatus !== 'lunas') {
+                // Changing to lunas - use markAsLunas method
+                $kas->update($updateData);
+                $kas->markAsLunas($user->id, "Status diubah menjadi lunas oleh {$user->name}");
+                
+                if ($request->metode_bayar) {
+                    $kas->update(['metode_bayar' => $request->metode_bayar]);
+                }
+                
+            } elseif ($previousStatus === 'lunas' && $request->status !== 'lunas') {
+                // Changing from lunas to non-lunas - reverse payment
+                $kas->reversePayment($user->id, "Status diubah dari lunas ke {$request->status} oleh {$user->name}");
+                
+                // Update other fields
+                $updateData['status'] = $request->status;
                 $updateData['tanggal_bayar'] = null;
                 $updateData['metode_bayar'] = null;
+                $kas->update($updateData);
+                
+            } else {
+                // No status change affecting saldo, just update normally
+                $updateData['status'] = $request->status;
+                
+                if ($request->status === 'lunas') {
+                    $updateData['tanggal_bayar'] = $request->tanggal_bayar ?: now();
+                    $updateData['metode_bayar'] = $request->metode_bayar;
+                } else {
+                    $updateData['tanggal_bayar'] = null;
+                    $updateData['metode_bayar'] = null;
+                }
+                
+                $kas->update($updateData);
             }
-
-            $kas->update($updateData);
 
             // Send notification if status changed to lunas or ditolak - dengan null check
             if ($kas->penduduk && $kas->penduduk->user) {
-                if ($request->status === 'lunas') {
+                if ($request->status === 'lunas' && $previousStatus !== 'lunas') {
                     Notifikasi::create([
                         'user_id' => $kas->penduduk->user->id,
                         'judul' => 'Kas Telah Lunas',
@@ -728,7 +749,7 @@ class KasController extends Controller
 
             DB::commit();
 
-            return redirect()->route('kas.show', $kas)->with('success', 'Kas berhasil diupdate');
+            return redirect()->route('kas.show', $kas)->with('success', 'Kas berhasil diupdate dan saldo RT telah disesuaikan');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -738,7 +759,7 @@ class KasController extends Controller
     }
 
     /**
-     * Delete kas
+     * Delete kas - FIXED to handle saldo reversal
      */
     public function destroy(Kas $kas)
     {
@@ -751,6 +772,11 @@ class KasController extends Controller
 
         try {
             DB::beginTransaction();
+
+            // If kas is lunas, reverse the payment first
+            if ($kas->status === 'lunas') {
+                $kas->reversePayment($user->id, "Kas dihapus oleh admin {$user->name}");
+            }
 
             // Send notification to resident if they have an account - dengan null check
             if ($kas->penduduk && $kas->penduduk->user) {
@@ -774,7 +800,7 @@ class KasController extends Controller
             DB::commit();
 
             return redirect()->route('kas.index')->with([
-                'success' => 'Kas berhasil dihapus',
+                'success' => 'Kas berhasil dihapus dan saldo RT telah disesuaikan',
                 'show_success_modal' => true
             ]);
 
@@ -786,7 +812,7 @@ class KasController extends Controller
     }
 
     /**
-     * Confirm payment (AJAX)
+     * Confirm payment (AJAX) - FIXED to use markAsLunas()
      */
     public function bayar(Request $request, Kas $kas)
     {
@@ -816,11 +842,17 @@ class KasController extends Controller
         try {
             DB::beginTransaction();
 
+            // Use markAsLunas method to properly handle saldo update
+            $success = $kas->markAsLunas($user->id, "Dikonfirmasi oleh {$user->name}");
+            
+            if (!$success) {
+                throw new \Exception('Gagal mengkonfirmasi pembayaran');
+            }
+
+            // Update payment method and proof
             $kas->update([
-                'status' => 'lunas',
-                'tanggal_bayar' => now(),
                 'metode_bayar' => $request->metode_pembayaran,
-                'bukti_bayar' => $request->bukti_pembayaran,
+                'bukti_bayar_file' => $request->bukti_pembayaran,
             ]);
 
             // Send notification to resident - dengan null check
@@ -843,7 +875,7 @@ class KasController extends Controller
             DB::commit();
 
             return redirect()->route('kas.show', $kas)->with([
-                'success' => 'Pembayaran kas berhasil dikonfirmasi',
+                'success' => 'Pembayaran kas berhasil dikonfirmasi dan saldo RT telah diperbarui',
                 'show_success_modal' => true
             ]);
 

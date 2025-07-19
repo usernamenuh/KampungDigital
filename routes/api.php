@@ -7,7 +7,8 @@ use App\Http\Controllers\Api\DashboardApiController;
 use App\Http\Controllers\Api\PaymentApiController;
 use App\Http\Controllers\Api\KasApiController;
 use App\Http\Controllers\Api\NotifikasiApiController;
-use App\Http\Controllers\PaymentInfoController; // Import PaymentInfoController
+use App\Http\Controllers\PaymentInfoController;
+use App\Http\Controllers\SaldoController; // Import SaldoController
 
 /*
 |--------------------------------------------------------------------------
@@ -100,7 +101,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
   // Payment Info API routes
   // IMPORTANT: Place specific routes before apiResource to avoid conflicts
-  Route::get('/payment-info/for-user-rt', [PaymentInfoController::class, 'getPaymentInfoForUserRt']); // Corrected controller
+  Route::get('/payment-info/for-user-rt', [PaymentInfoController::class, 'getPaymentInfoForUserRt']);
   Route::get('/payment-info/rt/{rt_id}', [PaymentApiController::class, 'getPaymentInfoByRt']);
   
   // Use apiResource for standard CRUD operations (index, store, show, update, destroy)
@@ -110,5 +111,13 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::prefix('payment')->group(function () {
       Route::get('/index', [PaymentApiController::class, 'index']);
       Route::post('/{payment}/confirm', [PaymentApiController::class, 'confirmPayment']);
+  });
+
+  // Saldo API routes
+  Route::prefix('saldo')->group(function () {
+      Route::post('/transfer-kas', [SaldoController::class, 'transferKasToSaldo']);
+      Route::post('/add-income', [SaldoController::class, 'addIncome']);
+      Route::post('/add-expense', [SaldoController::class, 'addExpense']);
+      Route::get('/history', [SaldoController::class, 'getSaldoHistory']);
   });
 });

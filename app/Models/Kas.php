@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class Kas extends Model
 {
@@ -18,21 +20,25 @@ class Kas extends Model
     protected $fillable = [
         'penduduk_id',
         'rt_id',
+        'rw_id',
         'minggu_ke',
         'tahun',
         'jumlah',
+        'denda',
         'tanggal_jatuh_tempo',
-        'status',
         'tanggal_bayar',
+        'status',
         'metode_bayar',
         'bukti_bayar_file',
         'bukti_bayar_notes',
         'bukti_bayar_uploaded_at',
+        'keterangan',
         'confirmed_by',
         'confirmed_at',
         'confirmation_notes',
-        'denda',
-        'keterangan',
+        'rejected_by',
+        'rejected_at',
+        'rejection_reason',
     ];
 
     protected $casts = [
@@ -40,9 +46,9 @@ class Kas extends Model
         'tanggal_bayar' => 'datetime',
         'bukti_bayar_uploaded_at' => 'datetime',
         'confirmed_at' => 'datetime',
-        'jumlah' => 'decimal:2',
-        'denda' => 'decimal:2',
-        'jumlah_dibayar' => 'decimal:2',
+        'rejected_at' => 'datetime',
+        'jumlah' => 'decimal:0',
+        'denda' => 'decimal:0',
     ];
 
     // Relationships
@@ -56,38 +62,80 @@ class Kas extends Model
         return $this->belongsTo(Rt::class, 'rt_id', 'id');
     }
 
+    public function rw()
+    {
+        return $this->belongsTo(Rw::class, 'rw_id', 'id');
+    }
+
     public function confirmedBy()
     {
         return $this->belongsTo(User::class, 'confirmed_by', 'id');
     }
 
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by', 'id');
+    }
+
+    public function notifikasis()
+    {
+        return $this->hasMany(Notifikasi::class, 'kas_id');
+    }
+
     // Accessors
     public function getStatusTextAttribute()
     {
-        switch ($this->status) {
-            case 'belum_bayar':
-                return 'Belum Bayar';
-            case 'lunas':
-                return 'Lunas';
-            case 'menunggu_konfirmasi':
-                return 'Menunggu Konfirmasi';
-            case 'terlambat':
-                return 'Terlambat';
-            case 'ditolak':
-                return 'Ditolak';
-            default:
-                return 'Tidak Diketahui';
+        $statusMap = [
+            'belum_bayar' => 'Belum Bayar',
+            'lunas' => 'Lunas',
+            'terlambat' => 'Terlambat',
+            'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
+            'ditolak' => 'Ditolak',
+        ];
+
+        return $statusMap[$this->status] ?? 'Status Tidak Dikenal';
+    }
+
+    public function getIsOverdueAttribute()
+    {
+        if ($this->status === 'lunas') {
+            return false;
         }
+
+        return $this->tanggal_jatuh_tempo && $this->tanggal_jatuh_tempo->isPast();
     }
 
     public function getTanggalJatuhTempoFormattedAttribute()
     {
-        return $this->tanggal_jatuh_tempo ? Carbon::parse($this->tanggal_jatuh_tempo)->translatedFormat('d F Y') : '-';
+        return $this->tanggal_jatuh_tempo ? $this->tanggal_jatuh_tempo->translatedFormat('d F Y') : '-';
     }
 
     public function getTanggalBayarFormattedAttribute()
     {
-        return $this->tanggal_bayar ? Carbon::parse($this->tanggal_bayar)->translatedFormat('d F Y H:i') : '-';
+        return $this->tanggal_bayar ? $this->tanggal_bayar->translatedFormat('d F Y H:i') : '-';
+    }
+
+    public function getTotalBayarAttribute()
+    {
+        return $this->jumlah + ($this->denda ?? 0);
+    }
+
+    public function getCanPayAttribute()
+    {
+        return in_array($this->status, ['belum_bayar', 'terlambat', 'ditolak']);
+    }
+
+    public function getStatusColorAttribute()
+    {
+        $colorMap = [
+            'belum_bayar' => 'yellow',
+            'lunas' => 'green',
+            'terlambat' => 'red',
+            'menunggu_konfirmasi' => 'blue',
+            'ditolak' => 'red',
+        ];
+
+        return $colorMap[$this->status] ?? 'gray';
     }
 
     public function getMetodeBayarFormattedAttribute()
@@ -127,34 +175,17 @@ class Kas extends Model
         return $methodMap[$this->metode_bayar] ?? ucfirst(str_replace('_', ' ', $this->metode_bayar));
     }
 
-    public function getCanPayAttribute()
-    {
-        return in_array($this->status, ['belum_bayar', 'terlambat']);
-    }
-
-    public function getIsOverdueAttribute()
-    {
-        return $this->status === 'belum_bayar' && 
-               $this->tanggal_jatuh_tempo && 
-               $this->tanggal_jatuh_tempo->isPast();
-    }
-
-    public function getTotalBayarAttribute()
-    {
-        return $this->jumlah + ($this->denda ?? 0);
-    }
-
-    public function getFormattedAmountAttribute()
-    {
-        return 'Rp ' . number_format($this->total_bayar, 0, ',', '.');
-    }
-
     public function getBuktiBayarUploadedAtFormattedAttribute()
     {
-        return $this->bukti_bayar_uploaded_at ? Carbon::parse($this->bukti_bayar_uploaded_at)->format('d M Y H:i') : '-';
+        return $this->bukti_bayar_uploaded_at ? $this->bukti_bayar_uploaded_at->format('d M Y H:i') : '-';
     }
 
     // Scopes
+    public function scopeLunas($query)
+    {
+        return $query->where('status', 'lunas');
+    }
+
     public function scopeBelumBayar($query)
     {
         return $query->where('status', 'belum_bayar');
@@ -162,8 +193,7 @@ class Kas extends Model
 
     public function scopeTerlambat($query)
     {
-        return $query->where('status', 'belum_bayar')
-                    ->where('tanggal_jatuh_tempo', '<', Carbon::now());
+        return $query->where('status', 'terlambat');
     }
 
     public function scopeMenungguKonfirmasi($query)
@@ -171,9 +201,35 @@ class Kas extends Model
         return $query->where('status', 'menunggu_konfirmasi');
     }
 
-    public function scopeLunas($query)
+    public function scopeDitolak($query)
     {
-        return $query->where('status', 'lunas');
+        return $query->where('status', 'ditolak');
+    }
+
+    public function scopeByYear($query, $year)
+    {
+        return $query->where('tahun', $year);
+    }
+
+    public function scopeByWeek($query, $week)
+    {
+        return $query->where('minggu_ke', $week);
+    }
+
+    public function scopeByRt($query, $rtId)
+    {
+        return $query->where('rt_id', $rtId);
+    }
+
+    public function scopeByRw($query, $rwId)
+    {
+        return $query->where('rw_id', $rwId);
+    }
+
+    public function scopeOverdue($query)
+    {
+        return $query->where('tanggal_jatuh_tempo', '<', now())
+                     ->whereNotIn('status', ['lunas']);
     }
 
     public function scopeForRt($query, $rtId)
@@ -187,6 +243,133 @@ class Kas extends Model
     }
 
     // Methods
+    /**
+     * Mark kas as paid (lunas) - UPDATED: NO LONGER AUTOMATICALLY UPDATES RT SALDO
+     */
+    public function markAsLunas($confirmedBy = null, $notes = null)
+    {
+        try {
+            DB::beginTransaction();
+
+            Log::info('Starting markAsLunas process', [
+                'kas_id' => $this->id,
+                'current_status' => $this->status,
+                'amount' => $this->total_bayar,
+                'rt_id' => $this->rt_id,
+                'confirmed_by' => $confirmedBy
+            ]);
+
+            // Check if already lunas
+            if ($this->status === 'lunas') {
+                Log::warning('Kas already lunas', ['kas_id' => $this->id]);
+                DB::rollBack();
+                return false;
+            }
+
+            // Update kas status only - NO SALDO UPDATE
+            $this->update([
+                'status' => 'lunas',
+                'tanggal_bayar' => now(),
+                'confirmed_by' => $confirmedBy,
+                'confirmed_at' => now(),
+                'confirmation_notes' => $notes,
+            ]);
+
+            // Create notification
+            Notifikasi::createKasNotification(
+                $this->penduduk->user_id ?? null,
+                [
+                    'kas_id' => $this->id,
+                    'minggu_ke' => $this->minggu_ke,
+                    'jumlah' => $this->total_bayar,
+                    'status' => 'lunas'
+                ]
+            );
+
+            Log::info('Kas status updated to lunas (no saldo update)', ['kas_id' => $this->id]);
+
+            DB::commit();
+            Log::info('markAsLunas completed successfully', ['kas_id' => $this->id]);
+            return true;
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in markAsLunas', [
+                'kas_id' => $this->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Reverse payment (from lunas to other status) - UPDATED: NO SALDO REVERSAL
+     */
+    public function reversePayment($reversedBy = null, $notes = null)
+    {
+        try {
+            DB::beginTransaction();
+
+            Log::info('Starting reversePayment process', [
+                'kas_id' => $this->id,
+                'current_status' => $this->status,
+                'amount' => $this->total_bayar,
+                'rt_id' => $this->rt_id,
+                'reversed_by' => $reversedBy
+            ]);
+
+            if ($this->status !== 'lunas') {
+                Log::warning('Kas not lunas, cannot reverse', ['kas_id' => $this->id, 'status' => $this->status]);
+                DB::rollBack();
+                return false;
+            }
+
+            // Update kas status only - NO SALDO REVERSAL
+            $this->update([
+                'status' => 'belum_bayar',
+                'tanggal_bayar' => null,
+                'confirmed_by' => null,
+                'confirmed_at' => null,
+                'confirmation_notes' => $notes,
+            ]);
+
+            DB::commit();
+            Log::info('reversePayment completed successfully (no saldo reversal)', ['kas_id' => $this->id]);
+            return true;
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in reversePayment', [
+                'kas_id' => $this->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Calculate and apply late fee (denda)
+     */
+    public function calculateLateFee()
+    {
+        if ($this->status === 'lunas' || !$this->is_overdue) {
+            return 0;
+        }
+
+        $pengaturan = PengaturanKas::first();
+        $persentaseDenda = $pengaturan ? $pengaturan->persentase_denda : 2.00;
+        
+        $calculatedFee = ($this->jumlah * $persentaseDenda) / 100;
+        $this->update(['denda' => $calculatedFee]);
+
+        return $calculatedFee;
+    }
+
+    /**
+     * Calculate denda based on days late
+     */
     public function hitungDenda()
     {
         if ($this->is_overdue && $this->status === 'belum_bayar') {
@@ -197,15 +380,65 @@ class Kas extends Model
         }
     }
 
-    public function markAsLunas($confirmedBy, $notes = null)
+    /**
+     * Update status to terlambat if overdue
+     */
+    public function updateOverdueStatus()
     {
-        $this->update([
-            'status' => 'lunas',
-            'tanggal_bayar' => Carbon::now(),
-            'confirmed_by' => $confirmedBy,
-            'confirmed_at' => Carbon::now(),
-            'confirmation_notes' => $notes,
-        ]);
+        if ($this->status === 'belum_bayar' && $this->is_overdue) {
+            $this->update(['status' => 'terlambat']);
+            $this->calculateLateFee();
+        }
+    }
+
+    /**
+     * Get payment history for this kas
+     */
+    public function getPaymentHistory()
+    {
+        return SaldoTransaction::where('kas_id', $this->id)
+                              ->orderBy('created_at', 'desc')
+                              ->get();
+    }
+
+    /**
+     * Check if kas can be edited
+     */
+    public function canBeEdited()
+    {
+        return !in_array($this->status, ['lunas']);
+    }
+
+    /**
+     * Check if kas can be deleted
+     */
+    public function canBeDeleted()
+    {
+        return true; // Admin can delete any kas, but with proper saldo reversal
+    }
+
+    /**
+     * Get formatted amount with currency
+     */
+    public function getFormattedAmountAttribute()
+    {
+        return 'Rp ' . number_format($this->jumlah, 0, ',', '.');
+    }
+
+    /**
+     * Get formatted total payment with currency
+     */
+    public function getFormattedTotalBayarAttribute()
+    {
+        return 'Rp ' . number_format($this->total_bayar, 0, ',', '.');
+    }
+
+    /**
+     * Get formatted late fee with currency
+     */
+    public function getFormattedDendaAttribute()
+    {
+        return 'Rp ' . number_format($this->denda ?? 0, 0, ',', '.');
     }
 
     /**
@@ -289,5 +522,27 @@ class Kas extends Model
 
         // Default fallback
         return 'bank_transfer';
+    }
+
+    /**
+     * Boot method to handle model events
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // When kas is being deleted, reverse payment if it was lunas
+        static::deleting(function ($kas) {
+            if ($kas->status === 'lunas') {
+                $kas->reversePayment(auth()->id(), 'Kas dihapus');
+            }
+        });
+
+        // Update overdue status when kas is retrieved
+        static::retrieved(function ($kas) {
+            if ($kas->status === 'belum_bayar' && $kas->is_overdue) {
+                $kas->updateOverdueStatus();
+            }
+        });
     }
 }

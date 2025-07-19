@@ -19,6 +19,7 @@ use App\Models\Notifikasi;
 use App\Models\Desa;
 use App\Models\PaymentInfo;
 use App\Models\Kk;
+use App\Models\SaldoTransaction;
 
 class DashboardApiController extends Controller
 {
@@ -778,8 +779,28 @@ class DashboardApiController extends Controller
             $kasLunas = Kas::where('rt_id', $rt->id)->where('status', 'lunas')->count();
             $kasBelumBayar = Kas::where('rt_id', $rt->id)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count();
             
-            // Get RT saldo
-            $totalSaldoRt = $rt->saldo ?? 0; // Get RT saldo from the model
+            // Get FRESH RT saldo
+            $rt->refresh();
+            $totalSaldoRt = $rt->saldo ?? 0;
+
+            // Calculate kas terkumpul (total collected kas including denda)
+            $kasTerkumpul = Kas::where('rt_id', $rt->id)
+                ->where('status', 'lunas')
+                ->sum(DB::raw('jumlah + COALESCE(denda, 0)')) ?? 0;
+
+            // Calculate kas available for transfer
+            $alreadyTransferred = SaldoTransaction::where('rt_id', $rt->id)
+                ->where('transaction_type', 'kas_transfer')
+                ->sum('amount') ?? 0;
+            
+            $kasAvailableForTransfer = $kasTerkumpul - $alreadyTransferred;
+
+            Log::info('RT Stats calculation', [
+                'rt_id' => $rt->id,
+                'kas_terkumpul' => $kasTerkumpul,
+                'already_transferred' => $alreadyTransferred,
+                'kas_available_for_transfer' => $kasAvailableForTransfer
+            ]);
 
             return [
                 'rtId' => $rt->id,
@@ -789,7 +810,9 @@ class DashboardApiController extends Controller
                 'kasLunas' => $kasLunas,
                 'kasBelumBayar' => $kasBelumBayar,
                 'kasDitolak' => Kas::where('rt_id', $rt->id)->where('status', 'ditolak')->count(),
-                'totalSaldoRt' => $totalSaldoRt, // New: Add saldo RT
+                'totalSaldoRt' => $totalSaldoRt,
+                'kasTerkumpul' => $kasTerkumpul,
+                'kasAvailableForTransfer' => $kasAvailableForTransfer,
             ];
         } catch (\Exception $e) {
             Log::error('Error in getRtStats', ['error' => $e->getMessage(), 'user_id' => $user->id]);
@@ -798,7 +821,7 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get Masyarakat Statistics - Fixed for proper kas display with ditolak status
+     * Get Masyarakat Statistics
      */
     private function getMasyarakatStats($user)
     {
@@ -900,6 +923,8 @@ class DashboardApiController extends Controller
             'rtNumber' => 'N/A',
             'rwId' => null,
             'rwNumber' => 'N/A',
+            'kasTerkumpul' => 0,
+            'kasAvailableForTransfer' => 0,
         ];
     }
 
@@ -1111,7 +1136,7 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get user's RW - FIXED based on model relationships
+     * Get user's RW
      */
     private function getUserRw($user)
     {
@@ -1137,7 +1162,7 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get user's RT - FIXED with enhanced logging
+     * Get user's RT
      */
     private function getUserRt($user)
     {
