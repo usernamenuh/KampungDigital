@@ -317,7 +317,7 @@ class DashboardApiController extends Controller
                     ], 403);
             }
 
-            $recentPayments = $query->whereIn('status', ['lunas', 'menunggu_konfirmasi'])
+            $recentPayments = $query->whereIn('status', ['lunas', 'menunggu_konfirmasi', 'ditolak'])
                                     ->whereNotNull('tanggal_bayar')
                                     ->orderBy('tanggal_bayar', 'desc')
                                     ->limit($limit)
@@ -520,7 +520,7 @@ class DashboardApiController extends Controller
             $hasOverdue = false;
 
             $kasBills = Kas::where('penduduk_id', $penduduk->id)
-                            ->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])
+                            ->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi', 'ditolak'])
                             ->orderBy('tanggal_jatuh_tempo', 'asc')
                             ->get();
 
@@ -538,6 +538,10 @@ class DashboardApiController extends Controller
                     $type = 'warning';
                     $message = 'Pembayaran kas minggu ke-' . $bill->minggu_ke . ' tahun ' . $bill->tahun . ' sedang menunggu konfirmasi.';
                     $title = 'Pembayaran Menunggu Konfirmasi';
+                } elseif ($bill->status === 'ditolak') {
+                    $type = 'error';
+                    $message = 'Pembayaran kas minggu ke-' . $bill->minggu_ke . ' tahun ' . $bill->tahun . ' ditolak. Silakan perbaiki dan kirim ulang.';
+                    $title = 'Pembayaran Ditolak';
                 }
 
                 $alerts[] = [
@@ -681,6 +685,7 @@ class DashboardApiController extends Controller
                 'kasBelumBayar' => Kas::where('status', 'belum_bayar')->count(),
                 'kasTerlambat' => Kas::where('status', 'terlambat')->count(),
                 'kasMenungguKonfirmasi' => Kas::where('status', 'menunggu_konfirmasi')->count(),
+                'kasDitolak' => Kas::where('status', 'ditolak')->count(),
                 'kasHariIni' => Kas::whereDate('tanggal_bayar', today())->where('status', 'lunas')->count(),
                 'kasBulanIni' => Kas::whereMonth('tanggal_bayar', now()->month)->where('status', 'lunas')->sum('jumlah') ?? 0,
                 'totalNotifikasi' => Notifikasi::count(),
@@ -700,17 +705,21 @@ class DashboardApiController extends Controller
     private function getKadesStats()
     {
         try {
+            $totalSaldoDesa = $this->safeSum('desas', 'saldo');
+
             return [
                 'totalRws' => Rw::count(),
                 'totalRts' => Rt::count(),
                 'totalPenduduk' => Penduduk::count(),
                 'totalKasTerkumpul' => Kas::where('status', 'lunas')->sum('jumlah') ?? 0,
+                'totalSaldoDesa' => $totalSaldoDesa, // New: Add saldo desa
                 'pendudukAktif' => Penduduk::where('status', 'aktif')->count(),
                 'pendudukLakiLaki' => Penduduk::where('jenis_kelamin', 'L')->count(),
                 'pendudukPerempuan' => Penduduk::where('jenis_kelamin', 'P')->count(),
                 'totalKk' => Kk::count(),
                 'kasLunas' => Kas::where('status', 'lunas')->count(),
                 'kasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
+                'kasDitolak' => Kas::where('status', 'ditolak')->count(),
             ];
         } catch (\Exception $e) {
             Log::error('Error in getKadesStats', ['error' => $e->getMessage()]);
@@ -731,6 +740,7 @@ class DashboardApiController extends Controller
             }
 
             $rtIds = $rw->rts->pluck('id');
+            $totalSaldoRw = $rw->saldo ?? 0; // Get RW saldo from the model
             
             return [
                 'rwId' => $rw->id,
@@ -739,6 +749,8 @@ class DashboardApiController extends Controller
                 'totalPenduduk' => Kk::whereIn('rt_id', $rtIds)->withCount('penduduks')->get()->sum('penduduks_count'),
                 'kasLunas' => Kas::whereIn('rt_id', $rtIds)->where('status', 'lunas')->count(),
                 'kasBelumBayar' => Kas::whereIn('rt_id', $rtIds)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
+                'kasDitolak' => Kas::whereIn('rt_id', $rtIds)->where('status', 'ditolak')->count(),
+                'totalSaldoRw' => $totalSaldoRw, // New: Add saldo RW
             ];
         } catch (\Exception $e) {
             Log::error('Error in getRwStats', ['error' => $e->getMessage(), 'user_id' => $user->id]);
@@ -765,6 +777,9 @@ class DashboardApiController extends Controller
             // Get Kas statistics
             $kasLunas = Kas::where('rt_id', $rt->id)->where('status', 'lunas')->count();
             $kasBelumBayar = Kas::where('rt_id', $rt->id)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count();
+            
+            // Get RT saldo
+            $totalSaldoRt = $rt->saldo ?? 0; // Get RT saldo from the model
 
             return [
                 'rtId' => $rt->id,
@@ -773,6 +788,8 @@ class DashboardApiController extends Controller
                 'totalPenduduk' => $totalPenduduk,
                 'kasLunas' => $kasLunas,
                 'kasBelumBayar' => $kasBelumBayar,
+                'kasDitolak' => Kas::where('rt_id', $rt->id)->where('status', 'ditolak')->count(),
+                'totalSaldoRt' => $totalSaldoRt, // New: Add saldo RT
             ];
         } catch (\Exception $e) {
             Log::error('Error in getRtStats', ['error' => $e->getMessage(), 'user_id' => $user->id]);
@@ -781,7 +798,7 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get Masyarakat Statistics - Fixed for proper kas display
+     * Get Masyarakat Statistics - Fixed for proper kas display with ditolak status
      */
     private function getMasyarakatStats($user)
     {
@@ -803,6 +820,7 @@ class DashboardApiController extends Controller
             $kasTerlambat = $kasQuery->clone()->where('status', 'belum_bayar')
                                     ->where('tanggal_jatuh_tempo', '<', Carbon::now())->count();
             $kasMenungguKonfirmasi = $kasQuery->clone()->where('status', 'menunggu_konfirmasi')->count();
+            $kasDitolak = $kasQuery->clone()->where('status', 'ditolak')->count();
             $totalKasAnda = $kasQuery->clone()->where('status', 'lunas')->sum('jumlah') ?? 0;
             
             $paidWeeks = $kasQuery->clone()->whereIn('status', ['lunas', 'menunggu_konfirmasi'])->count();
@@ -823,6 +841,7 @@ class DashboardApiController extends Controller
                 'kasBelumBayar' => $kasBelumBayar,
                 'kasTerlambat' => $kasTerlambat,
                 'kasMenungguKonfirmasi' => $kasMenungguKonfirmasi,
+                'kasDitolak' => $kasDitolak,
                 'totalKasAnda' => $totalKasAnda,
                 'isYearCompleted' => $isYearCompleted,
                 'notifikasiUnread' => Notifikasi::where('user_id', $user->id)->where('dibaca', false)->count(),
@@ -867,6 +886,7 @@ class DashboardApiController extends Controller
             'kasBelumBayar' => 0,
             'kasTerlambat' => 0,
             'kasMenungguKonfirmasi' => 0,
+            'kasDitolak' => 0,
             'kasHariIni' => 0,
             'kasBulanIni' => 0,
             'totalNotifikasi' => 0,
@@ -892,24 +912,41 @@ class DashboardApiController extends Controller
 
         try {
             $recentPayments = Kas::with(['penduduk', 'rt'])
-                ->where('status', 'lunas')
+                ->whereIn('status', ['lunas', 'menunggu_konfirmasi', 'ditolak'])
                 ->whereNotNull('tanggal_bayar')
                 ->orderBy('tanggal_bayar', 'desc')
                 ->limit($limit / 2)
                 ->get();
 
             foreach ($recentPayments as $payment) {
+                $icon = 'credit-card';
+                $color = 'green';
+                $title = 'Pembayaran Kas';
+                $description = "{$payment->penduduk->nama_lengkap} membayar kas minggu ke-{$payment->minggu_ke}";
+
+                if ($payment->status === 'menunggu_konfirmasi') {
+                    $icon = 'hourglass';
+                    $color = 'yellow';
+                    $title = 'Pembayaran Menunggu Konfirmasi';
+                    $description = "{$payment->penduduk->nama_lengkap} mengajukan pembayaran kas minggu ke-{$payment->minggu_ke} (Menunggu Konfirmasi)";
+                } elseif ($payment->status === 'ditolak') {
+                    $icon = 'x-circle';
+                    $color = 'red';
+                    $title = 'Pembayaran Ditolak';
+                    $description = "Pembayaran kas minggu ke-{$payment->minggu_ke} dari {$payment->penduduk->nama_lengkap} ditolak.";
+                }
+
                 $activities[] = [
                     'id' => 'kas_' . $payment->id,
                     'type' => 'kas_payment',
-                    'title' => 'Pembayaran Kas',
-                    'description' => "{$payment->penduduk->nama_lengkap} membayar kas minggu ke-{$payment->minggu_ke}",
+                    'title' => $title,
+                    'description' => $description,
                     'amount' => $payment->jumlah,
                     'user' => $payment->penduduk->nama_lengkap,
                     'location' => "RT {$payment->rt->no_rt}",
                     'timestamp' => $payment->tanggal_bayar,
-                    'icon' => 'credit-card',
-                    'color' => 'green'
+                    'icon' => $icon,
+                    'color' => $color
                 ];
             }
 
@@ -1011,7 +1048,7 @@ class DashboardApiController extends Controller
                         } elseif ($kas->status === 'menunggu_konfirmasi') {
                             $icon = 'hourglass';
                             $color = 'yellow';
-                        } elseif ($kas->status === 'belum_bayar' && $kas->confirmed_at) {
+                        } elseif ($kas->status === 'ditolak') {
                             $icon = 'x-circle';
                             $color = 'red';
                         }

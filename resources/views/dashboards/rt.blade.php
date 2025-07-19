@@ -23,68 +23,96 @@
       </div>
   </div>
 
-  <!-- RT Statistics Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  <!-- RT Statistics Cards - 2x2 Grid on Mobile -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
       <!-- Total KK in RT -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
           <div class="flex items-center justify-between">
               <div>
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Kepala Keluarga</p>
-                  <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="totalKk">0</p>
-                  <div class="flex items-center mt-2">
-                      <span class="text-sm text-blue-600 font-medium">Di RT Anda</span>
+                  <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total KK</p>
+                  <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="totalKk">0</p>
+                  <div class="flex items-center mt-1 sm:mt-2">
+                      <span class="text-xs sm:text-sm text-blue-600 font-medium">Di RT Anda</span>
                   </div>
               </div>
-              <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-xl">
-                  <i data-lucide="home" class="w-8 h-8 text-blue-600 dark:text-blue-400"></i>
+              <div class="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-xl">
+                  <i data-lucide="home" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-blue-600 dark:text-blue-400"></i>
               </div>
           </div>
       </div>
 
       <!-- Total Penduduk in RT -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
           <div class="flex items-center justify-between">
               <div>
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Penduduk</p>
-                  <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="totalPenduduk">0</p>
-                  <div class="flex items-center mt-2">
-                      <span class="text-sm text-green-600 font-medium">Di RT Anda</span>
+                  <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Penduduk</p>
+                  <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="totalPenduduk">0</p>
+                  <div class="flex items-center mt-1 sm:mt-2">
+                      <span class="text-xs sm:text-sm text-green-600 font-medium">Di RT Anda</span>
                   </div>
               </div>
-              <div class="p-3 bg-green-100 dark:bg-green-900 rounded-xl">
-                  <i data-lucide="users" class="w-8 h-8 text-green-600 dark:text-green-400"></i>
+              <div class="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-xl">
+                  <i data-lucide="users" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-green-600 dark:text-green-400"></i>
               </div>
           </div>
       </div>
 
       <!-- Total Kas Lunas in RT -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
           <div class="flex items-center justify-between">
               <div>
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Lunas</p>
-                  <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="kasLunas">0</p>
-                  <div class="flex items-center mt-2">
-                      <span class="text-sm text-teal-600 font-medium">Tahun ini</span>
+                  <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Kas Lunas</p>
+                  <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="kasLunas">0</p>
+                  <div class="flex items-center mt-1 sm:mt-2">
+                      <span class="text-xs sm:text-sm text-teal-600 font-medium">Tahun ini</span>
                   </div>
               </div>
-              <div class="p-3 bg-teal-100 dark:bg-teal-900 rounded-xl">
-                  <i data-lucide="check-circle" class="w-8 h-8 text-teal-600 dark:text-teal-400"></i>
+              <div class="p-2 sm:p-3 bg-teal-100 dark:bg-teal-900 rounded-xl">
+                  <i data-lucide="check-circle" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-teal-600 dark:text-teal-400"></i>
               </div>
           </div>
       </div>
 
       <!-- Total Kas Belum Bayar in RT -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
           <div class="flex items-center justify-between">
               <div>
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kas Belum Bayar</p>
-                  <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="kasBelumBayar">0</p>
-                  <div class="flex items-center mt-2">
-                      <span class="text-sm text-red-600 font-medium">Perlu perhatian</span>
+                  <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Kas Belum Bayar</p>
+                  <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="kasBelumBayar">0</p>
+                  <div class="flex items-center mt-1 sm:mt-2">
+                      <span class="text-xs sm:text-sm text-red-600 font-medium">Perlu perhatian</span>
                   </div>
               </div>
-              <div class="p-3 bg-red-100 dark:bg-red-900 rounded-xl">
-                  <i data-lucide="alert-triangle" class="w-8 h-8 text-red-600 dark:text-red-400"></i>
+              <div class="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-xl">
+                  <i data-lucide="alert-triangle" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-red-600 dark:text-red-400"></i>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Total Saldo RT Card - Full Width -->
+  <div class="flex justify-center">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 w-full max-w-2xl">
+          <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-4">
+                  <div class="p-3 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl">
+                      <i data-lucide="wallet" class="w-8 h-8 sm:w-10 sm:h-10 text-white"></i>
+                  </div>
+                  <div>
+                      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Saldo RT</p>
+                      <p class="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white mt-1" x-text="formatRupiah(totalSaldoRt)">Rp 0</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Saldo kas RT Anda</p>
+                  </div>
+              </div>
+              <div class="text-right space-y-2">
+                  <div class="flex items-center justify-end space-x-2">
+                      <div class="w-3 h-3 bg-teal-500 rounded-full"></div>
+                      <span class="text-sm text-gray-600 dark:text-gray-400">Kas Lunas: <span class="font-semibold" x-text="kasLunas">0</span></span>
+                  </div>
+                  <div class="flex items-center justify-end space-x-2">
+                      <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span class="text-sm text-gray-600 dark:text-gray-400">Belum Bayar: <span class="font-semibold" x-text="kasBelumBayar">0</span></span>
+                  </div>
               </div>
           </div>
       </div>
@@ -270,6 +298,7 @@ function rtDashboardData() {
       totalPenduduk: 0,
       kasLunas: 0,
       kasBelumBayar: 0,
+      totalSaldoRt: 0, // New: Total saldo RT
       monthlyKasChart: null,
       paymentInfo: null, // For RT's bank account details
       monthlySummary: { // New: For monthly financial summary
@@ -367,6 +396,7 @@ function rtDashboardData() {
                       this.totalPenduduk = data.data.totalPenduduk || 0;
                       this.kasLunas = data.data.kasLunas || 0;
                       this.kasBelumBayar = data.data.kasBelumBayar || 0;
+                      this.totalSaldoRt = data.data.totalSaldoRt || 0; // New: Get saldo RT
                       this.isOnline = true;
                       this.connectionStatus = 'online';
                       console.log('✅ RT data loaded successfully:', data.data);

@@ -23,68 +23,96 @@
         </div>
     </div>
 
-    <!-- Kades Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Kades Statistics Cards - 2x2 Grid on Mobile -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <!-- Total RW in Desa -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total RW</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="totalRws">0</p>
-                    <div class="flex items-center mt-2">
-                        <span class="text-sm text-blue-600 font-medium">Di Desa Anda</span>
+                    <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total RW</p>
+                    <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="totalRws">0</p>
+                    <div class="flex items-center mt-1 sm:mt-2">
+                        <span class="text-xs sm:text-sm text-blue-600 font-medium">Di Desa Anda</span>
                     </div>
                 </div>
-                <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-xl">
-                    <i data-lucide="map" class="w-8 h-8 text-blue-600 dark:text-blue-400"></i>
+                <div class="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-xl">
+                    <i data-lucide="map" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-blue-600 dark:text-blue-400"></i>
                 </div>
             </div>
         </div>
 
         <!-- Total RT in Desa -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total RT</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="totalRts">0</p>
-                    <div class="flex items-center mt-2">
-                        <span class="text-sm text-purple-600 font-medium">Di Desa Anda</span>
+                    <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total RT</p>
+                    <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="totalRts">0</p>
+                    <div class="flex items-center mt-1 sm:mt-2">
+                        <span class="text-xs sm:text-sm text-purple-600 font-medium">Di Desa Anda</span>
                     </div>
                 </div>
-                <div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-xl">
-                    <i data-lucide="map-pin" class="w-8 h-8 text-purple-600 dark:text-purple-400"></i>
+                <div class="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-xl">
+                    <i data-lucide="map-pin" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-purple-600 dark:text-purple-400"></i>
                 </div>
             </div>
         </div>
 
         <!-- Total Penduduk in Desa -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Penduduk</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="totalPenduduk">0</p>
-                    <div class="flex items-center mt-2">
-                        <span class="text-sm text-green-600 font-medium">Di Desa Anda</span>
+                    <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Penduduk</p>
+                    <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="totalPenduduk">0</p>
+                    <div class="flex items-center mt-1 sm:mt-2">
+                        <span class="text-xs sm:text-sm text-green-600 font-medium">Di Desa Anda</span>
                     </div>
                 </div>
-                <div class="p-3 bg-green-100 dark:bg-green-900 rounded-xl">
-                    <i data-lucide="users" class="w-8 h-8 text-green-600 dark:text-green-400"></i>
+                <div class="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-xl">
+                    <i data-lucide="users" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-green-600 dark:text-green-400"></i>
                 </div>
             </div>
         </div>
 
         <!-- Total Kas Terkumpul in Desa -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all hover:shadow-md">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Kas Terkumpul</p>
-                    <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalKasTerkumpul)">Rp 0</p>
-                    <div class="flex items-center mt-2">
-                        <span class="text-sm text-orange-600 font-medium">Tahun ini</span>
+                    <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Kas Terkumpul</p>
+                    <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="formatCurrency(totalKasTerkumpul)">Rp 0</p>
+                    <div class="flex items-center mt-1 sm:mt-2">
+                        <span class="text-xs sm:text-sm text-orange-600 font-medium">Tahun ini</span>
                     </div>
                 </div>
-                <div class="p-3 bg-orange-100 dark:bg-orange-900 rounded-xl">
-                    <i data-lucide="wallet" class="w-8 h-8 text-orange-600 dark:text-orange-400"></i>
+                <div class="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-xl">
+                    <i data-lucide="wallet" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-orange-600 dark:text-orange-400"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Saldo Desa Card - Full Width -->
+    <div class="flex justify-center">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 w-full max-w-2xl">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="p-3 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-xl">
+                        <i data-lucide="wallet" class="w-8 h-8 sm:w-10 sm:h-10 text-white"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Saldo Desa</p>
+                        <p class="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white mt-1" x-text="formatCurrency(totalSaldoDesa)">Rp 0</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Saldo kas desa keseluruhan</p>
+                    </div>
+                </div>
+                <div class="text-right space-y-2">
+                    <div class="flex items-center justify-end space-x-2">
+                        <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Total RW: <span class="font-semibold" x-text="totalRws">0</span></span>
+                    </div>
+                    <div class="flex items-center justify-end space-x-2">
+                        <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Total RT: <span class="font-semibold" x-text="totalRts">0</span></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -173,6 +201,7 @@ function kadesDashboardData() {
         totalRts: 0,
         totalPenduduk: 0,
         totalKasTerkumpul: 0,
+        totalSaldoDesa: 0, // New: Total saldo desa
         monthlyKasChart: null,
         activities: [],
         isOnline: true,
@@ -249,6 +278,7 @@ function kadesDashboardData() {
                         this.totalRts = data.data.totalRts || 0;
                         this.totalPenduduk = data.data.totalPenduduk || 0;
                         this.totalKasTerkumpul = data.data.totalKasTerkumpul || 0;
+                        this.totalSaldoDesa = data.data.totalSaldoDesa || 0; // New: Get saldo desa
                         this.isOnline = true;
                         this.connectionStatus = 'online';
                         console.log('✅ Kades data loaded successfully:', data.data);

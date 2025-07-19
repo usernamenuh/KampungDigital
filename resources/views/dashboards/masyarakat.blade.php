@@ -37,80 +37,103 @@
       </div>
   </div>
 
-  <!-- Kas Status Cards - Adjusted to 2x2 grid on mobile, 1x4 on desktop, icons moved to right -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+  <!-- Kas Status Cards - 2x2 grid on mobile, 4 cards in first row on desktop, Total Kas Anda in second row -->
+<div class="space-y-4 sm:space-y-6">
+    <!-- First row: 4 status cards - 2x2 on mobile, 4x1 on desktop -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
       <!-- Kas Lunas -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all hover:shadow-md">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
           <div class="flex flex-col items-start justify-between h-full">
               <div class="flex items-start justify-between w-full mb-auto">
-                  <div>
-                      <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Kas Lunas</p>
-                      <p class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="kasLunas">0</p>
-                      <div class="flex items-center mt-1 sm:mt-2">
-                          <span class="text-xs sm:text-sm text-green-600 font-medium">Tahun ini</span>
+                  <div class="flex-1">
+                      <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Kas Lunas</p>
+                      <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1" x-text="kasLunas">0</p>
+                      <div class="flex items-center mt-1">
+                          <span class="text-xs text-green-600 font-medium">Tahun ini</span>
                       </div>
                   </div>
-                  <div class="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-xl">
-                      <i data-lucide="check-circle" class="w-6 h-6 sm:w-8 sm:h-8 text-green-600 dark:text-green-400"></i>
+                  <div class="p-1.5 sm:p-2 lg:p-3 bg-green-100 dark:bg-green-900 rounded-lg lg:rounded-xl ml-2">
+                      <i data-lucide="check-circle" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-green-600 dark:text-green-400"></i>
                   </div>
               </div>
           </div>
       </div>
 
       <!-- Belum Bayar -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all hover:shadow-md">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
           <div class="flex flex-col items-start justify-between h-full">
               <div class="flex items-start justify-between w-full mb-auto">
-                  <div>
-                      <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Belum Bayar</p>
-                      <p class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="kasBelumBayar">0</p>
-                      <div class="flex items-center mt-1 sm:mt-2">
-                          <span class="text-xs sm:text-sm text-yellow-600 font-medium">Segera bayar</span>
+                  <div class="flex-1">
+                      <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Belum Bayar</p>
+                      <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1" x-text="kasBelumBayar">0</p>
+                      <div class="flex items-center mt-1">
+                          <span class="text-xs text-yellow-600 font-medium">Segera bayar</span>
                       </div>
                   </div>
-                  <div class="p-2 sm:p-3 bg-yellow-100 dark:bg-yellow-900 rounded-xl">
-                      <i data-lucide="alert-triangle" class="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600 dark:text-yellow-400"></i>
+                  <div class="p-1.5 sm:p-2 lg:p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg lg:rounded-xl ml-2">
+                      <i data-lucide="alert-triangle" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-yellow-600 dark:text-yellow-400"></i>
                   </div>
               </div>
           </div>
       </div>
 
       <!-- Terlambat -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all hover:shadow-md">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
           <div class="flex flex-col items-start justify-between h-full">
               <div class="flex items-start justify-between w-full mb-auto">
-                  <div>
-                      <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Terlambat</p>
-                      <p class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="kasTerlambat">0</p>
-                      <div class="flex items-center mt-1 sm:mt-2">
-                          <span class="text-xs sm:text-sm text-red-600 font-medium">Perlu tindakan</span>
+                  <div class="flex-1">
+                      <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Terlambat</p>
+                      <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1" x-text="kasTerlambat">0</p>
+                      <div class="flex items-center mt-1">
+                          <span class="text-xs text-red-600 font-medium">Perlu tindakan</span>
                       </div>
                   </div>
-                  <div class="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-xl">
-                      <i data-lucide="clock" class="w-6 h-6 sm:w-8 sm:h-8 text-red-600 dark:text-red-400"></i>
+                  <div class="p-1.5 sm:p-2 lg:p-3 bg-red-100 dark:bg-red-900 rounded-lg lg:rounded-xl ml-2">
+                      <i data-lucide="clock" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-red-600 dark:text-red-400"></i>
                   </div>
               </div>
           </div>
       </div>
 
-      <!-- Total Kas Anda -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all hover:shadow-md">
+      <!-- Kas Ditolak -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
           <div class="flex flex-col items-start justify-between h-full">
               <div class="flex items-start justify-between w-full mb-auto">
-                  <div>
-                      <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Kas Anda</p>
-                      <p class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="formatCurrency(totalKasAnda)">Rp 0</p>
-                      <div class="flex items-center mt-1 sm:mt-2">
-                          <span class="text-xs sm:text-sm text-purple-600 font-medium">Tahun ini</span>
+                  <div class="flex-1">
+                      <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Kas Ditolak</p>
+                      <p class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white mt-1" x-text="kasDitolak">0</p>
+                      <div class="flex items-center mt-1">
+                          <span class="text-xs text-red-600 font-medium">Perlu diperbaiki</span>
                       </div>
                   </div>
-                  <div class="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-xl">
-                      <i data-lucide="wallet" class="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 dark:text-purple-400"></i>
+                  <div class="p-1.5 sm:p-2 lg:p-3 bg-red-100 dark:bg-red-900 rounded-lg lg:rounded-xl ml-2">
+                      <i data-lucide="x-circle" class="w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-red-600 dark:text-red-400"></i>
                   </div>
               </div>
           </div>
       </div>
-  </div>
+    </div>
+    
+    <!-- Second row: Total Kas Anda card -->
+    <div class="flex justify-center">
+        <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-all hover:shadow-md">
+            <div class="flex flex-col items-start justify-between h-full">
+                <div class="flex items-start justify-between w-full mb-auto">
+                    <div class="flex-1">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Kas Anda</p>
+                        <p class="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white mt-1 sm:mt-2" x-text="formatCurrency(totalKasAnda)">Rp 0</p>
+                        <div class="flex items-center mt-1 sm:mt-2">
+                            <span class="text-xs sm:text-sm text-purple-600 font-medium">Tahun ini</span>
+                        </div>
+                    </div>
+                    <div class="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-xl">
+                        <i data-lucide="wallet" class="w-8 h-8 sm:w-10 sm:h-10 text-purple-600 dark:text-purple-400"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
   <!-- Tagihan Mendatang - Redesigned for compact, vertical details, and right-aligned buttons -->
   <div id="tagihan-mendatang-section" class="flex justify-center w-full">
@@ -136,10 +159,10 @@
                           <!-- Status below Minggu ke- -->
                           <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                               Status: 
-                              <span x-text="bill.status === 'belum_bayar' || bill.status === 'menunggu_konfirmasi' ? '⏳' : (bill.status === 'terlambat' ? '🚨' : '✅')"></span>
+                              <span x-text="bill.status === 'belum_bayar' || bill.status === 'menunggu_konfirmasi' ? '⏳' : (bill.status === 'terlambat' ? '🚨' : (bill.status === 'ditolak' ? '❌' : '✅'))"></span>
                               <span :class="{
                                   'text-yellow-600': bill.status === 'belum_bayar' || bill.status === 'menunggu_konfirmasi',
-                                  'text-red-600': bill.status === 'terlambat',
+                                  'text-red-600': bill.status === 'terlambat' || bill.status === 'ditolak',
                                   'text-green-600': bill.status === 'lunas'
                               }" class="font-semibold" x-text="bill.status_text"></span>
                           </p>
@@ -276,6 +299,7 @@ return {
     kasBelumBayar: 0,
     kasTerlambat: 0,
     kasMenungguKonfirmasi: 0,
+    kasDitolak: 0,
     totalKasAnda: 0,
     isYearCompleted: false,
     notifikasiUnread: 0,
@@ -451,7 +475,7 @@ return {
     async loadUserKasBills() {
         try {
             console.log('🧾 Loading user kas bills...');
-            const response = await fetch('/api/payment/index?status=belum_bayar,terlambat,menunggu_konfirmasi', {
+            const response = await fetch('/api/payment/index?status=belum_bayar,terlambat,menunggu_konfirmasi,ditolak', {
                 method: 'GET',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
