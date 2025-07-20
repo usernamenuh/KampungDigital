@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Models\PaymentInfo;
 
 class KasController extends Controller
 {
@@ -659,6 +660,7 @@ class KasController extends Controller
             'metode_bayar' => 'nullable|string|max:50',
             'keterangan' => 'nullable|string|max:500',
             'bukti_bayar' => 'nullable|string|max:1000',
+            'rejection_reason' => 'nullable|string|max:500', // Added for rejection reason
         ]);
 
         try {
@@ -731,10 +733,16 @@ class KasController extends Controller
                         ])
                     ]);
                 } elseif ($request->status === 'ditolak') {
+                    $rejectionMessage = "Pembayaran kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " ditolak.";
+                    if ($request->rejection_reason) {
+                        $rejectionMessage .= " Alasan: {$request->rejection_reason}.";
+                    }
+                    $rejectionMessage .= " Silakan upload ulang bukti pembayaran yang benar.";
+                    
                     Notifikasi::create([
                         'user_id' => $kas->penduduk->user->id,
                         'judul' => 'Pembayaran Kas Ditolak',
-                        'pesan' => "Pembayaran kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " ditolak. Silakan periksa kembali bukti pembayaran Anda.",
+                        'pesan' => $rejectionMessage,
                         'tipe' => 'error',
                         'kategori' => 'kas',
                         'data' => json_encode([
@@ -742,6 +750,7 @@ class KasController extends Controller
                             'jumlah' => $kas->jumlah,
                             'minggu_ke' => $kas->minggu_ke,
                             'tahun' => $kas->tahun,
+                            'rejection_reason' => $request->rejection_reason,
                         ])
                     ]);
                 }
@@ -883,6 +892,253 @@ class KasController extends Controller
             DB::rollBack();
             Log::error('Error confirming payment: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Terjadi kesalahan saat konfirmasi pembayaran: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Reject payment with reason and allow re-confirmation
+     */
+    public function tolak(Request $request, Kas $kas)
+    {
+        $user = Auth::user();
+        
+        // Only admin, kades, rw, rt can reject payment
+        if (!in_array($user->role, ['admin', 'kades', 'rw', 'rt'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menolak pembayaran'
+            ], 403);
+        }
+
+        // Check access permission
+        if (!$this->canAccessKas($kas, $user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk kas ini'
+            ], 403);
+        }
+
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Update kas status to ditolak but keep it as menunggu_konfirmasi for re-upload
+            $kas->update([
+                'status' => 'ditolak',
+                'keterangan' => ($kas->keterangan ? $kas->keterangan . " | " : "") . "Ditolak: " . $request->rejection_reason,
+            ]);
+
+            // Send notification to resident - dengan null check
+            if ($kas->penduduk && $kas->penduduk->user) {
+                Notifikasi::create([
+                    'user_id' => $kas->penduduk->user->id,
+                    'judul' => 'Pembayaran Kas Ditolak',
+                    'pesan' => "Pembayaran kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " ditolak. Alasan: {$request->rejection_reason}. Silakan ajukan konfirmasi ulang dengan bukti pembayaran yang benar.",
+                    'tipe' => 'error',
+                    'kategori' => 'kas',
+                    'data' => json_encode([
+                        'kas_id' => $kas->id,
+                        'jumlah' => $kas->jumlah,
+                        'minggu_ke' => $kas->minggu_ke,
+                        'tahun' => $kas->tahun,
+                        'rejection_reason' => $request->rejection_reason,
+                    ])
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('kas.show', $kas)->with([
+                'success' => 'Pembayaran kas berhasil ditolak. Warga dapat mengajukan konfirmasi ulang.',
+                'show_success_modal' => true
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error rejecting payment: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menolak pembayaran: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Re-confirm payment for rejected kas - ENHANCED VERSION
+     */
+    public function konfirmasiUlang(Request $request, Kas $kas)
+    {
+        $user = Auth::user();
+        
+        // Allow both RT/RW/Admin AND masyarakat to re-confirm
+        if (!in_array($user->role, ['admin', 'kades', 'rw', 'rt', 'masyarakat'])) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk konfirmasi ulang pembayaran'
+                ], 403);
+            }
+            return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk konfirmasi ulang pembayaran');
+        }
+
+        // Check access permission
+        if (!$this->canAccessKas($kas, $user)) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk kas ini'
+                ], 403);
+            }
+            return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk kas ini');
+        }
+
+        // Only allow re-confirmation for rejected kas
+        if ($kas->status !== 'ditolak') {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kas ini tidak dalam status ditolak'
+                ], 400);
+            }
+            return redirect()->back()->with('error', 'Kas ini tidak dalam status ditolak');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // If masyarakat is re-confirming, just change status back to menunggu_konfirmasi
+            if ($user->role === 'masyarakat') {
+                $kas->update([
+                    'status' => 'menunggu_konfirmasi',
+                    'keterangan' => ($kas->keterangan ? $kas->keterangan . " | " : "") . "Diajukan ulang oleh warga pada " . now()->format('d/m/Y H:i'),
+                ]);
+
+                // Send notification to RT - find RT ketua
+                $rt = $kas->rt;
+                if ($rt) {
+                    // Try to find RT ketua through different methods
+                    $rtKetua = null;
+                    
+                    // Method 1: Check if RT has ketua_rt_id
+                    if ($rt->ketua_rt_id) {
+                        $rtKetuaPenduduk = Penduduk::find($rt->ketua_rt_id);
+                        if ($rtKetuaPenduduk && $rtKetuaPenduduk->user) {
+                            $rtKetua = $rtKetuaPenduduk->user;
+                        }
+                    }
+                    
+                    // Method 2: Find user with role 'rt' in the same RT
+                    if (!$rtKetua) {
+                        $rtKetua = User::where('role', 'rt')
+                            ->whereHas('penduduk.kk', function($query) use ($rt) {
+                                $query->where('rt_id', $rt->id);
+                            })
+                            ->first();
+                    }
+                    
+                    if ($rtKetua) {
+                        Notifikasi::create([
+                            'user_id' => $rtKetua->id,
+                            'judul' => 'Konfirmasi Ulang Kas',
+                            'pesan' => "Warga {$kas->penduduk->nama_lengkap} mengajukan konfirmasi ulang untuk kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} yang sebelumnya ditolak.",
+                            'tipe' => 'info',
+                            'kategori' => 'kas',
+                            'data' => json_encode([
+                                'kas_id' => $kas->id,
+                                'penduduk_nama' => $kas->penduduk->nama_lengkap,
+                                'minggu_ke' => $kas->minggu_ke,
+                                'tahun' => $kas->tahun,
+                            ])
+                        ]);
+                    }
+                }
+
+                DB::commit();
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Kas berhasil diajukan ulang untuk konfirmasi. Menunggu persetujuan RT.',
+                        'status' => 'menunggu_konfirmasi'
+                    ]);
+                }
+                
+                return redirect()->back()->with('success', 'Kas berhasil diajukan ulang untuk konfirmasi. Menunggu persetujuan RT.');
+
+            } else {
+                // RT/RW/Admin directly confirming the rejected payment
+                $request->validate([
+                    'metode_pembayaran' => 'nullable|string|max:50',
+                    'bukti_pembayaran' => 'nullable|string|max:1000',
+                    'catatan_konfirmasi' => 'nullable|string|max:500',
+                ]);
+
+                // Use markAsLunas method to properly handle saldo update
+                $success = $kas->markAsLunas($user->id, "Konfirmasi ulang oleh {$user->name}: " . ($request->catatan_konfirmasi ?? 'Tidak ada catatan'));
+                
+                if (!$success) {
+                    throw new \Exception('Gagal mengkonfirmasi ulang pembayaran');
+                }
+
+                // Update payment method and proof if provided
+                $updateData = [];
+                if ($request->metode_pembayaran) {
+                    $updateData['metode_bayar'] = $request->metode_pembayaran;
+                }
+                if ($request->bukti_pembayaran) {
+                    $updateData['bukti_bayar_file'] = $request->bukti_pembayaran;
+                }
+                if (!empty($updateData)) {
+                    $kas->update($updateData);
+                }
+
+                $kas->update([
+                    'keterangan' => ($kas->keterangan ? $kas->keterangan . " | " : "") . "Dikonfirmasi ulang: " . ($request->catatan_konfirmasi ?? 'Tidak ada catatan'),
+                ]);
+
+                // Send notification to resident - dengan null check
+                if ($kas->penduduk && $kas->penduduk->user) {
+                    Notifikasi::create([
+                        'user_id' => $kas->penduduk->user->id,
+                        'judul' => 'Pembayaran Kas Dikonfirmasi Ulang',
+                        'pesan' => "Pembayaran kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " telah dikonfirmasi ulang dan dinyatakan lunas" . ($request->metode_pembayaran ? " via {$request->metode_pembayaran}" : "") . ".",
+                        'tipe' => 'success',
+                        'kategori' => 'kas',
+                        'data' => json_encode([
+                            'kas_id' => $kas->id,
+                            'jumlah' => $kas->jumlah,
+                            'metode_bayar' => $request->metode_pembayaran,
+                            'tanggal_bayar' => now(),
+                            'catatan' => $request->catatan_konfirmasi,
+                        ])
+                    ]);
+                }
+
+                DB::commit();
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pembayaran kas berhasil dikonfirmasi ulang dan saldo RT telah diperbarui',
+                        'status' => 'lunas'
+                    ]);
+                }
+                
+                return redirect()->back()->with('success', 'Pembayaran kas berhasil dikonfirmasi ulang dan saldo RT telah diperbarui');
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error re-confirming payment: ' . $e->getMessage());
+        
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan saat konfirmasi ulang pembayaran: ' . $e->getMessage()
+                ], 500);
+            }
+        
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat konfirmasi ulang pembayaran: ' . $e->getMessage());
         }
     }
 

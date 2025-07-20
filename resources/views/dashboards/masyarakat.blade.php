@@ -6,12 +6,11 @@
 
 @section('content')
 <div x-data="masyarakatDashboardData()" x-init="initDashboard()" class="p-4 sm:p-6 space-y-6">
-  <!-- Masyarakat Info Header - Adjusted for mobile responsiveness and smaller size -->
+  <!-- Masyarakat Info Header -->
   <div class="p-3 md:p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 transition-all hover:shadow-lg bg-gradient-to-r from-blue-600 to-purple-700 text-white">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between">
           <div class="mb-3 sm:mb-0">
               <h2 class="text-base md:text-2xl font-bold">Selamat datang, Masyarakat</h2>
-              {{-- Alamat dihapus sesuai permintaan --}}
           </div>
           <div class="text-left sm:text-right w-full sm:w-auto flex items-center justify-between sm:justify-end space-x-2">
               <p class="text-xs md:text-base text-blue-200" x-text="currentDate"></p>
@@ -23,7 +22,7 @@
       </div>
   </div>
 
-  <!-- New Payment Alert Section - Clickable to scroll, smaller size -->
+  <!-- Payment Alert Section -->
   <div x-show="userKasBills.length > 0" 
        @click="document.getElementById('tagihan-mendatang-section').scrollIntoView({ behavior: 'smooth' })"
        class="w-full cursor-pointer">
@@ -37,9 +36,9 @@
       </div>
   </div>
 
-  <!-- Kas Status Cards - 2x2 grid on mobile, 4 cards in first row on desktop, Total Kas Anda in second row -->
-<div class="space-y-4 sm:space-y-6">
-    <!-- First row: 4 status cards - 2x2 on mobile, 4x1 on desktop -->
+  <!-- Kas Status Cards -->
+  <div class="space-y-4 sm:space-y-6">
+    <!-- First row: 4 status cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
       <!-- Kas Lunas -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 transition-all hover:shadow-md">
@@ -133,9 +132,9 @@
             </div>
         </div>
     </div>
-</div>
+  </div>
 
-  <!-- Tagihan Mendatang - Redesigned for compact, vertical details, and right-aligned buttons -->
+  <!-- Tagihan Mendatang -->
   <div id="tagihan-mendatang-section" class="flex justify-center w-full">
       <div class="w-full bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div class="flex items-center justify-between mb-6">
@@ -174,21 +173,64 @@
                                   <p>Denda: <span class="text-red-600 font-semibold" x-text="formatCurrency(bill.denda)"></span></p>
                               </template>
                               <p>Jatuh Tempo: <span class="text-orange-600 font-semibold" x-text="bill.tanggal_jatuh_tempo_formatted"></span></p>
+                              
+                              <!-- Show rejection reason if status is ditolak -->
+                              <template x-if="bill.status === 'ditolak' && bill.rejection_reason">
+                                  <p class="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-700 dark:text-red-300">
+                                      <strong>Alasan Ditolak:</strong> <span x-text="bill.rejection_reason"></span>
+                                  </p>
+                              </template>
                           </div>
                       </div>
 
-                      <!-- Buttons (stacked vertically on the right on desktop, below on mobile) -->
-                      <div x-show="bill.can_pay" class="flex-shrink-0 flex flex-col space-y-2 mt-4 sm:mt-0 sm:ml-4 w-full sm:w-auto">
-                          <a :href="'/kas/' + bill.id + '/payment-form'" 
-                             class="inline-flex items-center justify-center px-3 py-1.5 bg-green-500 text-white text-xs font-medium rounded-md hover:bg-green-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
-                              <i data-lucide="credit-card" class="w-3 h-3 mr-1"></i>
-                              Bayar Sekarang
-                          </a>
-                          <a :href="'/kas/' + bill.id" 
-                             class="inline-flex items-center justify-center px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-md hover:bg-blue-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
-                              <i data-lucide="info" class="w-3 h-3 mr-1"></i>
-                              Detail
-                          </a>
+                      <!-- Buttons -->
+                      <div class="flex-shrink-0 flex flex-col space-y-2 mt-4 sm:mt-0 sm:ml-4 w-full sm:w-auto">
+                          <!-- Regular payment buttons for belum_bayar and terlambat -->
+                          <template x-if="bill.can_pay && bill.status !== 'ditolak'">
+                              <div class="flex flex-col space-y-2">
+                                  <a :href="'/kas/' + bill.id + '/payment-form'" 
+                                     class="inline-flex items-center justify-center px-3 py-1.5 bg-green-500 text-white text-xs font-medium rounded-md hover:bg-green-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                      <i data-lucide="credit-card" class="w-3 h-3 mr-1"></i>
+                                      Bayar Sekarang
+                                  </a>
+                                  <a :href="'/kas/' + bill.id" 
+                                     class="inline-flex items-center justify-center px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-md hover:bg-blue-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                      <i data-lucide="info" class="w-3 h-3 mr-1"></i>
+                                      Detail
+                                  </a>
+                              </div>
+                          </template>
+                          
+                          <!-- Special button for rejected payments -->
+                          <template x-if="bill.status === 'ditolak'">
+                              <div class="flex flex-col space-y-2">
+                                  <button @click="konfirmasiUlang(bill.id)" 
+                                          class="inline-flex items-center justify-center px-3 py-1.5 bg-orange-500 text-white text-xs font-medium rounded-md hover:bg-orange-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                      <i data-lucide="refresh-cw" class="w-3 h-3 mr-1"></i>
+                                      Konfirmasi Ulang
+                                  </button>
+                                  <a :href="'/kas/' + bill.id" 
+                                     class="inline-flex items-center justify-center px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-md hover:bg-blue-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                      <i data-lucide="info" class="w-3 h-3 mr-1"></i>
+                                      Detail
+                                  </a>
+                              </div>
+                          </template>
+                          
+                          <!-- Buttons for menunggu_konfirmasi -->
+                          <template x-if="bill.status === 'menunggu_konfirmasi'">
+                              <div class="flex flex-col space-y-2">
+                                  <span class="inline-flex items-center justify-center px-3 py-1.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-md">
+                                      <i data-lucide="clock" class="w-3 h-3 mr-1"></i>
+                                      Menunggu Konfirmasi
+                                  </span>
+                                  <a :href="'/kas/' + bill.id" 
+                                     class="inline-flex items-center justify-center px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-md hover:bg-blue-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                      <i data-lucide="info" class="w-3 h-3 mr-1"></i>
+                                      Detail
+                                  </a>
+                              </div>
+                          </template>
                       </div>
                   </div>
               </template>
@@ -360,7 +402,6 @@ return {
             this.showConnectionError('Koneksi internet terputus');
         });
 
-        // Listen for payment completion events
         window.addEventListener('paymentCompleted', (event) => {
             this.loadAllData();
             this.showSuccessMessage('Pembayaran berhasil diproses!');
@@ -368,7 +409,6 @@ return {
     },
 
     startAutoRefresh() {
-        // Auto refresh every 30 seconds
         this.refreshInterval = setInterval(() => {
             if (this.isOnline) {
                 this.loadDashboardData();
@@ -489,7 +529,6 @@ return {
                     this.userKasBills = data.data;
                     console.log('✅ User kas bills loaded successfully:', data.data);
                     
-                    // Trigger event for other components
                     window.dispatchEvent(new CustomEvent('kasBillsUpdated', {
                         detail: { bills: this.userKasBills }
                     }));
@@ -524,7 +563,6 @@ return {
                     this.paymentAlerts = data.data;
                     console.log('✅ Payment alerts loaded successfully:', data.data);
                     
-                    // Show browser notification for overdue payments
                     if (data.has_overdue && 'Notification' in window) {
                         this.showBrowserNotification();
                     }
@@ -539,6 +577,33 @@ return {
         } catch (error) {
             this.paymentAlerts = [];
             console.error('❌ Error loading payment alerts:', error);
+        }
+    },
+
+    async konfirmasiUlang(kasId) {
+        try {
+            console.log('🔄 Konfirmasi ulang kas ID:', kasId);
+            
+            const response = await fetch(`/kas/${kasId}/konfirmasi-ulang`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showSuccessMessage(data.message || 'Kas berhasil dikonfirmasi ulang!');
+                await this.loadAllData(); // Refresh all data
+            } else {
+                this.showErrorMessage(data.message || 'Gagal mengkonfirmasi ulang kas');
+            }
+        } catch (error) {
+            console.error('❌ Error konfirmasi ulang:', error);
+            this.showErrorMessage('Terjadi kesalahan saat mengkonfirmasi ulang kas');
         }
     },
 
@@ -592,6 +657,21 @@ return {
         }, 3000);
     },
 
+    showErrorMessage(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        errorDiv.innerHTML = `
+            <div class="flex items-center">
+                <i data-lucide="x-circle" class="w-4 h-4 mr-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(errorDiv);
+        setTimeout(() => {
+            errorDiv.remove();
+        }, 5000);
+    },
+
     hideConnectionError() {
         const errorDiv = document.getElementById('connection-error');
         if (errorDiv) {
@@ -612,7 +692,6 @@ return {
         });
     },
 
-    // Cleanup on component destroy
     destroy() {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
