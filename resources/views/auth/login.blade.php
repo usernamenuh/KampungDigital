@@ -1,4 +1,5 @@
-@extends('layouts.auth')
+@extends('layouts.auth') {{-- Asumsi Anda memiliki layout auth --}}
+
 @section('style')
     <style>
         * {
@@ -183,50 +184,7 @@
             font-size: 1rem;
         }
 
-        .google-btn {
-            width: 100%;
-            background: #13151f;
-            border: 1px solid #2a2d3a;
-            color: white;
-            padding: 0.75rem;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-        }
-
-        .google-btn:hover {
-            background: #1a1d2b;
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .divider {
-            text-align: center;
-            margin: 1.5rem 0;
-            position: relative;
-        }
-
-        .divider::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: #2a2d3a;
-        }
-
-        .divider span {
-            background: #090b13;
-            padding: 0 1rem;
-            color: #6b7280;
-            font-size: 0.9rem;
-        }
+        /* Removed .google-btn and .divider styles */
 
         .form-group {
             margin-bottom: 1.5rem;
@@ -332,7 +290,7 @@
             box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
         }
 
-        .forgot-link {
+        .forgot-link, .register-link {
             display: block;
             text-align: center;
             margin-top: 1.5rem;
@@ -342,8 +300,12 @@
             transition: color 0.3s ease;
         }
 
-        .forgot-link:hover {
+        .forgot-link:hover, .register-link:hover {
             color: #60a5fa;
+        }
+
+        .register-link {
+            margin-top: 1rem; /* Adjust spacing between forgot and register */
         }
 
         .error-message {
@@ -425,85 +387,92 @@
                 max-width: 100vw;
             }
             .left-side {
-                height: 24vh;
-                min-height: 90px;
+                height: 30vh; /* Keep height for text visibility */
+                min-height: 150px;
                 flex: none;
                 border-right: none;
                 border-bottom: 1px solid #1f2130;
                 justify-content: flex-start;
-                padding-top: 1rem;
-                padding-bottom: 0.5rem;
+                align-items: flex-start;
+                padding: 0.5rem 1rem;
+                position: relative;
             }
+
+            .left-side > div:first-child {
+                top: 0.5rem !important;
+                left: 0.5rem !important;
+                z-index: 20;
+            }
+            .left-side > div:first-child img {
+                width: 32px !important;
+                height: 32px !important;
+            }
+
             .right-side {
                 height: auto;
-                min-height: 76vh;
+                min-height: 70vh; /* Adjusted min-height to fill remaining space */
                 flex: none;
-                padding: 0.5rem 0.2rem 1rem 0.2rem;
+                padding: 4rem 1rem 1.5rem 1rem; /* Reduced top padding to move form up */
                 justify-content: flex-start;
-                align-items: flex-start;
+                align-items: center;
             }
             .login-form-container {
                 max-width: 100%;
                 width: 100%;
                 margin: 0 auto;
-                padding: 0 0.1rem;
+                padding: 0 0.5rem;
             }
             .brand-title {
-                font-size: 1.1rem;
+                font-size: 1.4rem;
                 margin-bottom: 0.3rem;
-                text-align: left;
+                text-align: center !important;
             }
             .brand-subtitle {
-                font-size: 0.75rem;
-                text-align: left;
+                font-size: 0.9rem;
+                text-align: center !important;
                 margin-bottom: 0.2rem;
             }
             .logo-container {
-                width: 32px;
-                height: 32px;
+                width: 48px;
+                height: 48px;
                 margin-bottom: 0.5rem;
             }
             .login-header {
                 margin-bottom: 1rem;
-                text-align: left;
+                text-align: center;
             }
             .login-header h2 {
-                font-size: 1.1rem;
+                font-size: 1.8rem;
                 margin-bottom: 0.2rem;
-                text-align: left;
+                text-align: center;
             }
             .login-header p {
-                font-size: 0.8rem;
-                text-align: left;
+                font-size: 1rem;
+                text-align: center;
             }
-            .form-label, .form-control, .btn-login {
+            .form-label {
                 font-size: 0.85rem;
-                text-align: left;
             }
-            .form-group {
-                margin-bottom: 1rem;
+            .form-control {
+                font-size: 0.95rem;
+                padding: 0.6rem 0.8rem;
             }
             .btn-login {
-                padding: 0.5rem;
-                font-size: 0.95rem;
+                padding: 0.7rem;
+                font-size: 1rem;
             }
-            .forgot-link {
-                font-size: 0.75rem;
-            }
-            .google-btn {
-                font-size: 0.85rem;
-                padding: 0.5rem;
-            }
-            .divider span {
-                font-size: 0.75rem;
+            .forgot-link, .register-link {
+                font-size: 0.9rem;
             }
             .content-overlay {
-                padding: 0.5rem 0.2rem;
-                text-align: center !important;
-                align-items: center !important;
-                justify-content: center !important;
+                padding: 0.5rem 1rem;
+                text-align: center;
+                width: 100%;
                 display: flex;
                 flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                margin-top: 2.5rem;
             }
             .brand-title,
             .brand-subtitle {
@@ -519,32 +488,36 @@
         }
         @media (max-width: 480px) {
             .left-side {
-                height: 18vh;
-                min-height: 60px;
-                padding-top: 0.5rem;
+                height: 25vh; /* Keep height for text visibility */
+                min-height: 120px;
+                padding: 0.3rem 0.5rem;
+            }
+            .left-side > div:first-child {
+                top: 0.3rem !important;
+                left: 0.3rem !important;
+            }
+            .left-side > div:first-child img {
+                width: 28px !important;
+                height: 28px !important;
             }
             .brand-title {
-                font-size: 0.95rem;
+                font-size: 1.2rem;
             }
             .brand-subtitle {
-                font-size: 0.65rem;
+                font-size: 0.8rem;
             }
             .login-header h2 {
-                font-size: 0.95rem;
+                font-size: 1.5rem;
             }
             .login-header p {
-                font-size: 0.7rem;
+                font-size: 0.9rem;
             }
             .login-form-container {
-                padding: 0 0.05rem;
+                padding: 0 0.2rem;
             }
             .content-overlay {
-                padding: 0.3rem 0.1rem;
-                text-align: center !important;
-                align-items: center !important;
-                justify-content: center !important;
-                display: flex;
-                flex-direction: column;
+                padding: 0.3rem 0.5rem;
+                margin-top: 2rem;
             }
             .brand-title,
             .brand-subtitle {
@@ -557,42 +530,54 @@
                 display: flex;
                 justify-content: center;
             }
+            .form-label {
+                font-size: 0.8rem;
+            }
+            .form-control {
+                font-size: 0.9rem;
+                padding: 0.5rem 0.7rem;
+            }
+            .btn-login {
+                padding: 0.6rem;
+                font-size: 0.95rem;
+            }
+            .forgot-link, .register-link {
+                font-size: 0.85rem;
+            }
         }
     </style>
 @endsection
+
 @section('content')
     <div class="login-container">
         <!-- Left Side - Animated Content -->
         <div class="left-side">
-            <div style="position: absolute; top: 2rem; left: 2rem; z-index: 20;">
+            <div style="position: absolute; top: 0.5rem; left: 0.5rem; z-index: 20;">
                 <a href="{{ url('/') }}" style="display: inline-block;">
-                    <img src="{{ asset('public/assets/sa.webp') }}" alt="Logo" style="width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.15); background: white; object-fit: cover;">
+                    <img src="{{ asset('public/assets/sa.webp') }}" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.15); background: white; object-fit: cover;">
                 </a>
             </div>
             <div class="animated-background">
                 <!-- Dot Map -->
-                <div class="dot-map">
-                    <!-- Generate dots with PHP -->
-                    <?php for($i = 0; $i < 50; $i++): ?>
-                        <div class="dot" style="
-                            top: <?= rand(10, 90) ?>%;
-                            left: <?= rand(10, 90) ?>%;
-                            animation-delay: <?= rand(0, 3000) ?>ms;
-                        "></div>
-                    <?php endfor; ?>
+                <?php for($i = 0; $i < 50; $i++): ?>
+                    <div class="dot" style="
+                        top: <?= rand(10, 90) ?>%;
+                        left: <?= rand(10, 90) ?>%;
+                        animation-delay: <?= rand(0, 3000) ?>ms;
+                    "></div>
+                <?php endfor; ?>
 
-                    <!-- Route Lines -->
-                    <div class="route-line" style="top: 30%; left: 20%; width: 200px; animation-delay: 0s;"></div>
-                    <div class="route-line" style="top: 60%; left: 40%; width: 150px; animation-delay: 1s;"></div>
-                    <div class="route-line" style="top: 45%; left: 10%; width: 180px; animation-delay: 2s;"></div>
-                </div>
+                <!-- Route Lines -->
+                <div class="route-line" style="top: 30%; left: 20%; width: 200px; animation-delay: 0s;"></div>
+                <div class="route-line" style="top: 60%; left: 40%; width: 150px; animation-delay: 1s;"></div>
+                <div class="route-line" style="top: 45%; left: 10%; width: 180px; animation-delay: 2s;"></div>
+            </div>
 
-                <!-- Floating Elements -->
-                <div class="floating-elements">
-                    <div class="floating-circle"></div>
-                    <div class="floating-circle"></div>
-                    <div class="floating-circle"></div>
-                </div>
+            <!-- Floating Elements -->
+            <div class="floating-elements">
+                <div class="floating-circle"></div>
+                <div class="floating-circle"></div>
+                <div class="floating-circle"></div>
             </div>
 
             <div class="content-overlay">
@@ -622,21 +607,6 @@
                         {{ session('success') }}
                     </div>
                 @endif
-
-                <!-- Google Login Button -->
-                <a href="#" class="google-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Masuk dengan Google
-                </a>
-
-                <div class="divider">
-                    <span>atau</span>
-                </div>
 
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
@@ -701,10 +671,18 @@
                         Lupa password?
                     </a>
                 @endif
+
+                {{-- New Register Link --}}
+                @if (Route::has('register'))
+                    <a href="{{ route('register') }}" class="register-link">
+                        Belum punya akun? Daftar di sini
+                    </a>
+                @endif
             </div>
         </div>
     </div>
 @endsection
+
 @section('script')
     <script>
         function togglePassword() {

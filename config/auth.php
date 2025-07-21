@@ -24,10 +24,14 @@ return [
     |--------------------------------------------------------------------------
     |
     | Next, you may define every authentication guard for your application.
-    | Of course, a great starting point has been defined for you here.
-    | You may add more guards as needed.
+    | Of course, a great starting point is the "web" guard which uses
+    | session storage and the "users" provider.
     |
-    | Supported: "session", "token"
+    | All authentication guards have a "provider" (user provider) that defines
+    | how users are actually retrieved out of your database or other storage
+    | mechanisms used by this application to persist your user's data.
+    |
+    | Supported: "session"
     |
     */
 
@@ -36,7 +40,7 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
-        'sanctum' => [ // Pastikan guard ini ada dan sesuai
+        'api' => [
             'driver' => 'sanctum',
             'provider' => 'users',
         ],
@@ -47,12 +51,14 @@ return [
     | User Providers
     |--------------------------------------------------------------------------
     |
-    | All authentication drivers have a user provider. This defines how the
-    | users are actually retrieved out of your database or other storage
-    | mechanisms to authenticate a user.
+    | All authentication providers have a "driver" that defines how users are
+    | actually retrieved out of your database or other storage mechanisms
+    | used by this application to persist your user's data.
     |
-    | If you have multiple user tables or models, you may configure multiple
-    | sources and pass the provider name to the guard configuration.
+    | If you have multiple user tables or models you may configure multiple
+    | sources and pass the provider driver to the Eloquent user provider.
+    |
+    | Supported: "database", "eloquent"
     |
     */
 
@@ -73,22 +79,19 @@ return [
     | Resetting Passwords
     |--------------------------------------------------------------------------
     |
-    | You may specify multiple password reset configurations if you have more
-    | than one user table or model in the application and you want to have
-    | separate password reset settings based on the specific user types.
-    |
-    | The expire time is the number of minutes that the reset token should be
-    | considered valid. This security feature keeps tokens short-lived so
-    | they have less time to be guessed. You may change this as needed.
+    | You may specify how long the password reset token should be considered
+    | valid. This security feature keeps tokens from lingering indefinitely.
+    | You may also specify the number of seconds before a password reset
+    | token will be considered "throttled" and won't be re-issued.
     |
     */
 
     'passwords' => [
         'users' => [
             'provider' => 'users',
-            'table' => 'password_reset_tokens',
-            'expire' => 60,
-            'throttle' => 60,
+            'table' => 'password_reset_tokens', // Menggunakan tabel password_reset_tokens
+            'expire' => 5, // OTP berlaku 5 menit
+            'throttle' => 60, // Throttle 60 detik
         ],
     ],
 

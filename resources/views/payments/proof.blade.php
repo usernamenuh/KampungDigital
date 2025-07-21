@@ -17,84 +17,68 @@
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
                 <h4 class="text-md font-semibold text-gray-800 dark:text-white mb-3">Informasi Pembayaran</h4>
-                <dl class="space-y-2 text-gray-700 dark:text-gray-300">
-                    <div>
-                        <dt class="font-medium">Warga:</dt>
-                        <dd>{{ $kas->penduduk->nama_lengkap ?? 'N/A' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">RT/RW:</dt>
-                        <dd>RT {{ $kas->rt->no_rt ?? 'N/A' }} / RW {{ $kas->rt->rw->no_rw ?? 'N/A' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Periode Kas:</dt>
-                        <dd>Minggu {{ $kas->minggu_ke }}/{{ $kas->tahun }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Jumlah Tagihan:</dt>
-                        <dd>Rp {{ number_format($kas->jumlah, 0, ',', '.') }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Denda:</dt>
-                        <dd>Rp {{ number_format($kas->denda, 0, ',', '.') }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Total Dibayar:</dt>
-                        <dd class="font-bold text-green-600">Rp {{ number_format($kas->jumlah_dibayar, 0, ',', '.') }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Metode Pembayaran:</dt>
-                        <dd>{{ $kas->metode_bayar_formatted }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Status:</dt>
-                        <dd>
-                            @if($kas->status === 'menunggu_konfirmasi')
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                    <i class="fas fa-clock mr-1"></i> Menunggu Konfirmasi
-                                </span>
-                            @elseif($kas->status === 'lunas')
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                    <i class="fas fa-check-circle mr-1"></i> Lunas
-                                </span>
-                            @elseif($kas->status === 'ditolak')
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                                    <i class="fas fa-times-circle mr-1"></i> Ditolak
-                                </span>
-                            @else
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                                    {{ $kas->status_text }}
-                                </span>
-                            @endif
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Tanggal Bayar:</dt>
-                        <dd>{{ $kas->tanggal_bayar_formatted }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Waktu Unggah Bukti:</dt>
-                        <dd>{{ $kas->bukti_bayar_uploaded_at_formatted }}</dd>
-                    </div>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-gray-700 dark:text-gray-300">
+                    <dt class="font-medium">Warga:</dt>
+                    <dd>{{ $kas->penduduk->nama_lengkap ?? 'N/A' }}</dd>
+
+                    <dt class="font-medium">RT/RW:</dt>
+                    <dd>RT {{ $kas->rt->no_rt ?? 'N/A' }} / RW {{ $kas->rt->rw->no_rw ?? 'N/A' }}</dd>
+
+                    <dt class="font-medium">Periode Kas:</dt>
+                    <dd>Minggu {{ $kas->minggu_ke }}/{{ $kas->tahun }}</dd>
+
+                    <dt class="font-medium">Jumlah Tagihan:</dt>
+                    <dd>Rp {{ number_format($kas->jumlah, 0, ',', '.') }}</dd>
+
+                    <dt class="font-medium">Denda:</dt>
+                    <dd>Rp {{ number_format($kas->denda, 0, ',', '.') }}</dd>
+
+                    <dt class="font-medium">Total Dibayar:</dt>
+                    <dd class="font-bold text-green-600">Rp {{ number_format($kas->jumlah_dibayar, 0, ',', '.') }}</dd>
+
+                    <dt class="font-medium">Metode Pembayaran:</dt>
+                    <dd>{{ $kas->metode_bayar_formatted }}</dd>
+
+                    <dt class="font-medium">Status:</dt>
+                    <dd>
+                        @if($kas->status === 'menunggu_konfirmasi')
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-clock mr-1"></i> Menunggu Konfirmasi
+                            </span>
+                        @elseif($kas->status === 'lunas')
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                <i class="fas fa-check-circle mr-1"></i> Lunas
+                            </span>
+                        @elseif($kas->status === 'ditolak')
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                <i class="fas fa-times-circle mr-1"></i> Ditolak
+                            </span>
+                        @else
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                                {{ $kas->status_text }}
+                            </span>
+                        @endif
+                    </dd>
+
+                    <dt class="font-medium">Tanggal Bayar:</dt>
+                    <dd>{{ $kas->tanggal_bayar_formatted }}</dd>
+
+                    <dt class="font-medium">Waktu Unggah Bukti:</dt>
+                    <dd>{{ $kas->bukti_bayar_uploaded_at_formatted }}</dd>
+
                     @if($kas->status === 'lunas' || $kas->status === 'ditolak')
-                    <div>
-                        <dt class="font-medium">Dikonfirmasi Oleh:</dt>
-                        <dd>{{ $kas->confirmedBy->name ?? 'N/A' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Waktu Konfirmasi:</dt>
-                        <dd>{{ $kas->confirmed_at ? \Carbon\Carbon::parse($kas->confirmed_at)->format('d M Y H:i') : '-' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="font-medium">Catatan Konfirmasi:</dt>
-                        <dd>{{ $kas->confirmation_notes ?? '-' }}</dd>
-                    </div>
+                    <dt class="font-medium">Dikonfirmasi Oleh:</dt>
+                    <dd>{{ $kas->confirmedBy->name ?? 'N/A' }}</dd>
+
+                    <dt class="font-medium">Waktu Konfirmasi:</dt>
+                    <dd>{{ $kas->confirmed_at ? \Carbon\Carbon::parse($kas->confirmed_at)->format('d M Y H:i') : '-' }}</dd>
+
+                    <dt class="font-medium">Catatan Konfirmasi:</dt>
+                    <dd>{{ $kas->confirmation_notes ?? '-' }}</dd>
                     @endif
                     @if($kas->keterangan)
-                    <div>
-                        <dt class="font-medium">Keterangan:</dt>
-                        <dd>{{ $kas->keterangan }}</dd>
-                    </div>
+                    <dt class="font-medium">Keterangan:</dt>
+                    <dd>{{ $kas->keterangan }}</dd>
                     @endif
                 </dl>
             </div>
@@ -102,37 +86,18 @@
             <div>
                 <h4 class="text-md font-semibold text-gray-800 dark:text-white mb-3">Bukti Pembayaran</h4>
                 @if($kas->bukti_bayar_file)
-                    <div class="mb-4 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                        @php
-                            $fileExtension = pathinfo($kas->bukti_bayar_file, PATHINFO_EXTENSION);
-                        @endphp
-
-                        @if(in_array($fileExtension, ['jpg', 'jpeg', 'png', 'gif']))
-                            <img src="{{ asset('storage/' . $kas->bukti_bayar_file) }}" alt="Bukti Pembayaran" class="w-full h-auto object-cover max-h-96">
-                        @elseif($fileExtension === 'pdf')
-                            <div class="p-4 text-center text-gray-600 dark:text-gray-400">
-                                <i class="fas fa-file-pdf text-6xl text-red-500 mb-3"></i>
-                                <p>File PDF tersedia. Klik tombol di bawah untuk melihat atau mengunduh.</p>
-                            </div>
-                        @else
-                            <div class="p-4 text-center text-gray-600 dark:text-gray-400">
-                                <i class="fas fa-file text-6xl text-gray-500 mb-3"></i>
-                                <p>Tipe file tidak didukung untuk pratinjau. Silakan unduh.</p>
-                            </div>
-                        @endif
+                    <div class="p-12 text-center border border-dashed border-gray-300 dark:border-gray-600 rounded-lg mb-4">
+                        <i class="fas fa-file-alt text-gray-400 text-5xl mb-4"></i>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Bukti Pembayaran Tersedia</h3>
+                        <p class="text-gray-500 dark:text-gray-400">Klik tombol di bawah untuk mengunduh bukti pembayaran.</p>
                     </div>
-                    <div class="flex items-center space-x-2">
+                    <div class="flex items-center justify-center">
                         <a href="{{ route('payments.download.proof', $kas->id) }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                             <i class="fas fa-download w-4 h-4 mr-2"></i> Download Bukti
                         </a>
-                        @if(in_array($fileExtension, ['pdf']))
-                            <a href="{{ asset('storage/' . $kas->bukti_bayar_file) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
-                                <i class="fas fa-external-link-alt w-4 h-4 mr-2"></i> Lihat PDF
-                            </a>
-                        @endif
                     </div>
                     @if($kas->bukti_bayar_notes)
-                        <p class="text-gray-700 dark:text-gray-300 mt-4">
+                        <p class="text-gray-700 dark:text-gray-300 mt-4 text-center">
                             <span class="font-medium">Catatan Pembayar:</span> {{ $kas->bukti_bayar_notes }}
                         </p>
                     @endif

@@ -5,13 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Kas;
 use App\Models\Notifikasi;
 use Illuminate\Http\Request;
-use App\Models\PaymentInfo; // Pastikan ini diimpor jika digunakan
+use App\Models\PaymentInfo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule; // Pastikan ini diimpor
+use Illuminate\Validation\Rule;
 
 class KasPaymentController extends Controller
 {
@@ -66,27 +66,27 @@ class KasPaymentController extends Controller
         try {
             $filePath = null;
             if ($request->hasFile('bukti_bayar_file')) {
-                $filePath = $request->file('bukti_bayar_file')->store('public/bukti_pembayaran');
-                $filePath = str_replace('public/', 'storage/', $filePath);
+                $filePath = $request->file('bukti_bayar_file')->store('bukti_pembayaran', 'public');
             }
 
-            // Normalize payment method using the Kas model method
             $metodeBayar = Kas::normalizePaymentMethod($request->metode_bayar);
-
-            // Determine status based on payment method
             $status = ($metodeBayar === 'tunai') ? 'lunas' : 'menunggu_konfirmasi';
+
+            // Pastikan jumlah_dibayar dihitung dari nilai kas yang ada di database
+            // atau dari nilai yang baru saja di-set jika ini adalah entri baru.
+            // Menggunakan $kas->jumlah dan $kas->denda yang sudah ada di model.
+            $jumlahDibayar = $kas->jumlah + ($kas->denda ?? 0);
 
             $kas->update([
                 'status' => $status,
-                'tanggal_bayar' => Carbon::now(), // Selalu gunakan waktu saat ini
-                'jumlah_dibayar' => $kas->total_bayar, // Use total_bayar from Kas model
+                'tanggal_bayar' => Carbon::now(),
+                'jumlah_dibayar' => $jumlahDibayar, // Menggunakan variabel yang sudah dihitung
                 'metode_bayar' => $metodeBayar,
                 'bukti_bayar_file' => $filePath,
                 'bukti_bayar_notes' => $request->bukti_bayar_notes,
                 'bukti_bayar_uploaded_at' => Carbon::now(),
             ]);
 
-            // If cash payment, update RT saldo immediately and mark as confirmed
             if ($status === 'lunas') {
                 $kas->update([
                     'confirmed_by' => $user->id,
@@ -100,7 +100,6 @@ class KasPaymentController extends Controller
                     $rt->save();
                 }
             } else {
-                // Create notifications for non-cash payments
                 $this->createPaymentNotifications($kas);
             }
 
@@ -148,14 +147,12 @@ class KasPaymentController extends Controller
                 // No specific RT/RW filter for kades/admin
                 break;
             default:
-                // Should not happen due to middleware, but as a fallback
                 abort(403, 'Unauthorized role.');
         }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         } else {
-            // Default to showing pending, approved, and rejected payments
             $query->whereIn('status', ['menunggu_konfirmasi', 'lunas', 'ditolak']);
         }
 
@@ -164,14 +161,9 @@ class KasPaymentController extends Controller
         return view('payments.list', compact('payments'));
     }
 
-    /**
-     * Displays the payment proof page.
-     * This method now renders the view instead of downloading the file.
-     */
     public function showProof(Kas $kas)
     {
         $user = Auth::user();
-        // Authorization checks
         if (!in_array($user->role, ['rt', 'rw', 'kades', 'admin'])) {
             if ($user->role === 'masyarakat' && ($user->penduduk && $kas->penduduk_id !== $user->penduduk->id)) {
                 abort(403, 'Unauthorized action.');
@@ -189,18 +181,12 @@ class KasPaymentController extends Controller
             }
         }
 
-        // The view will handle displaying "no proof" message if bukti_bayar_file is null
         return view('payments.proof', compact('kas'));
     }
 
-    /**
-     * Downloads the payment proof file.
-     * This is a new method for the actual file download.
-     */
     public function downloadProof(Kas $kas)
     {
         $user = Auth::user();
-        // Authorization checks (same as showProof)
         if (!in_array($user->role, ['rt', 'rw', 'kades', 'admin'])) {
             if ($user->role === 'masyarakat' && ($user->penduduk && $kas->penduduk_id !== $user->penduduk->id)) {
                 abort(403, 'Unauthorized action.');
@@ -258,9 +244,13 @@ class KasPaymentController extends Controller
         DB::beginTransaction();
         try {
             if ($request->action === 'approve') {
+                // Calculate jumlah_dibayar before updating
+                $jumlahDibayar = $kas->jumlah + ($kas->denda ?? 0);
+
                 $kas->update([
                     'status' => 'lunas',
                     'tanggal_bayar' => $kas->tanggal_bayar ?? Carbon::now(),
+                    'jumlah_dibayar' => $jumlahDibayar, // Set jumlah_dibayar di sini
                     'confirmed_by' => $user->id,
                     'confirmed_at' => Carbon::now(),
                     'confirmation_notes' => $request->catatan_konfirmasi ?? 'Pembayaran dikonfirmasi.',
@@ -281,7 +271,7 @@ class KasPaymentController extends Controller
                 $message = 'Pembayaran kas Anda untuk minggu ke-' . $kas->minggu_ke . ' tahun ' . $kas->tahun . ' ditolak. Silakan periksa catatan konfirmasi.';
             }
 
-            if ($kas->penduduk && $kas->penduduk->user) { // Pastikan user ada sebelum membuat notifikasi
+            if ($kas->penduduk && $kas->penduduk->user) {
                 Notifikasi::create([
                     'user_id' => $kas->penduduk->user->id,
                     'judul' => 'Status Pembayaran Kas',
@@ -302,9 +292,6 @@ class KasPaymentController extends Controller
         }
     }
 
-    /**
-     * Helper method to create payment notifications
-     */
     private function createPaymentNotifications(Kas $kas)
     {
         $rtUser = $kas->rt->ketuaRt->user ?? null;

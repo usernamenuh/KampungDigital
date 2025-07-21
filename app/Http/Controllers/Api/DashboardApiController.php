@@ -554,6 +554,7 @@ class DashboardApiController extends Controller
                     'tanggal_jatuh_tempo' => $bill->tanggal_jatuh_tempo ? $bill->tanggal_jatuh_tempo->format('d F Y') : '-',
                     'payment_url' => route('kas.payment.form', $bill->id),
                     'is_overdue' => $bill->status === 'belum_bayar' && $bill->tanggal_jatuh_tempo && $bill->tanggal_jatuh_tempo->isPast(),
+                    'rejection_reason' => $bill->rejection_reason ?? null, // Add this line
                 ];
             }
 
@@ -840,8 +841,7 @@ class DashboardApiController extends Controller
 
             $kasLunas = $kasQuery->clone()->where('status', 'lunas')->count();
             $kasBelumBayar = $kasQuery->clone()->where('status', 'belum_bayar')->count();
-            $kasTerlambat = $kasQuery->clone()->where('status', 'belum_bayar')
-                                    ->where('tanggal_jatuh_tempo', '<', Carbon::now())->count();
+            $kasTerlambat = $kasQuery->clone()->where('status', 'terlambat')->count();
             $kasMenungguKonfirmasi = $kasQuery->clone()->where('status', 'menunggu_konfirmasi')->count();
             $kasDitolak = $kasQuery->clone()->where('status', 'ditolak')->count();
             $totalKasAnda = $kasQuery->clone()->where('status', 'lunas')->sum('jumlah') ?? 0;
@@ -1258,6 +1258,104 @@ class DashboardApiController extends Controller
             return is_writable(storage_path()) ? 'ok' : 'error';
         } catch (\Exception $e) {
             return 'error';
+        }
+    }
+
+    public function getRtDashboardStats(Request $request)
+    {
+        $user = Auth::user();
+
+        // Ensure only RT role can access this endpoint for their specific RT data
+        if ($user->role !== 'rt') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses tidak diizinkan. Hanya pengguna RT yang dapat melihat dashboard ini.'
+            ], 403);
+        }
+
+        try {
+            // Find the RT associated with the logged-in user (assuming ketua_rt_id in Rts table links to Penduduk.id)
+            $penduduk = Penduduk::where('user_id', $user->id)->first();
+            if (!$penduduk) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data penduduk tidak ditemukan untuk pengguna ini.'
+                ], 404);
+            }
+
+            $rt = Rt::where('ketua_rt_id', $penduduk->id)->first();
+
+            if (!$rt) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data RT tidak ditemukan untuk pengguna ini. Pastikan Anda terdaftar sebagai Ketua RT.'
+                ], 404);
+            }
+
+            $rtId = $rt->id;
+
+            // Total KK in RT
+            $totalKk = Kk::where('rt_id', $rtId)->count();
+
+            // Total Penduduk in RT
+            $totalPenduduk = Penduduk::where('rt_id', $rtId)->count();
+
+            // Kas Lunas (this year)
+            $currentYear = date('Y');
+            $kasLunas = Kas::where('rt_id', $rtId)
+                            ->where('status', 'lunas')
+                            ->whereYear('tanggal_bayar', $currentYear)
+                            ->count();
+
+            // Kas Belum Bayar (this year)
+            $kasBelumBayar = Kas::where('rt_id', $rtId)
+                                ->where('status', 'belum_bayar')
+                                ->whereYear('tanggal_tagihan', $currentYear) // Assuming tanggal_tagihan for pending
+                                ->count();
+
+            // Total Saldo RT
+            $totalSaldoRt = $rt->saldo ?? 0;
+
+            // Kas Terkumpul (total collected kas including denda)
+            $kasTerkumpulTotal = Kas::where('rt_id', $rtId)
+                ->where('status', 'lunas')
+                ->sum(DB::raw('jumlah + COALESCE(denda, 0)')) ?? 0;
+
+            // Already transferred amount from kas to saldo
+            $alreadyTransferred = SaldoTransaction::where('rt_id', $rtId)
+                ->where('transaction_type', 'kas_transfer')
+                ->sum('amount') ?? 0;
+
+            // Kas available for transfer (collected but not yet transferred)
+            $kasAvailableForTransfer = $kasTerkumpulTotal - $alreadyTransferred;
+
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data dashboard RT berhasil dimuat.',
+                'data' => [
+                    'rtNumber' => $rt->no_rt,
+                    'rtId' => $rt->id,
+                    'totalKk' => $totalKk,
+                    'totalPenduduk' => $totalPenduduk,
+                    'kasLunas' => $kasLunas,
+                    'kasBelumBayar' => $kasBelumBayar,
+                    'totalSaldoRt' => $totalSaldoRt,
+                    'kasTerkumpul' => $kasTerkumpulTotal, // This is the total collected, not necessarily available for transfer
+                    'kasAvailableForTransfer' => $kasAvailableForTransfer, // This is the amount ready to be transferred
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching RT dashboard stats', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat data dashboard: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

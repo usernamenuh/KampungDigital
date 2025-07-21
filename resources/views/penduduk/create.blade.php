@@ -131,7 +131,7 @@
 
                         <div>
                             <label for="tanggal_lahir" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal Lahir <span class="text-red-500">*</span></label>
-                            <input type="date" id="tanggal_lahir" name="tanggal_lahir" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('tanggal_lahir') border-red-500 @enderror bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" value="{{ old('tanggal_lahir') }}" required>
+                            <input type="date" id="tanggal_lahir" name="tanggal_lahir" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('tanggal_lahir') border-red-500 @enderror bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" value="{{ old('tanggal_lahir', date('Y-m-d')) }}" required>
                             @error('tanggal_lahir')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -328,6 +328,14 @@
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
+
+                        <div class="md:col-span-2">
+                            <label for="keterangan" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Keterangan</label>
+                            <textarea id="keterangan" name="keterangan" rows="3" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('keterangan') border-red-500 @enderror bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white">{{ old('keterangan') }}</textarea>
+                            @error('keterangan')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
                     </div>
 
                     <div class="flex justify-between mt-6">
@@ -400,13 +408,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fields.forEach(fieldName => {
             const field = document.getElementById(fieldName);
-            if (!field.value.trim()) {
+            if (field && !field.value.trim()) { // Check if field exists before accessing value
                 field.classList.add('border-red-500');
                 isValid = false;
-            } else {
+            } else if (field) {
                 field.classList.remove('border-red-500');
             }
         });
+        
+        // Additional validation for step 2
+        if (step === 2) {
+            if (!checkKepalaKeluargaValidation()) {
+                isValid = false;
+            }
+        }
         
         return isValid;
     }
@@ -417,24 +432,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const hubunganSelect = document.getElementById('hubungan_keluarga');
         const warningDiv = document.getElementById('kepala-keluarga-warning');
         
-        if (kkSelect.value && hubunganSelect.value === 'Kepala Keluarga') {
-            const selectedOption = kkSelect.options[kkSelect.selectedIndex];
-            const hasKepala = selectedOption.getAttribute('data-has-kepala') === 'true';
-            
-            if (hasKepala) {
-                warningDiv.classList.remove('hidden');
-                hubunganSelect.classList.add('border-red-500');
-                return false;
+        if (kkSelect && hubunganSelect && warningDiv) { // Ensure elements exist
+            if (hubunganSelect.value === 'Kepala Keluarga') {
+                const selectedOption = kkSelect.options[kkSelect.selectedIndex];
+                const hasKepala = selectedOption.getAttribute('data-has-kepala') === 'true';
+                
+                if (hasKepala) {
+                    warningDiv.classList.remove('hidden');
+                    hubunganSelect.classList.add('border-red-500');
+                    return false;
+                } else {
+                    warningDiv.classList.add('hidden');
+                    hubunganSelect.classList.remove('border-red-500');
+                    return true;
+                }
             } else {
                 warningDiv.classList.add('hidden');
                 hubunganSelect.classList.remove('border-red-500');
                 return true;
             }
-        } else {
-            warningDiv.classList.add('hidden');
-            hubunganSelect.classList.remove('border-red-500');
-            return true;
         }
+        return true; // Default to true if elements not found
     }
     
     // Event listeners
@@ -442,15 +460,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (validateStep(1)) {
             showStep(2);
         } else {
-            alert('Mohon lengkapi semua field yang wajib diisi');
+            alert('Mohon lengkapi semua field yang wajib diisi pada Data Pribadi.');
         }
     });
     
     document.getElementById('next-step-2').addEventListener('click', function() {
-        if (validateStep(2) && checkKepalaKeluargaValidation()) {
+        if (validateStep(2)) { // checkKepalaKeluargaValidation is now part of validateStep(2)
             showStep(3);
         } else {
-            alert('Mohon lengkapi semua field yang wajib diisi dan periksa validasi');
+            alert('Mohon lengkapi semua field yang wajib diisi dan periksa validasi pada Data Keluarga.');
         }
     });
     
@@ -466,13 +484,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('kk_id').addEventListener('change', checkKepalaKeluargaValidation);
     document.getElementById('hubungan_keluarga').addEventListener('change', checkKepalaKeluargaValidation);
     
-    // File upload preview
+    // File upload preview (basic console log, actual preview needs more complex JS)
     document.getElementById('foto').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                console.log('File selected:', file.name);
+                console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+                // You can add image preview logic here if needed
+                // For example: document.getElementById('image-preview').src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -485,6 +505,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (successAlert) successAlert.remove();
         if (errorAlert) errorAlert.remove();
     }, 5000);
+
+    // Initial validation check if old input exists (for server-side validation errors)
+    @if($errors->any())
+        document.addEventListener('DOMContentLoaded', function() {
+            // Determine which step to show based on where the error occurred
+            const errorFields = {!! json_encode($errors->keys()) !!};
+            let stepToShow = 1;
+            if (errorFields.some(field => ['kk_id', 'hubungan_keluarga', 'status_perkawinan', 'nama_ayah', 'nama_ibu'].includes(field))) {
+                stepToShow = 2;
+            } else if (errorFields.some(field => ['pendidikan', 'pekerjaan', 'kewarganegaraan', 'user_id', 'foto', 'keterangan'].includes(field))) {
+                stepToShow = 3;
+            }
+            showStep(stepToShow);
+            checkKepalaKeluargaValidation(); // Re-run validation for step 2 if it's shown
+        });
+    @endif
 });
 </script>
 @endsection

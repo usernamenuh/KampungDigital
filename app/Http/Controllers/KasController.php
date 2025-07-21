@@ -659,7 +659,7 @@ class KasController extends Controller
             'tanggal_bayar' => 'nullable|date',
             'metode_bayar' => 'nullable|string|max:50',
             'keterangan' => 'nullable|string|max:500',
-            'bukti_bayar' => 'nullable|string|max:1000',
+            'bukti_bayar_file' => 'nullable|string|max:1000',
             'rejection_reason' => 'nullable|string|max:500', // Added for rejection reason
         ]);
 
@@ -679,13 +679,14 @@ class KasController extends Controller
                 'tahun' => $request->tahun,
                 'tanggal_jatuh_tempo' => $request->tanggal_jatuh_tempo,
                 'keterangan' => $request->keterangan,
-                'bukti_bayar_file' => $request->bukti_bayar,
+                'bukti_bayar_file' => $request->bukti_bayar_file, // Use bukti_bayar_file
+                'rejection_reason' => $request->rejection_reason, // Save rejection reason
             ];
 
             // Handle status changes with proper saldo management
             if ($request->status === 'lunas' && $previousStatus !== 'lunas') {
                 // Changing to lunas - use markAsLunas method
-                $kas->update($updateData);
+                $kas->update($updateData); // Update other fields first
                 $kas->markAsLunas($user->id, "Status diubah menjadi lunas oleh {$user->name}");
                 
                 if ($request->metode_bayar) {
@@ -700,6 +701,14 @@ class KasController extends Controller
                 $updateData['status'] = $request->status;
                 $updateData['tanggal_bayar'] = null;
                 $updateData['metode_bayar'] = null;
+                $updateData['jumlah_dibayar'] = null;
+                $updateData['confirmed_by'] = null;
+                $updateData['confirmed_at'] = null;
+                $updateData['confirmation_notes'] = null;
+                // Keep rejection_reason if status is ditolak, otherwise clear
+                if ($request->status !== 'ditolak') {
+                    $updateData['rejection_reason'] = null;
+                }
                 $kas->update($updateData);
                 
             } else {
@@ -709,9 +718,18 @@ class KasController extends Controller
                 if ($request->status === 'lunas') {
                     $updateData['tanggal_bayar'] = $request->tanggal_bayar ?: now();
                     $updateData['metode_bayar'] = $request->metode_bayar;
+                    $updateData['jumlah_dibayar'] = $kas->total_bayar; // Ensure jumlah_dibayar is set
+                    $updateData['rejection_reason'] = null; // Clear rejection reason if manually set to lunas
+                } elseif ($request->status === 'ditolak') {
+                    // Keep rejection_reason as provided in request
+                    $updateData['tanggal_bayar'] = null;
+                    $updateData['metode_bayar'] = null;
+                    $updateData['jumlah_dibayar'] = null;
                 } else {
                     $updateData['tanggal_bayar'] = null;
                     $updateData['metode_bayar'] = null;
+                    $updateData['jumlah_dibayar'] = null;
+                    $updateData['rejection_reason'] = null; // Clear rejection reason for other statuses
                 }
                 
                 $kas->update($updateData);
@@ -732,7 +750,7 @@ class KasController extends Controller
                             'tanggal_bayar' => $kas->tanggal_bayar,
                         ])
                     ]);
-                } elseif ($request->status === 'ditolak') {
+                } elseif ($request->status === 'ditolak' && $previousStatus !== 'ditolak') { // Only send if status actually changed to ditolak
                     $rejectionMessage = "Pembayaran kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " ditolak.";
                     if ($request->rejection_reason) {
                         $rejectionMessage .= " Alasan: {$request->rejection_reason}.";
@@ -925,10 +943,18 @@ class KasController extends Controller
         try {
             DB::beginTransaction();
 
-            // Update kas status to ditolak but keep it as menunggu_konfirmasi for re-upload
+            // Update kas status to ditolak and store rejection reason
             $kas->update([
                 'status' => 'ditolak',
-                'keterangan' => ($kas->keterangan ? $kas->keterangan . " | " : "") . "Ditolak: " . $request->rejection_reason,
+                'rejection_reason' => $request->rejection_reason, // Store in dedicated column
+                'tanggal_bayar' => null, // Clear payment details
+                'metode_bayar' => null,
+                'bukti_bayar_file' => null,
+                'bukti_bayar_notes' => null,
+                'jumlah_dibayar' => null,
+                'confirmed_by' => null,
+                'confirmed_at' => null,
+                'confirmation_notes' => null,
             ]);
 
             // Send notification to resident - dengan null check
@@ -1011,6 +1037,7 @@ class KasController extends Controller
                 $kas->update([
                     'status' => 'menunggu_konfirmasi',
                     'keterangan' => ($kas->keterangan ? $kas->keterangan . " | " : "") . "Diajukan ulang oleh warga pada " . now()->format('d/m/Y H:i'),
+                    'rejection_reason' => null, // Clear rejection reason when re-submitting
                 ]);
 
                 // Send notification to RT - find RT ketua
@@ -1094,6 +1121,7 @@ class KasController extends Controller
 
                 $kas->update([
                     'keterangan' => ($kas->keterangan ? $kas->keterangan . " | " : "") . "Dikonfirmasi ulang: " . ($request->catatan_konfirmasi ?? 'Tidak ada catatan'),
+                    'rejection_reason' => null, // Clear rejection reason when confirmed
                 ]);
 
                 // Send notification to resident - dengan null check
@@ -1140,6 +1168,25 @@ class KasController extends Controller
         
             return redirect()->back()->with('error', 'Terjadi kesalahan saat konfirmasi ulang pembayaran: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Method to display the payment form for a specific Kas.
+     * This method is new and handles loading the Kas model and payment info.
+     */
+    public function paymentForm(Kas $kas)
+    {
+        // Ensure overdue status is updated and denda is calculated
+        $kas->updateOverdueStatus();
+        // Refresh the model to ensure the latest denda value is loaded from the database
+        $kas->refresh();
+
+        // Get payment info for the RT associated with this Kas
+        $paymentInfo = PaymentInfo::where('rt_id', $kas->rt_id)
+                                ->where('is_active', true)
+                                ->first();
+
+        return view('kas.payment-form', compact('kas', 'paymentInfo'));
     }
 
     /**

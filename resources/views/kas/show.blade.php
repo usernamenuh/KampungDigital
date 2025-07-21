@@ -4,488 +4,314 @@
 
 @push('styles')
 <style>
-.animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px; /* full rounded */
+        font-size: 0.75rem; /* text-xs */
+        font-weight: 600; /* font-semibold */
+        display: inline-block;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    .status-belum_bayar {
+        background-color: #fef3c7; /* yellow-100 */
+        color: #b45309; /* yellow-800 */
     }
-}
-
-.payment-timeline {
-    position: relative;
-}
-
-.payment-timeline::before {
-    content: '';
-    position: absolute;
-    left: 1rem;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: linear-gradient(to bottom, #3b82f6, #10b981);
-}
-
-.timeline-item {
-    position: relative;
-    padding-left: 3rem;
-    margin-bottom: 1.5rem;
-}
-
-.timeline-dot {
-    position: absolute;
-    left: 0.5rem;
-    top: 0.5rem;
-    width: 1rem;
-    height: 1rem;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px #3b82f6;
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-    .mobile-text-sm { font-size: 0.75rem; }
-    .mobile-text-xs { font-size: 0.6875rem; }
-    .mobile-p-3 { padding: 0.75rem; }
-    .mobile-p-4 { padding: 1rem; }
-    .mobile-gap-3 { gap: 0.75rem; }
-    .mobile-space-y-3 > * + * { margin-top: 0.75rem; }
-    
-    .timeline-item {
-        padding-left: 2rem;
-        margin-bottom: 1rem;
+    .dark .status-belum_bayar {
+        background-color: #422006; /* yellow-900 */
+        color: #fcd34d; /* yellow-300 */
     }
-    
-    .payment-timeline::before {
-        left: 0.5rem;
+    .status-lunas {
+        background-color: #d1fae5; /* green-100 */
+        color: #065f46; /* green-800 */
     }
-    
-    .timeline-dot {
-        left: 0rem;
-        width: 0.75rem;
-        height: 0.75rem;
+    .dark .status-lunas {
+        background-color: #064e3b; /* green-900 */
+        color: #a7f3d0; /* green-300 */
     }
-}
+    .status-menunggu_konfirmasi {
+        background-color: #bfdbfe; /* blue-200 */
+        color: #1e40af; /* blue-800 */
+    }
+    .dark .status-menunggu_konfirmasi {
+        background-color: #1e3a8a; /* blue-900 */
+        color: #93c5fd; /* blue-300 */
+    }
+    .status-terlambat {
+        background-color: #fee2e2; /* red-100 */
+        color: #991b1b; /* red-800 */
+    }
+    .dark .status-terlambat {
+        background-color: #7f1d1d; /* red-900 */
+        color: #fca5a5; /* red-300 */
+    }
+    .status-ditolak {
+        background-color: #fecaca; /* red-200 */
+        color: #b91c1c; /* red-800 */
+    }
+    .dark .status-ditolak {
+        background-color: #991b1b; /* red-900 */
+        color: #f87171; /* red-400 */
+    }
 </style>
 @endpush
 
 @section('content')
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 md:py-6 animate-fade-in">
-<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-    <!-- Header Section -->
-    <div class="mb-6 md:mb-8">
-        <div class="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-6">
-                <div class="flex items-center space-x-3 md:space-x-4">
-                    <div class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
-                        <i data-lucide="receipt" class="w-5 h-5 md:w-6 md:h-6 text-white"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center space-x-2 text-xs md:text-sm text-gray-500 dark:text-gray-400 mb-1">
-                            <a href="{{ route('kas.index') }}" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200">Daftar Kas</a>
-                            <i data-lucide="chevron-right" class="w-3 h-3 md:w-4 md:h-4"></i>
-                            <span>Detail Kas</span>
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-6 animate-fade-in" x-data="{ openConfirmModal: false, openRejectModal: false, kasId: {{ $kas->id }} }" x-init="if (typeof lucide !== 'undefined') { lucide.createIcons(); }">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="clipboard-list" class="w-6 h-6 text-white"></i>
                         </div>
-                        <h1 class="text-lg md:text-2xl font-bold text-gray-900 dark:text-white">Detail Kas Minggu ke-{{ $kas->minggu_ke }}</h1>
-                        <p class="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
-                            @if($kas->penduduk)
-                                {{ $kas->penduduk->nama_lengkap }} - {{ $kas->tahun }}
-                            @else
-                                <span class="text-red-500">Data penduduk tidak tersedia - {{ $kas->tahun }}</span>
-                            @endif
-                        </p>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Detail Kas</h1>
+                            <p class="text-gray-600 dark:text-gray-400 mt-1">Informasi lengkap mengenai tagihan kas.</p>
+                        </div>
                     </div>
-                </div>
-                <div class="flex items-center space-x-2 md:space-x-3 w-full lg:w-auto">
-                    @switch($kas->status)
-                        @case('lunas')
-                            <span class="inline-flex items-center px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-medium bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800">
-                                <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                Lunas
-                            </span>
-                            @break
-                        @case('belum_bayar')
-                            <span class="inline-flex items-center px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-medium bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-800">
-                                <div class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-                                Belum Bayar
-                            </span>
-                            @break
-                        @case('terlambat')
-                            <span class="inline-flex items-center px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-medium bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800">
-                                <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-                                Terlambat
-                            </span>
-                            @break
-                        @case('menunggu_konfirmasi')
-                            <span class="inline-flex items-center px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800">
-                                <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                                Menunggu Konfirmasi
-                            </span>
-                            @break
-                        @case('ditolak')
-                            <span class="inline-flex items-center px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-medium bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800">
-                                <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-                                Ditolak
-                            </span>
-                            @break
-                    @endswitch
                     <a href="{{ route('kas.index') }}" 
-                       class="inline-flex items-center px-3 md:px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg md:rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 shadow-sm hover:shadow-md text-xs md:text-sm">
-                        <i data-lucide="arrow-left" class="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"></i>
+                       class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-xl transition-all duration-200 shadow-md dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200">
+                        <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
                         Kembali
                     </a>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
-        <!-- Main Content -->
-        <div class="lg:col-span-2 space-y-6 md:space-y-8">
-            <!-- Kas Details Card -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="px-4 md:px-6 py-3 md:py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
-                    <div class="flex items-center space-x-2 md:space-x-3">
-                        <div class="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-md md:rounded-lg flex items-center justify-center">
-                            <i data-lucide="user" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-base md:text-lg font-bold text-gray-900 dark:text-white">Informasi Warga</h2>
-                            <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Detail penduduk dan kas</p>
-                        </div>
-                    </div>
+        <!-- Kas Details Card -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Informasi Kas</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700 dark:text-gray-300">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Penduduk:</p>
+                    <p class="text-base font-semibold">{{ $kas->penduduk->nama_lengkap ?? 'N/A' }}</p>
                 </div>
-                <div class="p-4 md:p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                        <!-- Left Column -->
-                        <div class="space-y-4 md:space-y-6">
-                            <div class="flex items-center space-x-3 md:space-x-4">
-                                <div class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-lg md:text-xl">
-                                    @if($kas->penduduk)
-                                        {{ substr($kas->penduduk->nama_lengkap, 0, 1) }}
-                                    @else
-                                        ?
-                                    @endif
-                                </div>
-                                <div>
-                                    <h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
-                                        @if($kas->penduduk)
-                                            {{ $kas->penduduk->nama_lengkap }}
-                                        @else
-                                            <span class="text-red-500">Data tidak tersedia</span>
-                                        @endif
-                                    </h3>
-                                    <p class="text-sm md:text-base text-gray-600 dark:text-gray-400">
-                                        NIK: 
-                                        @if($kas->penduduk)
-                                            {{ $kas->penduduk->nik }}
-                                        @else
-                                            <span class="text-red-500">-</span>
-                                        @endif
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <div class="space-y-3 md:space-y-4">
-                                <div class="flex items-center justify-between py-2 md:py-3 border-b border-gray-100 dark:border-gray-700">
-                                    <span class="text-sm md:text-base text-gray-600 dark:text-gray-400 font-medium">RT/RW</span>
-                                    <span class="text-sm md:text-base text-gray-900 dark:text-white font-semibold">
-                                        @if($kas->rt)
-                                            RT {{ $kas->rt->no_rt ?? $kas->rt->nama_rt }} / RW {{ $kas->rt->rw->no_rw ?? $kas->rt->rw->nama_rw }}
-                                        @else
-                                            <span class="text-red-500">Data tidak tersedia</span>
-                                        @endif
-                                    </span>
-                                </div>
-                                <div class="flex items-center justify-between py-2 md:py-3 border-b border-gray-100 dark:border-gray-700">
-                                    <span class="text-sm md:text-base text-gray-600 dark:text-gray-400 font-medium">Periode</span>
-                                    <span class="text-sm md:text-base text-gray-900 dark:text-white font-semibold">
-                                        Minggu ke-{{ $kas->minggu_ke }} Tahun {{ $kas->tahun }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Right Column -->
-                        <div class="space-y-4 md:space-y-6">
-                            <div class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg md:rounded-xl p-4 md:p-6 border border-green-200 dark:border-green-800">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm md:text-base text-green-700 dark:text-green-300 font-medium">Jumlah Kas</span>
-                                    <i data-lucide="banknote" class="w-4 h-4 md:w-5 md:h-5 text-green-600"></i>
-                                </div>
-                                <div class="text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400">
-                                    Rp {{ number_format((int)$kas->jumlah, 0, ',', '.') }}
-                                </div>
-                            </div>
-                            
-                            <div class="space-y-3 md:space-y-4">
-                                <div class="flex items-center justify-between py-2 md:py-3 border-b border-gray-100 dark:border-gray-700">
-                                    <span class="text-sm md:text-base text-gray-600 dark:text-gray-400 font-medium">Jatuh Tempo</span>
-                                    <span class="text-sm md:text-base text-gray-900 dark:text-white font-semibold {{ $kas->tanggal_jatuh_tempo && $kas->tanggal_jatuh_tempo->isPast() && $kas->status !== 'lunas' ? 'text-red-600' : '' }}">
-                                        {{ $kas->tanggal_jatuh_tempo ? $kas->tanggal_jatuh_tempo->format('d/m/Y') : '-' }}
-                                        @if($kas->tanggal_jatuh_tempo && $kas->tanggal_jatuh_tempo->isPast() && $kas->status !== 'lunas')
-                                            <small class="text-red-500 ml-1">(Terlambat)</small>
-                                        @endif
-                                    </span>
-                                </div>
-                                
-                                @if($kas->status === 'lunas')
-                                <div class="flex items-center justify-between py-2 md:py-3 border-b border-gray-100 dark:border-gray-700">
-                                    <span class="text-sm md:text-base text-gray-600 dark:text-gray-400 font-medium">Tanggal Bayar</span>
-                                    <span class="text-sm md:text-base text-green-600 dark:text-green-400 font-semibold">
-                                        {{ $kas->tanggal_bayar ? $kas->tanggal_bayar->format('d/m/Y H:i') : '-' }}
-                                    </span>
-                                </div>
-                                <div class="flex items-center justify-between py-2 md:py-3">
-                                    <span class="text-sm md:text-base text-gray-600 dark:text-gray-400 font-medium">Metode Bayar</span>
-                                    <span class="text-sm md:text-base text-gray-900 dark:text-white font-semibold">
-                                        {{ $kas->metode_bayar ?? '-' }}
-                                    </span>
-                                </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    
-                    @if($kas->keterangan)
-                    <div class="mt-6 md:mt-8 p-3 md:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg md:rounded-xl">
-                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center text-sm md:text-base">
-                            <i data-lucide="file-text" class="w-3 h-3 md:w-4 md:h-4 mr-2"></i>
-                            Keterangan
-                        </h4>
-                        <p class="text-sm md:text-base text-gray-600 dark:text-gray-400">{{ $kas->keterangan }}</p>
-                    </div>
-                    @endif
-
-                    @if($kas->bukti_bayar)
-                    <div class="mt-6 md:mt-8 p-3 md:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg md:rounded-xl">
-                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center text-sm md:text-base">
-                            <i data-lucide="image" class="w-3 h-3 md:w-4 md:h-4 mr-2"></i>
-                            Bukti Pembayaran
-                        </h4>
-                        <p class="text-sm md:text-base text-gray-600 dark:text-gray-400">{{ $kas->bukti_bayar }}</p>
-                    </div>
-                    @endif
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">RT/RW:</p>
+                    <p class="text-base font-semibold">RT {{ $kas->rt->no_rt ?? 'N/A' }} / RW {{ $kas->rt->rw->no_rw ?? 'N/A' }}</p>
                 </div>
-                
-                <!-- Action Footer -->
-                <div class="px-4 md:px-6 py-3 md:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                    <div class="flex flex-col sm:flex-row justify-between items-center gap-3 md:gap-4">
-                        <div class="text-xs md:text-sm text-gray-600 dark:text-gray-400">
-                            <i data-lucide="clock" class="w-3 h-3 md:w-4 md:h-4 inline mr-1"></i>
-                            Dibuat: {{ $kas->created_at->format('d/m/Y H:i') }}
-                        </div>
-                        <div class="flex items-center space-x-2 md:space-x-3">
-                            @if(in_array(Auth::user()->role, ['admin', 'kades', 'rw', 'rt']))
-                                <a href="{{ route('kas.edit', $kas) }}"
-                                   class="inline-flex items-center px-3 md:px-4 py-2 text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg transition-all duration-200 text-xs md:text-sm">
-                                    <i data-lucide="edit" class="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"></i>
-                                    Edit
-                                </a>
-                            @endif
-                            
-                            @if(in_array(Auth::user()->role, ['admin', 'kades', 'rw', 'rt']) && $kas->status === 'menunggu_konfirmasi')
-                                <form action="{{ route('kas.confirm', $kas) }}" method="POST" style="display: inline;" onsubmit="return confirm('Apakah Anda yakin ingin menyetujui pembayaran ini?')">
-                                    @csrf
-                                    <input type="hidden" name="action" value="approve">
-                                    <button type="submit" class="inline-flex items-center px-3 md:px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl text-xs md:text-sm">
-                                        <i data-lucide="check" class="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"></i>
-                                        Setujui
-                                    </button>
-                                </form>
-                                
-                                <form action="{{ route('kas.confirm', $kas) }}" method="POST" style="display: inline;" onsubmit="return confirm('Apakah Anda yakin ingin menolak pembayaran ini?')">
-                                    @csrf
-                                    <input type="hidden" name="action" value="reject">
-                                    <button type="submit" class="inline-flex items-center px-3 md:px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl text-xs md:text-sm">
-                                        <i data-lucide="x" class="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"></i>
-                                        Tolak
-                                    </button>
-                                </form>
-                            @endif
-                        </div>
-                    </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Minggu/Tahun:</p>
+                    <p class="text-base font-semibold">Minggu ke-{{ $kas->minggu_ke }} / {{ $kas->tahun }}</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Sidebar -->
-        <div class="lg:col-span-1">
-            <!-- Status Card -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6 mb-4 md:mb-6">
-                <div class="flex items-center space-x-2 md:space-x-3 mb-3 md:mb-4">
-                    <div class="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-md md:rounded-lg flex items-center justify-center">
-                        <i data-lucide="info" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
-                    </div>
-                    <h3 class="text-base md:text-lg font-bold text-gray-900 dark:text-white">Status Pembayaran</h3>
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jumlah Tagihan:</p>
+                    <p class="text-base font-semibold text-blue-600 dark:text-blue-400">{{ $kas->formatted_amount }}</p>
                 </div>
-                
-                @if($kas->status === 'lunas')
-                    <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg md:rounded-xl p-3 md:p-4">
-                        <div class="flex items-center">
-                            <i data-lucide="check-circle" class="w-5 h-5 md:w-6 md:h-6 text-green-600 mr-3"></i>
-                            <div>
-                                <h4 class="font-semibold text-green-800 dark:text-green-200 text-sm md:text-base">Kas Sudah Lunas</h4>
-                                <p class="text-xs md:text-sm text-green-600 dark:text-green-300 mt-1">
-                                    Dibayar pada {{ $kas->tanggal_bayar ? $kas->tanggal_bayar->format('d/m/Y H:i') : '-' }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                @elseif($kas->tanggal_jatuh_tempo && $kas->tanggal_jatuh_tempo->isPast() && $kas->status !== 'lunas')
-                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg md:rounded-xl p-3 md:p-4">
-                        <div class="flex items-center">
-                            <i data-lucide="alert-triangle" class="w-5 h-5 md:w-6 md:h-6 text-red-600 mr-3"></i>
-                            <div>
-                                <h4 class="font-semibold text-red-800 dark:text-red-200 text-sm md:text-base">Kas Terlambat</h4>
-                                <p class="text-xs md:text-sm text-red-600 dark:text-red-300 mt-1">
-                                    Jatuh tempo: {{ $kas->tanggal_jatuh_tempo->format('d/m/Y') }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                @elseif($kas->status === 'menunggu_konfirmasi')
-                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg md:rounded-xl p-3 md:p-4">
-                        <div class="flex items-center">
-                            <i data-lucide="clock" class="w-5 h-5 md:w-6 md:h-6 text-blue-600 mr-3"></i>
-                            <div>
-                                <h4 class="font-semibold text-blue-800 dark:text-blue-200 text-sm md:text-base">Menunggu Konfirmasi</h4>
-                                <p class="text-xs md:text-sm text-blue-600 dark:text-blue-300 mt-1">
-                                    Menunggu verifikasi pembayaran.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                @elseif($kas->status === 'ditolak')
-                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg md:rounded-xl p-3 md:p-4">
-                        <div class="flex items-center">
-                            <i data-lucide="x-circle" class="w-5 h-5 md:w-6 md:h-6 text-red-600 mr-3"></i>
-                            <div>
-                                <h4 class="font-semibold text-red-800 dark:text-red-200 text-sm md:text-base">Pembayaran Ditolak</h4>
-                                <p class="text-xs md:text-sm text-red-600 dark:text-red-300 mt-1">
-                                    Bukti pembayaran tidak valid atau tidak sesuai.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                @else
-                    <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg md:rounded-xl p-3 md:p-4">
-                        <div class="flex items-center">
-                            <i data-lucide="clock" class="w-5 h-5 md:w-6 md:h-6 text-yellow-600 mr-3"></i>
-                            <div>
-                                <h4 class="font-semibold text-yellow-800 dark:text-yellow-200 text-sm md:text-base">Belum Dibayar</h4>
-                                <p class="text-xs md:text-sm text-yellow-600 dark:text-yellow-300 mt-1">
-                                    Jatuh tempo: {{ $kas->tanggal_jatuh_tempo ? $kas->tanggal_jatuh_tempo->format('d/m/Y') : '-' }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                @if($kas->denda > 0)
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Denda:</p>
+                    <p class="text-base font-semibold text-red-600 dark:text-red-400">{{ $kas->formatted_denda }}</p>
+                </div>
+                @endif
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Pembayaran:</p>
+                    <p class="text-lg font-bold text-green-600 dark:text-green-400">{{ $kas->formatted_total_bayar }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jatuh Tempo:</p>
+                    <p class="text-base font-semibold">{{ $kas->tanggal_jatuh_tempo_formatted }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Status:</p>
+                    <p class="text-base font-semibold">
+                        <span class="status-badge status-{{ $kas->status }}">
+                            {{ $kas->status_text }}
+                        </span>
+                    </p>
+                </div>
+                @if($kas->status === 'ditolak' && $kas->rejection_reason)
+                <div class="md:col-span-2 mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700">
+                    <p class="text-sm font-medium text-red-700 dark:text-red-300 flex items-center">
+                        <i data-lucide="info" class="w-4 h-4 mr-2"></i>
+                        Alasan Penolakan:
+                    </p>
+                    <p class="text-base text-red-800 dark:text-red-200 mt-1">{{ $kas->rejection_reason }}</p>
+                </div>
                 @endif
             </div>
+        </div>
 
-            <!-- Payment History -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-                <div class="flex items-center space-x-2 md:space-x-3 mb-3 md:mb-4">
-                    <div class="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-md md:rounded-lg flex items-center justify-center">
-                        <i data-lucide="history" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
-                    </div>
-                    <h3 class="text-base md:text-lg font-bold text-gray-900 dark:text-white">Riwayat Pembayaran</h3>
+        <!-- Payment Details Card (if paid/pending) -->
+        @if($kas->status !== 'belum_bayar' && $kas->status !== 'terlambat')
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Detail Pembayaran</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700 dark:text-gray-300">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tanggal Bayar:</p>
+                    <p class="text-base font-semibold">{{ $kas->tanggal_bayar_formatted ?? 'N/A' }}</p>
                 </div>
-                
-                <div class="payment-timeline">
-                    <div class="timeline-item">
-                        <div class="timeline-dot bg-blue-500"></div>
-                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 md:p-3">
-                            <h4 class="font-semibold text-gray-900 dark:text-white text-xs md:text-sm">Kas Dibuat</h4>
-                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                {{ $kas->created_at->format('d/m/Y H:i') }}
-                            </p>
-                        </div>
-                    </div>
-                    
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Metode Bayar:</p>
+                    <p class="text-base font-semibold">{{ ucfirst(str_replace('_', ' ', $kas->metode_bayar ?? 'N/A')) }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jumlah Dibayar:</p>
+                    <p class="text-base font-semibold">{{ $kas->formatted_paid_amount ?? 'N/A' }}</p>
+                </div>
+                @if($kas->bukti_bayar_file)
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Bukti Pembayaran:</p>
+                    <a href="{{ route('kas.payments.proof', $kas->id) }}" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors duration-200">
+                        <i data-lucide="image" class="w-4 h-4 mr-1"></i>
+                        Lihat Bukti
+                    </a>
+                    <a href="{{ route('kas.payments.download.proof', $kas->id) }}" class="inline-flex items-center ml-4 text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium transition-colors duration-200">
+                        <i data-lucide="download" class="w-4 h-4 mr-1"></i>
+                        Download Bukti
+                    </a>
+                </div>
+                @endif
+                @if($kas->bukti_bayar_notes)
+                <div class="md:col-span-2">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Catatan Pembayaran:</p>
+                    <p class="text-base font-semibold">{{ $kas->bukti_bayar_notes }}</p>
+                </div>
+                @endif
+                @if($kas->confirmed_by)
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Dikonfirmasi Oleh:</p>
+                    <p class="text-base font-semibold">{{ $kas->confirmedBy->name ?? 'N/A' }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tanggal Konfirmasi:</p>
+                    <p class="text-base font-semibold">{{ optional($kas->confirmed_at)->format('d M Y H:i') ?? '-' }}</p>
+                </div>
+                @endif
+                @if($kas->confirmation_notes)
+                <div class="md:col-span-2">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Catatan Konfirmasi:</p>
+                    <p class="text-base">{{ $kas->confirmation_notes }}</p>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        <!-- Actions Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Aksi</h2>
+            <div class="flex flex-wrap gap-4">
+                @if(Auth::user()->hasRole(['rt', 'rw', 'kades', 'admin']))
                     @if($kas->status === 'menunggu_konfirmasi')
-                    <div class="timeline-item">
-                        <div class="timeline-dot bg-blue-500"></div>
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 md:p-3">
-                            <h4 class="font-semibold text-blue-800 dark:text-blue-200 text-xs md:text-sm">Menunggu Konfirmasi</h4>
-                            <p class="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                                Bukti pembayaran diunggah pada {{ $kas->tanggal_bayar ? $kas->tanggal_bayar->format('d/m/Y H:i') : '-' }}
-                            </p>
-                            @if($kas->metode_bayar)
-                                <p class="text-xs text-blue-600 dark:text-blue-300">
-                                    Via {{ ucfirst(str_replace('_', ' ', $kas->metode_bayar)) }}
-                                </p>
-                            @endif
-                            @if($kas->bukti_bayar)
-                                <p class="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                                    Bukti: {{ $kas->bukti_bayar }}
-                                </p>
-                            @endif
-                        </div>
-                    </div>
+                    <button @click="openConfirmModal = true" class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200">
+                        <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i>
+                        Konfirmasi Pembayaran
+                    </button>
+                    <button @click="openRejectModal = true" class="inline-flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200">
+                        <i data-lucide="x-circle" class="w-5 h-5 mr-2"></i>
+                        Tolak Pembayaran
+                    </button>
+                    @elseif($kas->status === 'ditolak')
+                    <button @click="document.getElementById('reconfirm-form-{{ $kas->id }}').submit()" class="inline-flex items-center px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200">
+                        <i data-lucide="rotate-ccw" class="w-5 h-5 mr-2"></i>
+                        Ajukan Konfirmasi Ulang
+                    </button>
+                    <form id="reconfirm-form-{{ $kas->id }}" action="{{ route('kas.konfirmasi-ulang', $kas->id) }}" method="POST">
+                        @csrf
+                    </form>
                     @endif
+                @endif
 
-                    @if($kas->status === 'ditolak')
-                    <div class="timeline-item">
-                        <div class="timeline-dot bg-red-500"></div>
-                        <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-2 md:p-3">
-                            <h4 class="font-semibold text-red-800 dark:text-red-200 text-xs md:text-sm">Pembayaran Ditolak</h4>
-                            <p class="text-xs text-red-600 dark:text-red-300 mt-1">
-                                Ditolak pada {{ $kas->updated_at->format('d/m/Y H:i') }}
-                            </p>
-                            @if($kas->keterangan)
-                                <p class="text-xs text-red-600 dark:text-red-300 mt-1">
-                                    Alasan: {{ $kas->keterangan }}
-                                </p>
-                            @endif
-                        </div>
-                    </div>
+                @if(Auth::user()->hasRole('masyarakat'))
+                    @if($kas->status === 'belum_bayar' || $kas->status === 'terlambat' || $kas->status === 'ditolak')
+                    <a href="{{ route('kas.payment.form', $kas->id) }}" class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200">
+                        <i data-lucide="credit-card" class="w-5 h-5 mr-2"></i>
+                        Bayar Sekarang
+                    </a>
+                    @elseif($kas->status === 'menunggu_konfirmasi')
+                    <span class="inline-flex items-center px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl shadow-md">
+                        <i data-lucide="hourglass" class="w-5 h-5 mr-2"></i>
+                        Menunggu Konfirmasi
+                    </span>
                     @endif
+                @endif
 
-                    @if($kas->status === 'lunas')
-                    <div class="timeline-item">
-                        <div class="timeline-dot bg-green-500"></div>
-                        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 md:p-3">
-                            <h4 class="font-semibold text-green-800 dark:text-green-200 text-xs md:text-sm">Pembayaran Lunas</h4>
-                            <p class="text-xs text-green-600 dark:text-green-300 mt-1">
-                                {{ $kas->tanggal_bayar ? $kas->tanggal_bayar->format('d/m/Y H:i') : '-' }}
-                            </p>
-                            @if($kas->metode_bayar)
-                                <p class="text-xs text-green-600 dark:text-green-300">
-                                    Via {{ ucfirst(str_replace('_', ' ', $kas->metode_bayar)) }}
-                                </p>
-                            @endif
-                            @if($kas->bukti_bayar)
-                                <p class="text-xs text-green-600 dark:text-green-300 mt-1">
-                                    Bukti: {{ $kas->bukti_bayar }}
-                                </p>
-                            @endif
-                        </div>
-                    </div>
+                @if(Auth::user()->hasRole(['rt', 'rw', 'kades', 'admin']))
+                    <a href="{{ route('kas.edit', $kas->id) }}" class="inline-flex items-center px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-xl shadow-md transition-all duration-200">
+                        <i data-lucide="edit" class="w-5 h-5 mr-2"></i>
+                        Edit Kas
+                    </a>
+                    @if(Auth::user()->hasRole('admin'))
+                    <form action="{{ route('kas.destroy', $kas->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data kas ini?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="inline-flex items-center px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl shadow-md transition-all duration-200">
+                            <i data-lucide="trash-2" class="w-5 h-5 mr-2"></i>
+                            Hapus Kas
+                        </button>
+                    </form>
                     @endif
-                </div>
+                @endif
             </div>
         </div>
     </div>
-</div>
+
+    <!-- Confirm Payment Modal -->
+    <div x-show="openConfirmModal" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4" x-cloak>
+        <div @click.away="openConfirmModal = false" class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md transform transition-all duration-300 scale-95"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Konfirmasi Pembayaran</h3>
+            <p class="text-gray-700 dark:text-gray-300 mb-6">Apakah Anda yakin ingin mengkonfirmasi pembayaran kas ini sebagai Lunas?</p>
+            <div class="flex justify-end space-x-3">
+                <button @click="openConfirmModal = false" type="button" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200">
+                    Batal
+                </button>
+                <form action="{{ route('kas.payments.confirm', $kas->id) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">
+                        Konfirmasi
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Payment Modal -->
+    <div x-show="openRejectModal" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4" x-cloak>
+        <div @click.away="openRejectModal = false" class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md transform transition-all duration-300 scale-95"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Tolak Pembayaran</h3>
+            <form action="{{ route('kas.tolak', $kas->id) }}" method="POST">
+                @csrf
+                <div class="mb-4">
+                    <label for="rejection_reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Alasan Penolakan <span class="text-red-500">*</span></label>
+                    <textarea name="rejection_reason" id="rejection_reason" rows="4" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Masukkan alasan penolakan pembayaran..."></textarea>
+                    @error('rejection_reason')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button @click="openRejectModal = false" type="button" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium">
+                        Tolak
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
 <script>
-// Initialize icons after page load
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-});
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
 </script>
 @endpush
 @endsection

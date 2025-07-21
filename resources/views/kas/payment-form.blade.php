@@ -151,9 +151,19 @@
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jumlah Tagihan:</p>
                     <p class="text-base font-semibold text-blue-600 dark:text-blue-400">{{ $kas->formatted_amount }}</p>
                 </div>
+                @if($kas->denda > 0)
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Denda:</p>
+                    <p class="text-base font-semibold text-red-600 dark:text-red-400">{{ $kas->formatted_denda }}</p>
+                </div>
+                @endif
                 <div>
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jatuh Tempo:</p>
                     <p class="text-base font-semibold">{{ $kas->tanggal_jatuh_tempo_formatted }}</p>
+                </div>
+                <div class="md:col-span-2"> <!-- Span two columns for total bayar -->
+                    <p class="text-lg font-medium text-gray-500 dark:text-gray-400">Total Pembayaran:</p>
+                    <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $kas->formatted_total_bayar }}</p>
                 </div>
                 <div>
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Status:</p>

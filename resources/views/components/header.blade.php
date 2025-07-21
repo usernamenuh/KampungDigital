@@ -94,15 +94,25 @@
                 <button @click="open = !open" 
                         class="flex items-center transition-colors"
                         title="Menu Pengguna">
-                    @php
-                        $user = Auth::user();
-                        $userName = $user->name ?? 'Guest';
-                        $userInitials = collect(explode(' ', $userName))->map(fn($part) => strtoupper(substr($part, 0, 1)))->take(2)->implode('');
-                    @endphp
+                   @php
+            $user = Auth::user();
+            $userName = $user->name ?? 'Guest';
+            $userInitials = collect(explode(' ', $userName))
+                                ->map(fn($part) => strtoupper(substr($part, 0, 1)))
+                                ->take(2)
+                                ->implode('');
+            $userPhoto = optional($user->penduduk)->foto; // akses foto dari relasi penduduk
+        @endphp
                     
-                    <div class="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-sm font-semibold border-2 border-gray-300 dark:border-gray-600 hover:border-purple-500 transition-colors">
-                        {{ $userInitials }}
-                    </div>
+                    @if($userPhoto)
+            <img src="{{ asset('storage/' . $userPhoto) }}" 
+                 alt="{{ $userName }}" 
+                 class="h-8 w-8 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-purple-500 transition-colors object-cover">
+        @else
+            <div class="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-sm font-semibold border-2 border-gray-300 dark:border-gray-600 hover:border-purple-500 transition-colors">
+                {{ $userInitials }}
+            </div>
+        @endif
                 </button>
 
                 <!-- User Dropdown Menu -->
