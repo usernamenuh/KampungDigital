@@ -321,10 +321,10 @@
                             <td class="font-medium text-center">{{ $index + 1 }}</td>
                             <td>
                                 @if($desa->foto)
-                                    <img src="{{ asset('storage/' . $desa->foto) }}"
+                                    <img src="{{ Storage::url($desa->foto) }}"
                                          alt="Foto Desa"
                                          class="w-12 h-12 rounded-xl object-cover village-image cursor-pointer shadow-md"
-                                         @click="showImageModal('{{ asset('storage/' . $desa->foto) }}')"
+                                         @click="showImageModal('{{ Storage::url($desa->foto) }}')"
                                          onerror="this.onerror=null; this.src='{{ asset('images/placeholder-village.jpg') }}'; this.alt='Foto tidak tersedia';">
                                 @else
                                     <div class="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center shadow-md">
@@ -332,10 +332,10 @@
                                     </div>
                                 @endif
                             </td>
-                            <td class="font-medium">{{ $desa->province->province_name ?? '-' }}</td>
-                            <td>{{ $desa->regency->regency_name ?? '-' }}</td>
-                            <td>{{ $desa->district->district_name ?? '-' }}</td>
-                            <td class="font-semibold text-gray-900 dark:text-white">{{ $desa->village->village_name ?? '-' }}</td>
+                            <td class="font-medium">{{ $desa->province->name ?? '-' }}</td>
+                            <td>{{ $desa->regency->name ?? '-' }}</td>
+                            <td>{{ $desa->district->name ?? '-' }}</td>
+                            <td class="font-semibold text-gray-900 dark:text-white">{{ $desa->village->name ?? '-' }}</td>
                             <td>
                                 <div class="max-w-xs truncate" title="{{ $desa->alamat }}">{{ $desa->alamat }}</div>
                             </td>
@@ -367,7 +367,7 @@
                                        title="Edit">
                                         <i data-lucide="edit" class="w-4 h-4 group-hover:scale-110 transition-transform"></i>
                                     </a>
-                                    <button @click="confirmDelete({{ $desa->id }}, '{{ addslashes($desa->village->village_name ?? 'Desa') }}')"
+                                    <button @click="confirmDelete({{ $desa->id }}, '{{ addslashes($desa->village->name ?? 'Desa') }}')"
                                             class="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200 group"
                                             title="Hapus">
                                         <i data-lucide="trash-2" class="w-4 h-4 group-hover:scale-110 transition-transform"></i>
@@ -500,15 +500,15 @@ function desaManager() {
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
                 },
                 columnDefs: [
-                    { orderable: false, targets: [1, 10] },
-                    { className: "text-center", targets: [0, 7, 10] },
-                    { width: "60px", targets: [0] },
-                    { width: "80px", targets: [1] },
-                    { width: "120px", targets: [2, 3, 4, 5] },
-                    { width: "200px", targets: [6] },
-                    { width: "100px", targets: [7, 8] },
-                    { width: "100px", targets: [9] },
-                    { width: "120px", targets: [10] }
+                    { orderable: false, targets: [1, 10] }, // Foto, Aksi
+                    { className: "text-center", targets: [0, 7, 10] }, // No, Kode Pos, Aksi
+                    { width: "60px", targets: [0] }, // No
+                    { width: "80px", targets: [1] }, // Foto
+                    { width: "120px", targets: [2, 3, 4, 5] }, // Provinsi, Kabupaten, Kecamatan, Desa
+                    { width: "200px", targets: [6] }, // Alamat
+                    { width: "100px", targets: [7, 8] }, // Kode Pos, Saldo
+                    { width: "100px", targets: [9] }, // Status
+                    { width: "120px", targets: [10] } // Aksi
                 ],
                 order: [[0, 'asc']],
                 dom: '<"flex flex-col sm:flex-row justify-between items-center mb-4 px-6 py-4"<"flex items-center"l><"flex items-center"f>>rt<"flex flex-col sm:flex-row justify-between items-center mt-4 px-6 py-4"<"flex items-center"i><"flex items-center"p>>',

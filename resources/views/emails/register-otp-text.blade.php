@@ -1,12 +1,16 @@
-Halo,
+Kode Verifikasi OTP Registrasi Akun Anda
 
-Terima kasih telah mendaftar di aplikasi Kampung Digital. Untuk menyelesaikan proses registrasi Anda, silakan gunakan kode verifikasi OTP berikut:
+Halo, 
 
-Kode OTP Anda: {{ $otp }}
+Terima kasih telah mendaftar di aplikasi kami. Untuk menyelesaikan proses registrasi, silakan gunakan Kode Verifikasi (OTP) berikut:
 
-Kode ini berlaku selama 5 menit. Jangan bagikan kode ini kepada siapapun.
+{{ $otp }}
 
-Jika Anda tidak merasa melakukan pendaftaran ini, Anda bisa mengabaikan email ini.
+Kode ini berlaku selama 10 menit. Jangan bagikan kode ini kepada siapa pun.
 
-Terima kasih,
-Tim Kampung Digital
+Jika Anda tidak mencoba mendaftar, abaikan email ini.
+
+Hormat kami,
+Tim {{ config('app.name') }}
+
+© {{ date('Y') }} {{ config('app.name') }}. Semua hak dilindungi.

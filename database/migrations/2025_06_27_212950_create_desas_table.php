@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('desas', function (Blueprint $table) {
             $table->id();
-            $table->char('province_code', 2);
-            $table->char('regency_code', 2);
-            $table->char('district_code', 2);
-            $table->char('village_code', 4);
+            $table->char('province_id', 2)->nullable();
+            $table->char('regency_id', 4)->nullable();
+            $table->char('district_id', 6)->nullable();
+            $table->char('village_id', 10)->nullable();
             $table->string('alamat');
             $table->integer('kode_pos');
             $table->string('no_telpon')->nullable();

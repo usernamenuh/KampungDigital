@@ -17,12 +17,14 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
 
-        User::factory()->create([
-            'name' => 'admin',
-            'email' => 'admin@gmail.com',
-            'password'=> bcrypt('123456789'),
-            'role' => 'admin',
-            'status' => 'active',
-        ]);
+      //  User::factory()->create([
+       //     'name' => 'admin',
+         //   'email' => 'admin@gmail.com',
+           // 'password'=> bcrypt('123456789'),
+            // 'role' => 'admin',
+                // 'status' => 'active',
+       // ]);
+      DB::unprepared(file_get_contents(database_path('seeders/wilayah_indonesia.sql')));
+
     }
 }

@@ -8,7 +8,13 @@ use App\Http\Controllers\Api\PaymentApiController;
 use App\Http\Controllers\Api\KasApiController;
 use App\Http\Controllers\Api\NotifikasiApiController;
 use App\Http\Controllers\PaymentInfoController;
-use App\Http\Controllers\SaldoController; // Import SaldoController
+use App\Http\Controllers\Api\DebugApiController;
+use App\Models\RegProvince;
+use App\Models\RegRegency;
+use App\Models\RegDistrict;
+use App\Models\RegVillage;
+use App\Http\Controllers\SaldoController; 
+use App\Http\Controllers\Api\WilayahApiController; // / Import SaldoController
 
 /*
 |--------------------------------------------------------------------------
@@ -120,4 +126,86 @@ Route::middleware('auth:sanctum')->group(function () {
       Route::post('/add-expense', [SaldoController::class, 'addExpense']);
       Route::get('/history', [SaldoController::class, 'getSaldoHistory']);
   });
+});
+
+// Territory API routes (public) - menggunakan reg_wilayah
+Route::prefix('wilayah')->group(function () {
+    // Get provinces
+    Route::get('provinces', function () {
+        try {
+            $provinces = RegProvince::orderBy('name')->get();
+            return response()->json([
+                'success' => true,
+                'data' => $provinces
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch provinces',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+
+    // Get regencies by province
+    Route::get('regencies/{provinceId}', function ($provinceId) {
+        try {
+            $regencies = RegRegency::where('province_id', $provinceId)
+                                  ->orderBy('name')
+                                  ->get();
+            return response()->json([
+                'success' => true,
+                'data' => $regencies
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch regencies',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+
+    // Get districts by regency
+    Route::get('districts/{regencyId}', function ($regencyId) {
+        try {
+            $districts = RegDistrict::where('regency_id', $regencyId)
+                                   ->orderBy('name')
+                                   ->get();
+            return response()->json([
+                'success' => true,
+                'data' => $districts
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch districts',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+
+    // Get villages by district
+    Route::get('villages/{districtId}', function ($districtId) {
+        try {
+            $villages = RegVillage::where('district_id', $districtId)
+                                 ->orderBy('name')
+                                 ->get();
+            return response()->json([
+                'success' => true,
+                'data' => $villages
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch villages',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+
+    // Tambahkan rute-rute baru ini untuk data wilayah
+    Route::get('regencies/{province_id}', [WilayahApiController::class, 'getRegencies']);
+    Route::get('districts/{province_id}/{regency_id}', [WilayahApiController::class, 'getDistricts']);
+    Route::get('villages/{province_id}/{regency_id}/{district_id}', [WilayahApiController::class, 'getVillages']);
 });

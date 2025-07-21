@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Desa - ' . $desa->village_name)
+@section('title', 'Detail Desa - ' . ($desa->village->name ?? 'Desa'))
 
 @push('styles')
 <style>
@@ -49,7 +49,7 @@
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center mr-4">
                         <i data-lucide="eye" class="w-5 h-5 text-white"></i>
                     </div>
-                    {{ $desa->village->village_name ?? $desa->village_name ?? 'Nama Desa' }}
+                    {{ $desa->village->name ?? 'Nama Desa' }}
                 </h1>
             </div>
             
@@ -76,8 +76,8 @@
                         <!-- Photo -->
                         <div class="flex-shrink-0">
                             @if($desa->foto)
-                                <img src="{{ asset('storage/' . $desa->foto) }}" 
-                                     alt="{{ $desa->village->village_name ?? 'Foto Desa' }}"
+                                <img src="{{ Storage::url($desa->foto) }}" 
+                                     alt="{{ $desa->village->name ?? 'Foto Desa' }}"
                                      class="w-48 h-48 rounded-2xl object-cover border-4 border-gray-200 dark:border-gray-600 shadow-lg"
                                      onerror="this.onerror=null; this.src='{{ asset('images/placeholder-village.jpg') }}'; this.alt='Foto tidak tersedia';">
                             @else
@@ -90,8 +90,8 @@
                         <!-- Basic Info -->
                         <div class="flex-1 space-y-6">
                             <div>
-                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{{ $desa->village->village_name ?? 'Nama Desa' }}</h2>
-                                <p class="text-lg text-gray-600 dark:text-gray-400">Kode Desa: {{ $desa->village_code ?? '-' }}</p>
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{{ $desa->village->name ?? 'Nama Desa' }}</h2>
+                                <p class="text-lg text-gray-600 dark:text-gray-400">Kode Desa: {{ $desa->village_id ?? '-' }}</p>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -102,7 +102,7 @@
                                         </div>
                                         <div>
                                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kecamatan</p>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $desa->district->district_name ?? '-' }}</p>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $desa->district->name ?? '-' }}</p>
                                         </div>
                                     </div>
 
@@ -112,7 +112,7 @@
                                         </div>
                                         <div>
                                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Kabupaten/Kota</p>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $desa->regency->regency_name ?? '-' }}</p>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $desa->regency->name ?? '-' }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -124,7 +124,7 @@
                                         </div>
                                         <div>
                                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Provinsi</p>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $desa->province->province_name ?? '-' }}</p>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ $desa->province->name ?? '-' }}</p>
                                         </div>
                                     </div>
 
@@ -149,7 +149,7 @@
                                         </div>
                                         <div>
                                             <p class="text-sm font-medium text-green-600 dark:text-green-400">Kepala Desa</p>
-                                            <p class="text-lg font-semibold text-green-700 dark:text-green-300">{{ $desa->kepala->nama_lengkap }}</p>
+                                            <p class="text-lg font-semibold text-green-700 dark:text-green-300">{{ $desa->kepala->nama }}</p>
                                             <p class="text-sm text-green-600 dark:text-green-400">NIK: {{ $desa->kepala->nik }}</p>
                                         </div>
                                     </div>
@@ -187,7 +187,7 @@
                             </div>
                             <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl text-center">
                                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Kode Desa</p>
-                                <p class="text-lg font-bold text-gray-900 dark:text-white">{{ $desa->village_code ?? '-' }}</p>
+                                <p class="text-lg font-bold text-gray-900 dark:text-white">{{ $desa->village_id ?? '-' }}</p>
                             </div>
                         </div>
                     </div>

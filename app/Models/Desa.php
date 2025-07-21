@@ -2,48 +2,58 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Vermaysha\Territory\Models\Village;
-use Vermaysha\Territory\Models\District;
-use Vermaysha\Territory\Models\Regency;
-use Vermaysha\Territory\Models\Province;
 
 class Desa extends Model
 {
-    protected $table = 'desas';
+    use HasFactory;
+
     protected $fillable = [
-        'alamat', 'kode_pos', 'saldo', 'status', 'no_telpon', 'gmail',
-        'province_code', 'regency_code', 'district_code', 'village_code', 'foto',
+        'alamat',
+        'kode_pos',
+        'province_id',
+        'regency_id',
+        'district_id',
+        'village_id',
+        'foto',
+        'saldo',
+        'status',
+        'no_telpon',
+        'gmail',
         'kepala_desa_id'
     ];
 
-    public function village()
+    protected $casts = [
+        'saldo' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    // Relationship dengan Penduduk untuk Kepala Desa
+    public function kepala()
     {
-        return $this->belongsTo(Village::class, 'village_code', 'village_code');
+        return $this->belongsTo(Penduduk::class, 'kepala_desa_id');
     }
 
-    public function district()
+    // Territory relationships using reg_wilayah models
+    public function province()
     {
-        return $this->belongsTo(District::class, 'district_code', 'district_code');
+        return $this->belongsTo(RegProvince::class, 'province_id');
     }
 
     public function regency()
     {
-        return $this->belongsTo(Regency::class, 'regency_code', 'regency_code');
+        return $this->belongsTo(RegRegency::class, 'regency_id');
     }
 
-    public function province()
+    public function district()
     {
-        return $this->belongsTo(Province::class, 'province_code', 'province_code');
+        return $this->belongsTo(RegDistrict::class, 'district_id');
     }
-    
-    public function rws()
+
+    public function village()
     {
-        return $this->hasMany(Rw::class, 'desa_id', 'id');
-    }
-    
-    public function kepala()
-    {
-        return $this->belongsTo(Penduduk::class, 'kepala_desa_id');
+        return $this->belongsTo(RegVillage::class, 'village_id');
     }
 }

@@ -207,73 +207,6 @@ Route::middleware(['auth', 'user.status'])->group(function () {
   });
 });
 
-// Public API routes for location data (remain public)
-Route::prefix('api')->group(function () {
-  Route::get('/provinces', function () {
-      try {
-          return response()->json([
-              'success' => true,
-              'data' => DB::table('id_provinces')->get()
-          ]);
-      } catch (Exception $e) {
-          return response()->json([
-              'success' => false,
-              'error' => $e->getMessage()
-          ], 500);
-      }
-  });
-
-  Route::get('/regencies/{province_code}', function ($province_code) {
-      try {
-          return response()->json([
-              'success' => true,
-              'data' => DB::table('id_regencies')
-                  ->where('province_code', $province_code)
-                  ->get()
-          ]);
-      } catch (Exception $e) {
-          return response()->json([
-              'success' => false,
-              'error' => $e->getMessage()
-          ], 500);
-      }
-  });
-
-  Route::get('/districts/{province_code}/{regency_code}', function ($province_code, $regency_code) {
-      try {
-          return response()->json([
-              'success' => true,
-              'data' => DB::table('id_districts')
-                  ->where('province_code', $province_code)
-                  ->where('regency_code', $regency_code)
-                  ->get()
-          ]);
-      } catch (Exception $e) {
-          return response()->json([
-              'success' => false,
-              'error' => $e->getMessage()
-          ], 500);
-      }
-  });
-
-  Route::get('/villages/{province_code}/{regency_code}/{district_code}', function ($province_code, $regency_code, $district_code) {
-      try {
-          return response()->json([
-              'success' => true,
-              'data' => DB::table('id_villages')
-                  ->where('province_code', $province_code)
-                  ->where('regency_code', $regency_code)
-                  ->where('district_code', $district_code)
-                  ->get()
-          ]);
-      } catch (Exception $e) {
-          return response()->json([
-              'success' => false,
-              'error' => $e->getMessage()
-          ], 500);
-      }
-  });
-
   Route::get('/health', function () {
       try {
           $checks = [
@@ -300,7 +233,7 @@ Route::prefix('api')->group(function () {
           ], 503);
       }
   });
-});
+
 
 // Debug routes for development
 if (app()->environment('local')) {

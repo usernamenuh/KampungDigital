@@ -204,13 +204,13 @@
                                                 <i data-lucide="flag" class="w-4 h-4 inline mr-2"></i>
                                                 Provinsi
                                             </label>
-                                            <select id="province" name="province_code"
+                                            <select id="province" name="province_id"
                                                     class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 rounded-xl"
-                                                    required @change="loadRegencies" x-model="formData.province_code">
+                                                    required @change="loadRegencies" x-model="formData.province_id">
                                                 <option value="">-- Pilih Provinsi --</option>
-                                                @foreach(\Vermaysha\Territory\Models\Province::all() as $prov)
-                                                    <option value="{{ $prov->province_code }}" {{ old('province_code') == $prov->province_code ? 'selected' : '' }}>
-                                                        {{ $prov->province_name }}
+                                                @foreach(\App\Models\RegProvince::all() as $prov)
+                                                    <option value="{{ $prov->id }}" {{ old('province_id') == $prov->id ? 'selected' : '' }}>
+                                                        {{ $prov->name }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -221,9 +221,9 @@
                                                 <i data-lucide="building" class="w-4 h-4 inline mr-2"></i>
                                                 Kabupaten/Kota
                                             </label>
-                                            <select id="regency" name="regency_code"
+                                            <select id="regency" name="regency_id"
                                                     class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 rounded-xl"
-                                                    required @change="loadDistricts" x-model="formData.regency_code">
+                                                    required @change="loadDistricts" x-model="formData.regency_id">
                                                 <option value="">-- Pilih Kabupaten/Kota --</option>
                                             </select>
                                         </div>
@@ -235,9 +235,9 @@
                                                 <i data-lucide="map" class="w-4 h-4 inline mr-2"></i>
                                                 Kecamatan
                                             </label>
-                                            <select id="district" name="district_code"
+                                            <select id="district" name="district_id"
                                                     class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 rounded-xl"
-                                                    required @change="loadVillages" x-model="formData.district_code">
+                                                    required @change="loadVillages" x-model="formData.district_id">
                                                 <option value="">-- Pilih Kecamatan --</option>
                                             </select>
                                         </div>
@@ -247,9 +247,9 @@
                                                 <i data-lucide="home" class="w-4 h-4 inline mr-2"></i>
                                                 Desa
                                             </label>
-                                            <select id="village" name="village_code"
+                                            <select id="village" name="village_id"
                                                     class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 rounded-xl"
-                                                    required x-model="formData.village_code">
+                                                    required x-model="formData.village_id">
                                                 <option value="">-- Pilih Desa --</option>
                                             </select>
                                         </div>
@@ -297,9 +297,14 @@
                                             <i data-lucide="dollar-sign" class="w-4 h-4 inline mr-2"></i>
                                             Saldo (Rp)
                                         </label>
-                                        <input type="number" name="saldo" id="saldo"
+                                        <input type="text" name="saldo" id="saldo"
                                                class="w-full px-4 py-3 border-0 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200 dark:ring-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 rounded-xl"
-                                               required placeholder="0" value="{{ old('saldo') }}">
+                                               required placeholder="0"
+                                               x-init="$el.value = formatNumber(saldoInput)"
+                                               @input="saldoInput = unformatNumber($event.target.value); $event.target.value = formatNumber(saldoInput)"
+                                               @focus="$event.target.value = unformatNumber($event.target.value)"
+                                               @blur="$event.target.value = formatNumber($event.target.value)"
+                                        >
                                     </div>
 
                                     <div>
@@ -364,7 +369,7 @@
                                             <option value="">-- Pilih Kepala Desa --</option>
                                             @foreach($penduduks as $penduduk)
                                                 <option value="{{ $penduduk->id }}" {{ old('kepala_desa_id') == $penduduk->id ? 'selected' : '' }}>
-                                                    {{ $penduduk->nik }} - {{ $penduduk->nama_lengkap }}
+                                                    {{ $penduduk->nik }} - {{ $penduduk->nama }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -447,25 +452,39 @@ function desaCreate() {
         imagePreview: null,
         redirectCountdown: 5,
         formData: {
-            province_code: '',
-            regency_code: '',
-            district_code: '',
-            village_code: ''
+            province_id: '{{ old('province_id') }}',
+            regency_id: '{{ old('regency_id') }}',
+            district_id: '{{ old('district_id') }}',
+            village_id: '{{ old('village_id') }}'
         },
+        saldoInput: '{{ old('saldo', 0) }}', // Initialize as string, default to 0
 
         init() {
-            // Initialize icons immediately
             this.initializeIcons();
+            // No need for formatInitialSaldo() as x-init handles it on the input element
+            // this.formatInitialSaldo(); 
             
             // Re-initialize icons after a short delay to ensure DOM is ready
             setTimeout(() => {
                 this.initializeIcons();
             }, 500);
 
-            // Watch for form changes
+            // Watch for form changes (optional, for debugging)
             this.$watch('formData', () => {
                 console.log('Form data changed:', this.formData);
             });
+
+            // Initial load for dropdowns if old values exist
+            // Call with true for initial load to preserve old values
+            if (this.formData.province_id) {
+                this.loadRegencies(true);
+            }
+            if (this.formData.regency_id) {
+                this.loadDistricts(true);
+            }
+            if (this.formData.district_id) {
+                this.loadVillages(true);
+            }
         },
 
         initializeIcons() {
@@ -473,6 +492,26 @@ function desaCreate() {
                 lucide.createIcons();
             }
         },
+
+        formatNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            let num = String(value).replace(/\D/g, ''); // Remove non-digits
+            if (num === '') return '';
+            return parseInt(num, 10).toLocaleString('id-ID');
+        },
+
+        unformatNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            return String(value).replace(/\./g, ''); // Remove thousands separators
+        },
+
+        // handleSaldoFocus and handleSaldoBlur functions are now handled inline on the input element
+        // handleSaldoFocus(event) { ... },
+        // handleSaldoBlur(event) { ... },
 
         nextStep() {
             console.log('Next step clicked, can proceed:', this.canProceedToStep2());
@@ -510,121 +549,151 @@ function desaCreate() {
         },
 
         canProceedToStep2() {
-            const province = this.formData.province_code || document.getElementById('province')?.value || '';
-            const regency = this.formData.regency_code || document.getElementById('regency')?.value || '';
-            const district = this.formData.district_code || document.getElementById('district')?.value || '';
-            const village = this.formData.village_code || document.getElementById('village')?.value || '';
+            const province = this.formData.province_id || document.getElementById('province')?.value || '';
+            const regency = this.formData.regency_id || document.getElementById('regency')?.value || '';
+            const district = this.formData.district_id || document.getElementById('district')?.value || '';
+            const village = this.formData.village_id || document.getElementById('village')?.value || '';
 
             console.log('Validation check:', { province, regency, district, village });
             
             return province && regency && district && village;
         },
 
-        async loadRegencies() {
+        async loadRegencies(isInitialLoad = false) {
             const provinceSelect = document.getElementById('province');
-            this.formData.province_code = provinceSelect.value;
+            // Only update formData.province_id if it's not an initial load or if it's different
+            if (!isInitialLoad || this.formData.province_id !== provinceSelect.value) {
+                this.formData.province_id = provinceSelect.value;
+            }
             
             const regencySelect = document.getElementById('regency');
             const districtSelect = document.getElementById('district');
             const villageSelect = document.getElementById('village');
 
-            // Reset dependent dropdowns
-            this.formData.regency_code = '';
-            this.formData.district_code = '';
-            this.formData.village_code = '';
+            // Reset dependent dropdowns and formData if not initial load
+            if (!isInitialLoad) {
+                this.formData.regency_id = '';
+                this.formData.district_id = '';
+                this.formData.village_id = '';
+                regencySelect.innerHTML = '<option value="">Memuat...</option>';
+                districtSelect.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
+                villageSelect.innerHTML = '<option value="">-- Pilih Desa --</option>';
+            } else {
+                regencySelect.innerHTML = '<option value="">Memuat...</option>'; // Still show loading initially
+            }
 
-            regencySelect.innerHTML = '<option value="">Memuat...</option>';
-            districtSelect.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
-            villageSelect.innerHTML = '<option value="">-- Pilih Desa --</option>';
+            if (!this.formData.province_id) {
+                regencySelect.innerHTML = '<option value="">-- Pilih Kabupaten/Kota --</option>';
+                return;
+            }
 
-            if (this.formData.province_code) {
-                try {
-                    const response = await axios.get(`/api/regencies/${this.formData.province_code}`);
-                    let options = '<option value="">-- Pilih Kabupaten/Kota --</option>';
+            try {
+                const response = await axios.get(`/api/wilayah/regencies/${this.formData.province_id}`);
+                let options = '<option value="">-- Pilih Kabupaten/Kota --</option>';
 
-                    if (response.data.success && response.data.data.length > 0) {
-                        response.data.data.forEach(item => {
-                            options += `<option value="${item.regency_code}">${item.regency_name}</option>`;
-                        });
-                    } else {
-                        options += '<option value="">Data tidak ditemukan</option>';
-                    }
-
-                    regencySelect.innerHTML = options;
-                } catch (error) {
-                    console.error('Error loading regencies:', error);
-                    regencySelect.innerHTML = '<option value="">-- Pilih Kabupaten/Kota --</option>';
-                    alert('Gagal mengambil data kabupaten/kota');
+                if (response.data.success && response.data.data.length > 0) {
+                    response.data.data.forEach(item => {
+                        const selected = item.id == this.formData.regency_id ? 'selected' : '';
+                        options += `<option value="${item.id}" ${selected}>${item.name}</option>`;
+                    });
+                } else {
+                    options += '<option value="">Data tidak ditemukan</option>';
                 }
+
+                regencySelect.innerHTML = options;
+            } catch (error) {
+                console.error('Error loading regencies:', error);
+                regencySelect.innerHTML = '<option value="">-- Pilih Kabupaten/Kota --</option>';
+                alert('Gagal mengambil data kabupaten/kota');
             }
         },
 
-        async loadDistricts() {
+        async loadDistricts(isInitialLoad = false) {
             const regencySelect = document.getElementById('regency');
-            this.formData.regency_code = regencySelect.value;
+            // Only update formData.regency_id if it's not an initial load or if it's different
+            if (!isInitialLoad || this.formData.regency_id !== regencySelect.value) {
+                this.formData.regency_id = regencySelect.value;
+            }
 
             const districtSelect = document.getElementById('district');
             const villageSelect = document.getElementById('village');
 
-            // Reset dependent dropdowns
-            this.formData.district_code = '';
-            this.formData.village_code = '';
+            // Reset dependent dropdowns and formData if not initial load
+            if (!isInitialLoad) {
+                this.formData.district_id = '';
+                this.formData.village_id = '';
+                districtSelect.innerHTML = '<option value="">Memuat...</option>';
+                villageSelect.innerHTML = '<option value="">-- Pilih Desa --</option>';
+            } else {
+                districtSelect.innerHTML = '<option value="">Memuat...</option>'; // Still show loading initially
+            }
 
-            districtSelect.innerHTML = '<option value="">Memuat...</option>';
-            villageSelect.innerHTML = '<option value="">-- Pilih Desa --</option>';
+            if (!this.formData.province_id || !this.formData.regency_id) {
+                districtSelect.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
+                return;
+            }
 
-            if (this.formData.province_code && this.formData.regency_code) {
-                try {
-                    const response = await axios.get(`/api/districts/${this.formData.province_code}/${this.formData.regency_code}`);
-                    let options = '<option value="">-- Pilih Kecamatan --</option>';
+            try {
+                const response = await axios.get(`/api/wilayah/districts/${this.formData.province_id}/${this.formData.regency_id}`);
+                let options = '<option value="">-- Pilih Kecamatan --</option>';
 
-                    if (response.data.success && response.data.data.length > 0) {
-                        response.data.data.forEach(item => {
-                            options += `<option value="${item.district_code}">${item.district_name}</option>`;
-                        });
-                    } else {
-                        options += '<option value="">Data tidak ditemukan</option>';
-                    }
-
-                    districtSelect.innerHTML = options;
-                } catch (error) {
-                    console.error('Error loading districts:', error);
-                    districtSelect.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
-                    alert('Gagal mengambil data kecamatan');
+                if (response.data.success && response.data.data.length > 0) {
+                    response.data.data.forEach(item => {
+                        const selected = item.id == this.formData.district_id ? 'selected' : '';
+                        options += `<option value="${item.id}" ${selected}>${item.name}</option>`;
+                    });
+                } else {
+                    options += '<option value="">Data tidak ditemukan</option>';
                 }
+
+                districtSelect.innerHTML = options;
+            } catch (error) {
+                console.error('Error loading districts:', error);
+                districtSelect.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
+                alert('Gagal mengambil data kecamatan');
             }
         },
 
-        async loadVillages() {
+        async loadVillages(isInitialLoad = false) {
             const districtSelect = document.getElementById('district');
-            this.formData.district_code = districtSelect.value;
+            // Only update formData.district_id if it's not an initial load or if it's different
+            if (!isInitialLoad || this.formData.district_id !== districtSelect.value) {
+                this.formData.district_id = districtSelect.value;
+            }
 
             const villageSelect = document.getElementById('village');
 
-            // Reset dependent dropdown
-            this.formData.village_code = '';
+            // Reset dependent dropdown and formData if not initial load
+            if (!isInitialLoad) {
+                this.formData.village_id = '';
+                villageSelect.innerHTML = '<option value="">Memuat...</option>';
+            } else {
+                villageSelect.innerHTML = '<option value="">Memuat...</option>'; // Still show loading initially
+            }
             
-            villageSelect.innerHTML = '<option value="">Memuat...</option>';
+            if (!this.formData.province_id || !this.formData.regency_id || !this.formData.district_id) {
+                villageSelect.innerHTML = '<option value="">-- Pilih Desa --</option>';
+                return;
+            }
 
-            if (this.formData.province_code && this.formData.regency_code && this.formData.district_code) {
-                try {
-                    const response = await axios.get(`/api/villages/${this.formData.province_code}/${this.formData.regency_code}/${this.formData.district_code}`);
-                    let options = '<option value="">-- Pilih Desa --</option>';
+            try {
+                const response = await axios.get(`/api/wilayah/villages/${this.formData.province_id}/${this.formData.regency_id}/${this.formData.district_id}`);
+                let options = '<option value="">-- Pilih Desa --</option>';
 
-                    if (response.data.success && response.data.data.length > 0) {
-                        response.data.data.forEach(item => {
-                            options += `<option value="${item.village_code}">${item.village_name}</option>`;
-                        });
-                    } else {
-                        options += '<option value="">Data tidak ditemukan</option>';
-                    }
-
-                    villageSelect.innerHTML = options;
-                } catch (error) {
-                    console.error('Error loading villages:', error);
-                    villageSelect.innerHTML = '<option value="">-- Pilih Desa --</option>';
-                    alert('Gagal mengambil data desa');
+                if (response.data.success && response.data.data.length > 0) {
+                    response.data.data.forEach(item => {
+                        const selected = item.id == this.formData.village_id ? 'selected' : '';
+                        options += `<option value="${item.id}" ${selected}>${item.name}</option>`;
+                    });
+                } else {
+                    options += '<option value="">Data tidak ditemukan</option>';
                 }
+
+                villageSelect.innerHTML = options;
+            } catch (error) {
+                console.error('Error loading villages:', error);
+                villageSelect.innerHTML = '<option value="">-- Pilih Desa --</option>';
+                alert('Gagal mengambil data desa');
             }
         },
 
@@ -642,6 +711,12 @@ function desaCreate() {
         },
 
         handleSubmit(event) {
+            // Unformat saldo before form submission
+            const saldoField = document.getElementById('saldo');
+            if (saldoField) {
+                // Ensure the value submitted is the unformatted one from the input's current display
+                saldoField.value = this.unformatNumber(saldoField.value);
+            }
             this.isLoading = true;
             // Let the form submit normally
         }
