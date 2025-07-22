@@ -49,6 +49,16 @@
         60% { content: '..'; }
         80%, 100% { content: '...'; }
     }
+
+    .notification-section {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.02) 0%, rgba(5, 150, 105, 0.02) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.08);
+    }
+
+    .dark .notification-section {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.03) 0%, rgba(5, 150, 105, 0.03) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.12);
+    }
 </style>
 @endpush
 
@@ -214,14 +224,62 @@
                                               placeholder="Tambahan keterangan untuk kas ini...">{{ old('keterangan') }}</textarea>
                                     <small class="text-gray-500 dark:text-gray-400 mt-1 block">Maksimal 500 karakter</small>
                                 </div>
+                            </div>
 
-                                <div class="flex items-center">
-                                    <input type="checkbox" name="send_notification" id="send_notification" 
-                                           value="1" {{ old('send_notification', true) ? 'checked' : '' }} 
-                                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                                    <label for="send_notification" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                                        Kirim notifikasi ke warga yang memiliki akun
-                                    </label>
+                            <!-- Notification Settings Section -->
+                            <div class="notification-section p-6 rounded-xl space-y-4 mt-6">
+                                <div class="flex items-center space-x-3 mb-4">
+                                    <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="bell" class="w-4 h-4 text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Pengaturan Notifikasi</h3>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">Pilih jenis notifikasi yang akan dikirim</p>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <!-- System Notification -->
+                                    <div class="flex items-start space-x-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                        <input type="checkbox" name="send_notification" id="send_notification" 
+                                               value="1" {{ old('send_notification', true) ? 'checked' : '' }} 
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 mt-1">
+                                        <div class="flex-1">
+                                            <label for="send_notification" class="text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                                <i data-lucide="smartphone" class="w-4 h-4 inline mr-2"></i>
+                                                Notifikasi Sistem
+                                            </label>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                Kirim notifikasi dalam aplikasi ke warga yang memiliki akun
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Email Notification -->
+                                    <div class="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                        <input type="checkbox" name="send_email_notification" id="send_email_notification" 
+                                               value="1" {{ old('send_email_notification', true) ? 'checked' : '' }} 
+                                               class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 dark:focus:ring-green-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 mt-1">
+                                        <div class="flex-1">
+                                            <label for="send_email_notification" class="text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                                <i data-lucide="mail" class="w-4 h-4 inline mr-2"></i>
+                                                Notifikasi Email
+                                            </label>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                Kirim email ke alamat email warga yang terdaftar
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Email Count Info -->
+                                <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4" id="emailCountInfo" style="display: none;">
+                                    <div class="flex items-start">
+                                        <i data-lucide="info" class="w-5 h-5 text-amber-600 dark:text-amber-400 mr-2 mt-0.5 flex-shrink-0"></i>
+                                        <div class="text-sm text-amber-800 dark:text-amber-200">
+                                            <strong>Info Email:</strong> Email akan dikirim ke <span id="emailCount" class="font-bold">0</span> warga yang memiliki alamat email terdaftar.
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -424,6 +482,9 @@ function kasCreate() {
             // Update total kas amount
             this.updateTotalKasAmount(data.stats.active);
             
+            // Update email count info
+            this.updateEmailCountInfo(data.residents);
+            
             // Update resident list
             const residentList = $('#residentList');
             residentList.empty();
@@ -431,6 +492,7 @@ function kasCreate() {
             if (data.residents && data.residents.length > 0) {
                 data.residents.forEach(resident => {
                     const hasAccount = resident.user !== null;
+                    const hasEmail = hasAccount && resident.user.email;
                     const avatar = resident.nama_lengkap.charAt(0).toUpperCase();
                     
                     const residentItem = $(`
@@ -442,10 +504,14 @@ function kasCreate() {
                                 <h6 class="font-medium text-gray-900 dark:text-white text-sm truncate">${resident.nama_lengkap}</h6>
                                 <small class="text-gray-500 dark:text-gray-400 text-xs">NIK: ${resident.nik}</small>
                             </div>
-                            <div class="flex-shrink-0">
+                            <div class="flex items-center space-x-1">
                                 ${hasAccount ? 
                                     '<div class="w-2 h-2 bg-green-500 rounded-full" title="Punya Akun"></div>' : 
                                     '<div class="w-2 h-2 bg-gray-400 rounded-full" title="Tidak Punya Akun"></div>'
+                                }
+                                ${hasEmail ? 
+                                    '<i data-lucide="mail" class="w-3 h-3 text-green-500" title="Punya Email"></i>' : 
+                                    '<i data-lucide="mail-x" class="w-3 h-3 text-gray-400" title="Tidak Punya Email"></i>'
                                 }
                             </div>
                         </div>
@@ -480,11 +546,28 @@ function kasCreate() {
             $('#totalKasAmount').text('Rp ' + total.toLocaleString('id-ID'));
         },
 
+        updateEmailCountInfo(residents) {
+            if (!residents) return;
+            
+            const emailCount = residents.filter(resident => 
+                resident.user && resident.user.email
+            ).length;
+            
+            $('#emailCount').text(emailCount);
+            
+            if (emailCount > 0) {
+                $('#emailCountInfo').show();
+            } else {
+                $('#emailCountInfo').hide();
+            }
+        },
+
         showDefaultPanel() {
             $('#defaultPanel').show();
             $('#loadingPanel').hide();
             $('#residentInfoPanel').hide();
             $('#errorPanel').hide();
+            $('#emailCountInfo').hide();
         },
 
         showLoadingPanel() {
@@ -492,6 +575,7 @@ function kasCreate() {
             $('#loadingPanel').show();
             $('#residentInfoPanel').hide();
             $('#errorPanel').hide();
+            $('#emailCountInfo').hide();
         },
 
         showResidentPanel() {
@@ -507,6 +591,7 @@ function kasCreate() {
             $('#loadingPanel').hide();
             $('#residentInfoPanel').hide();
             $('#errorPanel').show();
+            $('#emailCountInfo').hide();
         },
 
         handleSubmit(event) {
@@ -541,8 +626,6 @@ function kasCreate() {
             }
 
             if (!tanggalJatuhTempo) {
-                event.preventDefault();
-                alert('Silakan pilih tan')  
                 event.preventDefault();
                 alert('Silakan pilih tanggal jatuh tempo');
                 return false;

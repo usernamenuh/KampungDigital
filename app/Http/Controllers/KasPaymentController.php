@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Jobs\SendKasEmailNotification;
 
 class KasPaymentController extends Controller
 {
@@ -260,6 +261,22 @@ class KasPaymentController extends Controller
                     $rt->saldo += $kas->jumlah_dibayar;
                     $rt->save();
                 }
+
+                // Send approved email notification menggunakan Job
+                try {
+                    SendKasEmailNotification::dispatch($kas, 'kas_approved', [
+                        'payment_method' => $kas->metode_bayar,
+                        'payment_date' => $kas->tanggal_bayar->toISOString(),
+                        'confirmation_notes' => $request->catatan_konfirmasi
+                    ]);
+                    Log::info('Approved email notification dispatched', ['kas_id' => $kas->id]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to dispatch approved email notification', [
+                        'kas_id' => $kas->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+
                 $message = 'Pembayaran kas Anda untuk minggu ke-' . $kas->minggu_ke . ' tahun ' . $kas->tahun . ' telah dikonfirmasi lunas.';
             } else { // This block handles 'reject'
                 $kas->update([
@@ -268,6 +285,20 @@ class KasPaymentController extends Controller
                     'confirmed_at' => Carbon::now(),
                     'confirmation_notes' => $request->catatan_konfirmasi ?? 'Pembayaran ditolak.',
                 ]);
+
+                // Send rejected email notification menggunakan Job
+                try {
+                    SendKasEmailNotification::dispatch($kas, 'kas_rejected', [
+                        'rejection_reason' => $request->catatan_konfirmasi ?? 'Pembayaran ditolak.'
+                    ]);
+                    Log::info('Rejected email notification dispatched', ['kas_id' => $kas->id]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to dispatch rejected email notification', [
+                        'kas_id' => $kas->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+
                 $message = 'Pembayaran kas Anda untuk minggu ke-' . $kas->minggu_ke . ' tahun ' . $kas->tahun . ' ditolak. Silakan periksa catatan konfirmasi.';
             }
 

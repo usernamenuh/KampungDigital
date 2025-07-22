@@ -363,7 +363,7 @@
                                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                                             <option value="">Pilih Desa</option>
                                             @foreach($desas as $desa)
-                                                <option value="{{ $desa->id }}">{{ $desa->alamat }}</option>
+                                                <option value="{{ $desa->id }}">{{ $desa->village->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -384,7 +384,7 @@
                                             </label>
                                             <input type="text" x-model="formData.nama_rw" required
                                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                   placeholder="RW 001">
+                                                   placeholder="Kp. Digital">
                                         </div>
                                     </div>
 
@@ -424,7 +424,11 @@
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                 Saldo
                                             </label>
-                                            <input type="number" x-model="formData.saldo" min="0" step="0.01"
+                                            <input type="text"
+                                                   x-init="$el.value = formatNumber(formData.saldo)"
+                                                   @input="formData.saldo = unformatNumber($event.target.value); $event.target.value = formatNumber(formData.saldo)"
+                                                   @focus="$event.target.value = unformatNumber($event.target.value)"
+                                                   @blur="$event.target.value = formatNumber($event.target.value)"
                                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                    placeholder="0">
                                         </div>
@@ -512,7 +516,7 @@
                                             </label>
                                             <input type="text" x-model="formData.nama_rt" required
                                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                   placeholder="RT 001">
+                                                   placeholder="Kp. Juara">
                                         </div>
                                     </div>
 
@@ -561,7 +565,11 @@
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                 Saldo
                                             </label>
-                                            <input type="number" x-model="formData.saldo" min="0" step="0.01"
+                                            <input type="text"
+                                                   x-init="$el.value = formatNumber(formData.saldo)"
+                                                   @input="formData.saldo = unformatNumber($event.target.value); $event.target.value = formatNumber(formData.saldo)"
+                                                   @focus="$event.target.value = unformatNumber($event.target.value)"
+                                                   @blur="$event.target.value = formatNumber($event.target.value)"
                                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                    placeholder="0">
                                         </div>
@@ -780,7 +788,7 @@ function rtRwManager() {
                 alamat: '',
                 ketua_rw_id: '',
                 no_telpon: '',
-                saldo: '',
+                saldo: '', // Keep as empty string for initial state
                 status: 'aktif',
                 
                 // RT fields
@@ -879,7 +887,7 @@ function rtRwManager() {
                 this.formData.rw_id = data.rw_id || '';
                 this.formData.alamat = data.alamat || '';
                 this.formData.no_telpon = data.no_telpon || '';
-                this.formData.saldo = data.saldo || '';
+                this.formData.saldo = data.saldo !== undefined && data.saldo !== null ? data.saldo : ''; // Ensure saldo is a number or empty string
                 this.formData.status = data.status || 'aktif';
                 this.formData.jumlah_kk = data.jumlah_kk || '';
                 
@@ -937,7 +945,12 @@ function rtRwManager() {
                     const input = document.createElement('input');
                     input.type = 'hidden';
                     input.name = key;
-                    input.value = this.formData[key];
+                    // Ensure saldo is unformatted before sending
+                    if (key === 'saldo') {
+                        input.value = this.unformatNumber(this.formData[key]);
+                    } else {
+                        input.value = this.formData[key];
+                    }
                     form.appendChild(input);
                 }
             });
@@ -1028,6 +1041,27 @@ function rtRwManager() {
             this.$nextTick(() => {
                 this.initializeIcons();
             });
+        },
+
+        // Utility functions for number formatting
+        formatNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            const num = parseFloat(value);
+            if (isNaN(num)) {
+                return '';
+            }
+            return new Intl.NumberFormat('id-ID').format(num);
+        },
+
+        unformatNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            // Remove all non-digit characters except for a potential comma for decimals
+            // Then replace comma with dot for parseFloat
+            return value.replace(/\./g, '').replace(/,/g, '.');
         }
     }
 }

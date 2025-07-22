@@ -6,6 +6,7 @@ use App\Models\Kas;
 use App\Models\Penduduk;
 use App\Models\Rt;
 use App\Models\Rw;
+use App\Models\Desa;
 use App\Models\User;
 use App\Models\Notifikasi;
 use App\Models\Kk;
@@ -17,12 +18,54 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\Models\PaymentInfo;
+use App\Jobs\SendKasEmailNotification;
 
 class KasController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth');
+    }
+
+    /**
+     * Helper method to get IDs of all official residents (Kepala Desa, Ketua RW, Ketua RT)
+     */
+    private function getOfficialPendudukIds(): array
+    {
+        $officialPendudukIds = collect();
+        
+        // Get kepala desa IDs
+        $officialPendudukIds = $officialPendudukIds->merge(
+            Desa::whereNotNull('kepala_desa_id')->pluck('kepala_desa_id')
+        );
+        
+        // Get ketua RW IDs
+        $officialPendudukIds = $officialPendudukIds->merge(
+            Rw::whereNotNull('ketua_rw_id')->pluck('ketua_rw_id')
+        );
+        
+        // Get ketua RT IDs
+        $officialPendudukIds = $officialPendudukIds->merge(
+            Rt::whereNotNull('ketua_rt_id')->pluck('ketua_rt_id')
+        );
+        
+        return $officialPendudukIds->filter()->unique()->toArray();
+    }
+
+    /**
+     * Helper method to send kas email notification
+     */
+    private function sendKasEmailNotification(Kas $kas, string $type, array $additionalData = [])
+    {
+        if (!$kas->penduduk || !$kas->penduduk->user || !$kas->penduduk->user->email) {
+            Log::warning('Cannot send kas email: user or email not found', ['kas_id' => $kas->id]);
+            return false;
+        }
+
+        // Dispatch the job to send email
+        SendKasEmailNotification::dispatch($kas, $type, $additionalData);
+
+        return true;
     }
 
     /**
@@ -276,7 +319,7 @@ class KasController extends Controller
     }
 
     /**
-     * Get resident info by RT (AJAX)
+     * Get resident info by RT (AJAX) - Now filters out officials
      */
     public function getResidentInfo(Request $request)
     {
@@ -294,12 +337,16 @@ class KasController extends Controller
                 return response()->json(['success' => false, 'message' => 'RT tidak ditemukan']);
             }
 
-            // Ambil semua penduduk di RT ini melalui KK
+            // Get IDs of officials to exclude
+            $officialPendudukIds = $this->getOfficialPendudukIds();
+
+            // Ambil semua penduduk aktif di RT ini melalui KK, kecuali yang menjabat
             $residents = Penduduk::with(['user', 'kk'])
                 ->whereHas('kk', function($query) use ($rtId) {
                     $query->where('rt_id', $rtId);
                 })
                 ->where('status', 'aktif')
+                ->whereNotIn('id', $officialPendudukIds) // Exclude officials
                 ->orderBy('nama_lengkap')
                 ->get();
 
@@ -339,7 +386,7 @@ class KasController extends Controller
     }
 
     /**
-     * Simpan kas baru
+     * Simpan kas baru - Now only creates kas for masyarakat (non-officials) with email notifications
      */
     public function store(Request $request)
     {
@@ -357,6 +404,7 @@ class KasController extends Controller
             'tahun' => 'required|integer|min:2020|max:2030',
             'tanggal_jatuh_tempo' => 'required|date|after:today',
             'keterangan' => 'nullable|string|max:500',
+            'send_email_notification' => 'boolean',
         ]);
 
         try {
@@ -378,19 +426,27 @@ class KasController extends Controller
             }
             // Admin dan Kades tidak perlu validasi RT
 
-            // Ambil semua penduduk aktif di RT ini melalui KK
+            // Get IDs of officials to exclude
+            $officialPendudukIds = $this->getOfficialPendudukIds();
+
+            // Ambil semua penduduk aktif di RT ini melalui KK, kecuali yang menjabat
             $pendudukList = Penduduk::whereHas('kk', function($query) use ($request) {
                 $query->where('rt_id', $request->rt_id)
                       ->where('status', 'aktif');
-            })->where('status', 'aktif')->get();
+            })
+            ->where('status', 'aktif')
+            ->whereNotIn('id', $officialPendudukIds) // Exclude officials
+            ->get();
 
             if ($pendudukList->isEmpty()) {
-                throw new \Exception('Tidak ada penduduk aktif di RT ini. Pastikan ada KK aktif dengan penduduk aktif di RT yang dipilih.');
+                throw new \Exception('Tidak ada penduduk masyarakat aktif di RT ini. Pastikan ada penduduk aktif (bukan pejabat) di RT yang dipilih.');
             }
 
             $createdCount = 0;
             $notificationCount = 0;
+            $emailCount = 0;
             $duplicateCount = 0;
+            $sendEmailNotification = $request->boolean('send_email_notification');
 
             foreach ($pendudukList as $penduduk) {
                 // Cek apakah kas untuk periode ini sudah ada
@@ -433,6 +489,18 @@ class KasController extends Controller
                         ]);
 
                         $notificationCount++;
+
+                        // Send email notification if enabled and user has email
+                        if ($sendEmailNotification && $penduduk->user->email) {
+                            $daysUntilDue = now()->diffInDays($request->tanggal_jatuh_tempo, false);
+                            
+                            $this->sendKasEmailNotification($kas, 'kas_created', [
+                                'days_until_due' => max(0, $daysUntilDue),
+                                'is_new_kas' => true
+                            ]);
+                            
+                            $emailCount++;
+                        }
                     }
                 } else {
                     $duplicateCount++;
@@ -441,7 +509,10 @@ class KasController extends Controller
 
             DB::commit();
 
-            $message = "Berhasil membuat {$createdCount} tagihan kas dan mengirim {$notificationCount} notifikasi";
+            $message = "Berhasil membuat {$createdCount} tagihan kas untuk penduduk masyarakat, mengirim {$notificationCount} notifikasi sistem";
+            if ($emailCount > 0) {
+                $message .= " dan {$emailCount} email";
+            }
             if ($duplicateCount > 0) {
                 $message .= ". {$duplicateCount} kas sudah ada sebelumnya";
             }
@@ -450,6 +521,7 @@ class KasController extends Controller
                 'success' => $message,
                 'kas_created' => $createdCount,
                 'notifications_sent' => $notificationCount,
+                'emails_sent' => $emailCount,
                 'total_amount' => $createdCount * $request->jumlah,
                 'show_success_modal' => true
             ]);
@@ -462,7 +534,7 @@ class KasController extends Controller
     }
 
     /**
-     * Generate kas mingguan
+     * Generate kas mingguan - Now only creates kas for masyarakat (non-officials) with email notifications
      */
     public function generateWeekly(Request $request)
     {
@@ -478,7 +550,8 @@ class KasController extends Controller
             'tahun' => 'required|integer|min:2020|max:2030',
             'minggu_mulai' => 'required|integer|min:1|max:52',
             'minggu_selesai' => 'required|integer|min:1|max:52|gte:minggu_mulai',
-            'tanggal_jatuh_tempo_awal' => 'required|date', // Added for initial due date
+            'tanggal_jatuh_tempo_awal' => 'required|date',
+            'send_email_notification' => 'boolean',
         ]);
 
         try {
@@ -502,16 +575,24 @@ class KasController extends Controller
         
             $totalCreated = 0;
             $totalNotifications = 0;
+            $totalEmails = 0;
             $totalWeeks = $request->minggu_selesai - $request->minggu_mulai + 1;
+            $sendEmailNotification = $request->boolean('send_email_notification');
 
-            // Ambil semua penduduk aktif di RT ini melalui KK
+            // Get IDs of officials to exclude
+            $officialPendudukIds = $this->getOfficialPendudukIds();
+
+            // Ambil semua penduduk aktif di RT ini melalui KK, kecuali yang menjabat
             $pendudukList = Penduduk::whereHas('kk', function($query) use ($request) {
                 $query->where('rt_id', $request->rt_id)
                       ->where('status', 'aktif');
-            })->where('status', 'aktif')->get();
+            })
+            ->where('status', 'aktif')
+            ->whereNotIn('id', $officialPendudukIds) // Exclude officials
+            ->get();
 
             if ($pendudukList->isEmpty()) {
-                throw new \Exception('Tidak ada penduduk aktif di RT ini. Pastikan ada KK aktif dengan penduduk aktif di RT yang dipilih.');
+                throw new \Exception('Tidak ada penduduk masyarakat aktif di RT ini. Pastikan ada penduduk aktif (bukan pejabat) di RT yang dipilih.');
             }
 
             // Calculate initial due date
@@ -538,7 +619,7 @@ class KasController extends Controller
                             'jumlah' => $request->jumlah,
                             'tanggal_jatuh_tempo' => $jatuhTempo,
                             'status' => 'belum_bayar',
-                            'keterangan' => $request->keterangan ?? "Generate kas mingguan oleh {$user->name}", // Use request keterangan if available
+                            'keterangan' => $request->keterangan ?? "Generate kas mingguan oleh {$user->name}",
                         ]);
 
                         $totalCreated++;
@@ -561,6 +642,18 @@ class KasController extends Controller
                             ]);
 
                             $totalNotifications++;
+
+                            // Send email notification if enabled and user has email
+                            if ($sendEmailNotification && $penduduk->user->email) {
+                                $daysUntilDue = now()->diffInDays($jatuhTempo, false);
+                                
+                                $this->sendKasEmailNotification($kas, 'kas_created', [
+                                    'days_until_due' => max(0, $daysUntilDue),
+                                    'is_new_kas' => true
+                                ]);
+                                
+                                $totalEmails++;
+                            }
                         }
                     }
                 }
@@ -568,11 +661,17 @@ class KasController extends Controller
 
             DB::commit();
 
+            $message = "Berhasil generate {$totalCreated} tagihan kas mingguan untuk penduduk masyarakat, mengirim {$totalNotifications} notifikasi sistem";
+            if ($totalEmails > 0) {
+                $message .= " dan {$totalEmails} email";
+            }
+
             return redirect()->route('kas.index')->with([
-                'success' => "Berhasil generate {$totalCreated} tagihan kas mingguan dan mengirim {$totalNotifications} notifikasi",
+                'success' => $message,
                 'total_weeks' => $totalWeeks,
                 'kas_created' => $totalCreated,
                 'notifications_sent' => $totalNotifications,
+                'emails_sent' => $totalEmails,
                 'total_amount' => $totalCreated * $request->jumlah,
                 'show_success_modal' => true
             ]);
@@ -632,7 +731,7 @@ class KasController extends Controller
     }
 
     /**
-     * Update kas - FIXED to use markAsLunas() method
+     * Update kas - FIXED to use markAsLunas() method with email notifications
      */
     public function update(Request $request, Kas $kas)
     {
@@ -660,7 +759,7 @@ class KasController extends Controller
             'metode_bayar' => 'nullable|string|max:50',
             'keterangan' => 'nullable|string|max:500',
             'bukti_bayar_file' => 'nullable|string|max:1000',
-            'rejection_reason' => 'nullable|string|max:500', // Added for rejection reason
+            'rejection_reason' => 'nullable|string|max:500',
         ]);
 
         try {
@@ -679,8 +778,8 @@ class KasController extends Controller
                 'tahun' => $request->tahun,
                 'tanggal_jatuh_tempo' => $request->tanggal_jatuh_tempo,
                 'keterangan' => $request->keterangan,
-                'bukti_bayar_file' => $request->bukti_bayar_file, // Use bukti_bayar_file
-                'rejection_reason' => $request->rejection_reason, // Save rejection reason
+                'bukti_bayar_file' => $request->bukti_bayar_file,
+                'rejection_reason' => $request->rejection_reason,
             ];
 
             // Handle status changes with proper saldo management
@@ -718,10 +817,9 @@ class KasController extends Controller
                 if ($request->status === 'lunas') {
                     $updateData['tanggal_bayar'] = $request->tanggal_bayar ?: now();
                     $updateData['metode_bayar'] = $request->metode_bayar;
-                    $updateData['jumlah_dibayar'] = $kas->total_bayar; // Ensure jumlah_dibayar is set
-                    $updateData['rejection_reason'] = null; // Clear rejection reason if manually set to lunas
+                    $updateData['jumlah_dibayar'] = $kas->total_bayar;
+                    $updateData['rejection_reason'] = null;
                 } elseif ($request->status === 'ditolak') {
-                    // Keep rejection_reason as provided in request
                     $updateData['tanggal_bayar'] = null;
                     $updateData['metode_bayar'] = null;
                     $updateData['jumlah_dibayar'] = null;
@@ -729,13 +827,13 @@ class KasController extends Controller
                     $updateData['tanggal_bayar'] = null;
                     $updateData['metode_bayar'] = null;
                     $updateData['jumlah_dibayar'] = null;
-                    $updateData['rejection_reason'] = null; // Clear rejection reason for other statuses
+                    $updateData['rejection_reason'] = null;
                 }
                 
                 $kas->update($updateData);
             }
 
-            // Send notification if status changed to lunas or ditolak - dengan null check
+            // Send notification and email if status changed to lunas or ditolak
             if ($kas->penduduk && $kas->penduduk->user) {
                 if ($request->status === 'lunas' && $previousStatus !== 'lunas') {
                     Notifikasi::create([
@@ -750,7 +848,14 @@ class KasController extends Controller
                             'tanggal_bayar' => $kas->tanggal_bayar,
                         ])
                     ]);
-                } elseif ($request->status === 'ditolak' && $previousStatus !== 'ditolak') { // Only send if status actually changed to ditolak
+
+                    // Send email notification
+                    $this->sendKasEmailNotification($kas, 'kas_approved', [
+                        'payment_method' => $kas->metode_bayar,
+                        'payment_date' => $kas->tanggal_bayar,
+                    ]);
+
+                } elseif ($request->status === 'ditolak' && $previousStatus !== 'ditolak') {
                     $rejectionMessage = "Pembayaran kas minggu ke-{$kas->minggu_ke} tahun {$kas->tahun} sebesar Rp " . number_format($kas->jumlah, 0, ',', '.') . " ditolak.";
                     if ($request->rejection_reason) {
                         $rejectionMessage .= " Alasan: {$request->rejection_reason}.";
@@ -770,6 +875,11 @@ class KasController extends Controller
                             'tahun' => $kas->tahun,
                             'rejection_reason' => $request->rejection_reason,
                         ])
+                    ]);
+
+                    // Send email notification
+                    $this->sendKasEmailNotification($kas, 'kas_rejected', [
+                        'rejection_reason' => $request->rejection_reason,
                     ]);
                 }
             }
@@ -805,7 +915,7 @@ class KasController extends Controller
                 $kas->reversePayment($user->id, "Kas dihapus oleh admin {$user->name}");
             }
 
-            // Send notification to resident if they have an account - dengan null check
+            // Send notification to resident if they have an account
             if ($kas->penduduk && $kas->penduduk->user) {
                 Notifikasi::create([
                     'user_id' => $kas->penduduk->user->id,
@@ -839,7 +949,7 @@ class KasController extends Controller
     }
 
     /**
-     * Confirm payment (AJAX) - FIXED to use markAsLunas()
+     * Confirm payment (AJAX) - FIXED to use markAsLunas() with email notifications
      */
     public function bayar(Request $request, Kas $kas)
     {
@@ -863,7 +973,7 @@ class KasController extends Controller
 
         $request->validate([
             'metode_pembayaran' => 'required|string|max:50',
-            'bukti_pembayaran' => 'nullable|string|max:1000', // This is a string, not a file upload
+            'bukti_pembayaran' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -882,7 +992,7 @@ class KasController extends Controller
                 'bukti_bayar_file' => $request->bukti_pembayaran,
             ]);
 
-            // Send notification to resident - dengan null check
+            // Send notification to resident
             if ($kas->penduduk && $kas->penduduk->user) {
                 Notifikasi::create([
                     'user_id' => $kas->penduduk->user->id,
@@ -896,6 +1006,12 @@ class KasController extends Controller
                         'metode_bayar' => $request->metode_pembayaran,
                         'tanggal_bayar' => now(),
                     ])
+                ]);
+
+                // Send email notification
+                $this->sendKasEmailNotification($kas, 'kas_approved', [
+                    'payment_method' => $request->metode_pembayaran,
+                    'payment_date' => now(),
                 ]);
             }
 
@@ -914,7 +1030,7 @@ class KasController extends Controller
     }
 
     /**
-     * Reject payment with reason and allow re-confirmation
+     * Reject payment with reason and allow re-confirmation with email notifications
      */
     public function tolak(Request $request, Kas $kas)
     {
@@ -946,8 +1062,8 @@ class KasController extends Controller
             // Update kas status to ditolak and store rejection reason
             $kas->update([
                 'status' => 'ditolak',
-                'rejection_reason' => $request->rejection_reason, // Store in dedicated column
-                'tanggal_bayar' => null, // Clear payment details
+                'rejection_reason' => $request->rejection_reason,
+                'tanggal_bayar' => null,
                 'metode_bayar' => null,
                 'bukti_bayar_file' => null,
                 'bukti_bayar_notes' => null,
@@ -957,7 +1073,7 @@ class KasController extends Controller
                 'confirmation_notes' => null,
             ]);
 
-            // Send notification to resident - dengan null check
+            // Send notification to resident
             if ($kas->penduduk && $kas->penduduk->user) {
                 Notifikasi::create([
                     'user_id' => $kas->penduduk->user->id,
@@ -972,6 +1088,11 @@ class KasController extends Controller
                         'tahun' => $kas->tahun,
                         'rejection_reason' => $request->rejection_reason,
                     ])
+                ]);
+
+                // Send email notification
+                $this->sendKasEmailNotification($kas, 'kas_rejected', [
+                    'rejection_reason' => $request->rejection_reason,
                 ]);
             }
 
@@ -990,7 +1111,7 @@ class KasController extends Controller
     }
 
     /**
-     * Re-confirm payment for rejected kas - ENHANCED VERSION
+     * Re-confirm payment for rejected kas - ENHANCED VERSION with email notifications
      */
     public function konfirmasiUlang(Request $request, Kas $kas)
     {
@@ -1037,16 +1158,14 @@ class KasController extends Controller
                 $kas->update([
                     'status' => 'menunggu_konfirmasi',
                     'keterangan' => ($kas->keterangan ? $kas->keterangan . " | " : "") . "Diajukan ulang oleh warga pada " . now()->format('d/m/Y H:i'),
-                    'rejection_reason' => null, // Clear rejection reason when re-submitting
+                    'rejection_reason' => null,
                 ]);
 
                 // Send notification to RT - find RT ketua
                 $rt = $kas->rt;
                 if ($rt) {
-                    // Try to find RT ketua through different methods
                     $rtKetua = null;
                     
-                    // Method 1: Check if RT has ketua_rt_id
                     if ($rt->ketua_rt_id) {
                         $rtKetuaPenduduk = Penduduk::find($rt->ketua_rt_id);
                         if ($rtKetuaPenduduk && $rtKetuaPenduduk->user) {
@@ -1054,7 +1173,6 @@ class KasController extends Controller
                         }
                     }
                     
-                    // Method 2: Find user with role 'rt' in the same RT
                     if (!$rtKetua) {
                         $rtKetua = User::where('role', 'rt')
                             ->whereHas('penduduk.kk', function($query) use ($rt) {
@@ -1121,10 +1239,10 @@ class KasController extends Controller
 
                 $kas->update([
                     'keterangan' => ($kas->keterangan ? $kas->keterangan . " | " : "") . "Dikonfirmasi ulang: " . ($request->catatan_konfirmasi ?? 'Tidak ada catatan'),
-                    'rejection_reason' => null, // Clear rejection reason when confirmed
+                    'rejection_reason' => null,
                 ]);
 
-                // Send notification to resident - dengan null check
+                // Send notification to resident
                 if ($kas->penduduk && $kas->penduduk->user) {
                     Notifikasi::create([
                         'user_id' => $kas->penduduk->user->id,
@@ -1139,6 +1257,12 @@ class KasController extends Controller
                             'tanggal_bayar' => now(),
                             'catatan' => $request->catatan_konfirmasi,
                         ])
+                    ]);
+
+                    // Send email notification
+                    $this->sendKasEmailNotification($kas, 'kas_approved', [
+                        'payment_method' => $request->metode_pembayaran,
+                        'payment_date' => now(),
                     ]);
                 }
 
@@ -1172,7 +1296,6 @@ class KasController extends Controller
 
     /**
      * Method to display the payment form for a specific Kas.
-     * This method is new and handles loading the Kas model and payment info.
      */
     public function paymentForm(Kas $kas)
     {
@@ -1190,7 +1313,7 @@ class KasController extends Controller
     }
 
     /**
-     * Check if user can access specific kas - dengan null checks yang lebih baik
+     * Check if user can access specific kas
      */
     private function canAccessKas(Kas $kas, User $user)
     {

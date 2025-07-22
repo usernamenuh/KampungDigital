@@ -172,17 +172,13 @@ class RtController extends Controller
         try {
             $rt->delete();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'RT berhasil dihapus'
-            ]);
+            // Mengalihkan kembali ke halaman index dengan pesan sukses
+            return redirect()->route('rt-rw.index')->with('success', 'RT berhasil dihapus');
         } catch (\Exception $e) {
             \Log::error('Error deleting RT: ' . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat menghapus data RT'
-            ], 500);
+            // Mengalihkan kembali dengan pesan error jika terjadi kesalahan
+            return back()->with('error', 'Terjadi kesalahan saat menghapus data RT. Silakan coba lagi.');
         }
     }
 

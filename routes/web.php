@@ -147,7 +147,7 @@ Route::middleware(['auth', 'user.status'])->group(function () {
       ->middleware('role:masyarakat');
 
   // Payment Info Management Routes
-  Route::resource('payment-info', PaymentInfoController::class)->middleware('role:rt,rw,kades,admin');
+ // Route::resource('payment-info', PaymentInfoController::class)->middleware('role:rt,rw,kades,admin');
   Route::post('payment-info/{payment_info}/toggle-status', [PaymentInfoController::class, 'toggleStatus'])
       ->name('payment-info.toggle-status')
       ->middleware('role:rt,rw,kades,admin');

@@ -168,17 +168,13 @@ class RwController extends Controller
         try {
             $rw->delete();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'RW berhasil dihapus'
-            ]);
+            // Mengalihkan kembali ke halaman index dengan pesan sukses
+            return redirect()->route('rt-rw.index')->with('success', 'RW berhasil dihapus');
         } catch (\Exception $e) {
             \Log::error('Error deleting RW: ' . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat menghapus data RW'
-            ], 500);
+            // Mengalihkan kembali dengan pesan error jika terjadi kesalahan
+            return back()->with('error', 'Terjadi kesalahan saat menghapus data RW. Silakan coba lagi.');
         }
     }
 

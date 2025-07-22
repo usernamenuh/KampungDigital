@@ -72,7 +72,7 @@
 <body>
     <div class="email-container">
         <div class="email-header">
-            <h1>Reset Password Anda</h1>
+            <h1>Code Verivikasi Anda</h1>
         </div>
         <div class="email-body">
             <p>Halo,</p>

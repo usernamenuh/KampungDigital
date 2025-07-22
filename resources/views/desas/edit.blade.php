@@ -322,7 +322,7 @@
                                 <option value="">-- Pilih Kepala Desa --</option>
                                 @foreach($penduduks as $penduduk)
                                     <option value="{{ $penduduk->id }}" {{ old('kepala_desa_id', $desa->kepala_desa_id ?? '') == $penduduk->id ? 'selected' : '' }}>
-                                        {{ $penduduk->nik }} - {{ $penduduk->nama }}
+                                        {{ $penduduk->nik }} - {{ $penduduk->nama_lengkap }}
                                     </option>
                                 @endforeach
                             </select>

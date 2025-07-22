@@ -103,6 +103,8 @@ Route::middleware('auth:sanctum')->group(function () {
       Route::post('/mark-all-read', [NotifikasiApiController::class, 'markAllAsRead']);
       Route::delete('/{notification}', [NotifikasiApiController::class, 'destroy']);
       Route::delete('/clear-all', [NotifikasiApiController::class, 'destroyAll']);
+        // New route for fetching resident info
+        Route::get('/get-resident-info', [KasApiController::class, 'getResidentInfo'])->name('kas.get-resident-info');
   });
 
   // Payment Info API routes

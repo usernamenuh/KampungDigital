@@ -450,7 +450,7 @@ function processConfirmation() {
     btn.disabled = true;
     btnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Memproses...';
 
-    const url = `{{ route('payments.confirm', ['kas' => '__KAS_ID__']) }}`.replace('__KAS_ID__', currentKasId);
+    const url = `/payments/${currentKasId}/confirm`;
 
     fetch(url, {
         method: 'POST',
