@@ -120,15 +120,8 @@ function navigationData(appStore) {
             { id: 'desa', label: 'Desa', icon: 'building-2', route: '{{ route('desas.index') }}' }, // Updated route
             { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '{{ route('rt-rw.index') }}' },
             { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '{{ route('kas.index') }}' },
-            { id: 'pengaturan-kas', label: 'Pengaturan Kas', icon: 'settings', route: '{{ route('pengaturan-kas.index') }}' },
-            { id: 'umkm', label: 'UMKM', icon: 'store', route: '/umkm' },
             { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '{{ route('users.index') }}' }, // Assuming users.index is correct
-            { id: 'wisata', label: 'Wisata', icon: 'camera', route: '/wisata' },
             { id: 'berita', label: 'Berita', icon: 'newspaper', route: '/berita' },
-            { id: 'program', label: 'Program', icon: 'calendar', route: '/program' },
-            { id: 'pendidikan', label: 'Pendidikan', icon: 'graduation-cap', route: '/pendidikan' },
-            { id: 'pembangunan', label: 'Pembangunan', icon: 'hammer', route: '/pembangunan' },
-            { id: 'keuangan', label: 'Keuangan', icon: 'banknote', route: '/keuangan' }
         ],
         
         filteredMenuItems: [], // Will hold the filtered and role-accessed items
@@ -147,32 +140,17 @@ function navigationData(appStore) {
                 case 'rt-rw':
                     // Menu RT & RW hanya untuk kades dan admin
                     return this.userRole === 'admin' || this.userRole === 'kades';
-                    
+                
                 case 'kas':
-                case 'pengaturan-kas':
                     // Menu Kas hanya untuk admin, kades, rw, rt
                     return ['admin', 'kades', 'rw', 'rt'].includes(this.userRole);
-                    
-                case 'wisata':
-                case 'berita':
-                case 'program':
-                case 'pendidikan':
-                    // Menu ini bisa diakses oleh admin, kades, dan masyarakat
-                    return ['admin', 'kades', 'masyarakat'].includes(this.userRole);
-                    
-                case 'pembangunan':
-                case 'keuangan':
-                    // Menu ini hanya untuk admin dan kades
-                    return this.userRole === 'admin' || this.userRole === 'kades';
-                    
+                
+                    case 'berita':
+                    return ['admin', 'kades', 'rw', 'rt', 'masyarakat'].includes(this.userRole);
                 case 'penduduk':
                 case 'kk':
                     // Menu Kartu Keluarga bisa diakses oleh admin, kades, rw, rt
                     return ['admin', 'kades', 'rw', 'rt'].includes(this.userRole);
-                    
-                case 'umkm':
-                    // Menu UMKM bisa diakses oleh admin, kades, rw, rt, dan masyarakat
-                    return ['admin', 'kades', 'rw', 'rt', 'masyarakat'].includes(this.userRole);
                     
                 default:
                     // Menu lainnya (dashboard, dll) bisa diakses semua role yang login

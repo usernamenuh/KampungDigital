@@ -74,14 +74,12 @@ class KasPaymentController extends Controller
             $status = ($metodeBayar === 'tunai') ? 'lunas' : 'menunggu_konfirmasi';
 
             // Pastikan jumlah_dibayar dihitung dari nilai kas yang ada di database
-            // atau dari nilai yang baru saja di-set jika ini adalah entri baru.
-            // Menggunakan $kas->jumlah dan $kas->denda yang sudah ada di model.
             $jumlahDibayar = $kas->jumlah + ($kas->denda ?? 0);
 
             $kas->update([
                 'status' => $status,
                 'tanggal_bayar' => Carbon::now(),
-                'jumlah_dibayar' => $jumlahDibayar, // Menggunakan variabel yang sudah dihitung
+                'jumlah_dibayar' => $jumlahDibayar,
                 'metode_bayar' => $metodeBayar,
                 'bukti_bayar_file' => $filePath,
                 'bukti_bayar_notes' => $request->bukti_bayar_notes,
@@ -95,11 +93,14 @@ class KasPaymentController extends Controller
                     'confirmation_notes' => 'Pembayaran tunai langsung dikonfirmasi oleh masyarakat.',
                 ]);
 
-                $rt = $kas->rt;
-                if ($rt && $kas->jumlah_dibayar > 0) {
-                    $rt->saldo += $kas->jumlah_dibayar;
-                    $rt->save();
-                }
+                // PERBAIKAN: Jangan langsung tambah ke saldo RT
+                // Kas yang sudah lunas akan otomatis masuk ke "Kas Terkumpul"
+                // dan bisa ditransfer ke saldo RT melalui fitur "Transfer Kas"
+                Log::info('Kas payment completed - added to kas terkumpul', [
+                    'kas_id' => $kas->id,
+                    'amount' => $kas->jumlah_dibayar,
+                    'rt_id' => $kas->rt_id
+                ]);
             } else {
                 $this->createPaymentNotifications($kas);
             }
@@ -251,16 +252,20 @@ class KasPaymentController extends Controller
                 $kas->update([
                     'status' => 'lunas',
                     'tanggal_bayar' => $kas->tanggal_bayar ?? Carbon::now(),
-                    'jumlah_dibayar' => $jumlahDibayar, // Set jumlah_dibayar di sini
+                    'jumlah_dibayar' => $jumlahDibayar,
                     'confirmed_by' => $user->id,
                     'confirmed_at' => Carbon::now(),
                     'confirmation_notes' => $request->catatan_konfirmasi ?? 'Pembayaran dikonfirmasi.',
                 ]);
-                $rt = $kas->rt;
-                if ($rt && $kas->jumlah_dibayar > 0) {
-                    $rt->saldo += $kas->jumlah_dibayar;
-                    $rt->save();
-                }
+
+                // PERBAIKAN: Jangan langsung tambah ke saldo RT
+                // Kas yang sudah lunas akan otomatis masuk ke "Kas Terkumpul"
+                // dan bisa ditransfer ke saldo RT melalui fitur "Transfer Kas"
+                Log::info('Kas payment approved - added to kas terkumpul', [
+                    'kas_id' => $kas->id,
+                    'amount' => $kas->jumlah_dibayar,
+                    'rt_id' => $kas->rt_id
+                ]);
 
                 // Send approved email notification menggunakan Job
                 try {
