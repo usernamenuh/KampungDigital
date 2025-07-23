@@ -74,7 +74,7 @@
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Saldo RW</p>
                 <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalSaldoRw)">Rp 0</p>
                 <div class="flex items-center mt-2">
-                    <span class="text-sm text-blue-600 font-medium" x-text="totalRw + ' RW'">0 RW</span>
+                    <span class="text-sm text-blue-600 font-medium" x-text="totalRws + ' RW'">0 RW</span>
                 </div>
             </div>
             <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-xl">
@@ -90,7 +90,7 @@
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Saldo RT</p>
                 <p class="text-2xl font-bold text-gray-800 dark:text-white mt-2" x-text="formatCurrency(totalSaldoRt)">Rp 0</p>
                 <div class="flex items-center mt-2">
-                    <span class="text-sm text-purple-600 font-medium" x-text="totalRt + ' RT'">0 RT</span>
+                    <span class="text-sm text-purple-600 font-medium" x-text="totalRts + ' RT'">0 RT</span>
                 </div>
             </div>
             <div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-xl">
@@ -264,38 +264,6 @@
     </div>
 </div>
 
-<!-- System Monitoring (Admin Only) -->
-<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white">System Monitoring</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Real-time system performance</p>
-        </div>
-        <button @click="loadSystemMonitoring()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-            Refresh
-        </button>
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <p class="text-sm text-gray-600 dark:text-gray-400">Server Load</p>
-            <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="systemMonitoring.serverLoad || '0.5'">0.5</p>
-        </div>
-        <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <p class="text-sm text-gray-600 dark:text-gray-400">Memory Usage</p>
-            <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="(systemMonitoring.memory_usage || 0) + '%'">0%</p>
-        </div>
-        <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <p class="text-sm text-gray-600 dark:text-gray-400">Active Sessions</p>
-            <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="systemMonitoring.activeSessions || 25">25</p>
-        </div>
-        <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <p class="text-sm text-gray-600 dark:text-gray-400">DB Connections</p>
-            <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="systemMonitoring.dbConnections || 8">8</p>
-        </div>
-    </div>
-</div>
-
 <!-- Quick Actions -->
 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Admin Actions</h3>
@@ -315,14 +283,6 @@
         <button @click="clearCache()" class="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
             <i data-lucide="trash-2" class="w-6 h-6 text-orange-600 mb-2"></i>
             <span class="text-sm font-medium text-orange-600">Clear Cache</span>
-        </button>
-        <button @click="exportData()" class="flex flex-col items-center p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors">
-            <i data-lucide="download" class="w-6 h-6 text-teal-600 mb-2"></i>
-            <span class="text-sm font-medium text-teal-600">Export Data</span>
-        </button>
-        <button @click="showSystemLogs()" class="flex flex-col items-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
-            <i data-lucide="file-text" class="w-6 h-6 text-red-600 mb-2"></i>
-            <span class="text-sm font-medium text-red-600">System Logs</span>
         </button>
     </div>
 </div>
@@ -346,8 +306,8 @@ return {
     totalSaldoSistem: 0,
     totalUsers: 0,
     totalDesa: 0,
-    totalRw: 0,
-    totalRt: 0,
+    totalRws: 0,
+    totalRts: 0,
     totalPenduduk: 0,
     pendudukAktif: 0,
     totalKasTerkumpul: 0,

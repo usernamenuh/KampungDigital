@@ -122,11 +122,11 @@ function navigationData(appStore) {
             { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '{{ route('kas.index') }}' },
             // Bantuan route - updated to use the correct route based on role
             { 
-                id: 'bantuan', 
-                label: 'Bantuan', 
-                icon: 'heart-handshake', 
-                route: '{{ Auth::check() && Auth::user()->role === "kades" ? route("bantuan-proposals.kades.index") : (Auth::check() && Auth::user()->role === "rw" ? route("bantuan-proposals.index") : "#") }}' 
-            },
+    id: 'bantuan', 
+    label: 'Bantuan', 
+    icon: 'heart-handshake', 
+    route: '{{ Auth::check() && Auth::user()->role === "kades" ? route("bantuan-proposals.kades.index") : (Auth::check() && Auth::user()->role === "rw" ? route("bantuan-proposals.index") : (Auth::check() && Auth::user()->role === "admin" ? route("bantuan-proposals.admin.index") : "#")) }}' 
+},
             { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '{{ route('users.index') }}' }, // Assuming users.index is correct
             { id: 'berita', label: 'Berita', icon: 'newspaper', route: '/berita' },
         ],

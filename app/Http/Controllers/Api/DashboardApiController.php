@@ -404,37 +404,6 @@ class DashboardApiController extends Controller
     /**
      * Get system monitoring data.
      */
-    public function getSystemMonitoring(Request $request)
-    {
-        try {
-            $monitoringData = [
-                'cpu_usage' => rand(10, 80),
-                'memory_usage' => rand(20, 90),
-                'disk_usage' => rand(30, 95),
-                'network_traffic' => rand(100, 1000),
-                'serverLoad' => round(mt_rand() / mt_getrandmax() * (2.0 - 0.1) + 0.1, 1),
-                'activeSessions' => User::where('last_activity', '>=', now()->subMinutes(5))->count(),
-                'dbConnections' => rand(3, 15),
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $monitoringData
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error getting system monitoring data: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memuat pemantauan sistem.',
-                'data' => [
-                    'serverLoad' => 0.5,
-                    'memoryUsage' => 128,
-                    'activeSessions' => 0,
-                    'dbConnections' => 0
-                ]
-            ], 500);
-        }
-    }
 
     /**
      * Clear application cache.
@@ -1401,9 +1370,9 @@ class DashboardApiController extends Controller
 
             // Kas Belum Bayar (this year)
             $kasBelumBayar = Kas::where('rt_id', $rtId)
-                                ->where('status', 'belum_bayar')
-                                ->whereYear('tanggal_tagihan', $currentYear) // Assuming tanggal_tagihan for pending
-                                ->count();
+                               ->where('status', 'belum_bayar')
+                               ->whereYear('tanggal_tagihan', $currentYear) // Assuming tanggal_tagihan for pending
+                               ->count();
 
             // Total Saldo RT
             $totalSaldoRt = $rt->saldo ?? 0;

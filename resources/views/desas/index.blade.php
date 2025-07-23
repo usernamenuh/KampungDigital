@@ -287,13 +287,6 @@
                             <p class="text-sm text-gray-600 dark:text-gray-400">Menampilkan {{ $desas->count() }} dari {{ $desas->count() }} data</p>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-3">
-                        <button @click="exportData()"
-                                class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
-                            <i data-lucide="download" class="w-4 h-4 mr-2"></i>
-                            Export
-                        </button>
-                    </div>
                 </div>
             </div>
 

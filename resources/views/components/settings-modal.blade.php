@@ -250,27 +250,6 @@
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Manajemen Data</h3>
                     
                     <div class="space-y-3">
-                        <button @click="exportData()" class="w-full flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors">
-                            <div class="flex items-center space-x-3">
-                                <i data-lucide="download" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
-                                <div class="text-left">
-                                    <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Export Data</p>
-                                    <p class="text-xs text-blue-600 dark:text-blue-400">Download data dalam format Excel</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-4 h-4 text-blue-600 dark:text-blue-400"></i>
-                        </button>
-
-                        <button @click="importData()" class="w-full flex items-center justify-between p-3 bg-green-50 dark:bg-green-900 rounded-lg hover:bg-green-100 dark:hover:bg-green-800 transition-colors">
-                            <div class="flex items-center space-x-3">
-                                <i data-lucide="upload" class="w-5 h-5 text-green-600 dark:text-green-400"></i>
-                                <div class="text-left">
-                                    <p class="text-sm font-medium text-green-800 dark:text-green-200">Import Data</p>
-                                    <p class="text-xs text-green-600 dark:text-green-400">Upload data dari file Excel</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-4 h-4 text-green-600 dark:text-green-400"></i>
-                        </button>
 
                         <button @click="clearCache()" class="w-full flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-800 transition-colors">
                             <div class="flex items-center space-x-3">

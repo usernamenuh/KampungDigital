@@ -496,4 +496,67 @@ class BantuanProposalController extends Controller
                 ->with('error', 'Terjadi kesalahan saat mengunduh file proposal: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Display a listing of all proposals for Admin
+     */
+    public function adminIndex()
+    {
+        try {
+            $user = Auth::user();
+            
+            // Only admin can access this
+            if ($user->role !== 'admin') {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Akses tidak diizinkan.');
+            }
+            
+            $status = request('status', 'all');
+            $search = request('search', '');
+            
+            // Get proposals query
+            $query = BantuanProposal::with(['rw', 'submittedBy', 'reviewedBy']);
+            
+            // Filter by status if provided
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+            
+            // Filter by search if provided
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('judul_proposal', 'like', '%' . $search . '%')
+                      ->orWhere('deskripsi', 'like', '%' . $search . '%')
+                      ->orWhereHas('rw', function($rwQuery) use ($search) {
+                          $rwQuery->where('nama', 'like', '%' . $search . '%');
+                      });
+                });
+            }
+            
+            // Get paginated results
+            $proposals = $query->orderBy('created_at', 'desc')
+                ->paginate(10);
+            
+            // Get statistics
+            $stats = [
+                'total' => BantuanProposal::count(),
+                'pending' => BantuanProposal::where('status', 'pending')->count(),
+                'approved' => BantuanProposal::where('status', 'approved')->count(),
+                'rejected' => BantuanProposal::where('status', 'rejected')->count(),
+                'total_amount_requested' => BantuanProposal::sum('jumlah_bantuan'),
+                'total_amount_approved' => BantuanProposal::where('status', 'approved')->sum('jumlah_disetujui'),
+            ];
+            
+            return view('bantuan-proposals.admin-index', compact('proposals', 'status', 'search', 'stats'));
+            
+        } catch (\Exception $e) {
+            Log::error('Error in BantuanProposalController@adminIndex', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('dashboard.admin')
+                ->with('error', 'Terjadi kesalahan saat memuat data proposal bantuan.');
+        }
+    }
 }

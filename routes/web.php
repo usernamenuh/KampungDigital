@@ -192,6 +192,9 @@ Route::middleware(['auth', 'user.status'])->group(function () {
           Route::get('/reports/kas', [HomeController::class, 'kasReports'])->name('reports.kas');
           Route::get('/reports/payments', [HomeController::class, 'paymentReports'])->name('reports.payments');
           Route::get('/reports/export', [HomeController::class, 'exportReports'])->name('reports.export');
+          
+          // Admin proposal routes - ADDED THIS LINE
+          Route::get('/proposals', [BantuanProposalController::class, 'adminIndex'])->name('proposals.index');
       });
   });
 
@@ -208,26 +211,25 @@ Route::middleware(['auth', 'user.status'])->group(function () {
   });
 
   // Bantuan Proposal Routes - FIXED ROUTES
-  Route::prefix('bantuan-proposals')->name('bantuan-proposals.')->group(function () {
-      // Routes for RW
+  Route::middleware(['role:admin,kades,rw'])->group(function () {
+      // RW routes - for creating and viewing own proposals
       Route::middleware(['role:rw'])->group(function () {
-          Route::get('/', [BantuanProposalController::class, 'indexRw'])->name('index');
-          Route::get('/create', [BantuanProposalController::class, 'create'])->name('create');
-          Route::post('/', [BantuanProposalController::class, 'store'])->name('store');
+          Route::get('/bantuan-proposals', [BantuanProposalController::class, 'indexRw'])->name('bantuan-proposals.index');
+          Route::get('/bantuan-proposals/create', [BantuanProposalController::class, 'create'])->name('bantuan-proposals.create');
+          Route::post('/bantuan-proposals', [BantuanProposalController::class, 'store'])->name('bantuan-proposals.store');
       });
       
-      // Routes for Kades
+      // Kades routes - for reviewing and processing proposals
       Route::middleware(['role:kades,admin'])->group(function () {
-          Route::get('/kades', [BantuanProposalController::class, 'indexKades'])->name('kades.index');
-          Route::get('/{proposal}/process', [BantuanProposalController::class, 'process'])->name('process');
-          Route::put('/{proposal}/status', [BantuanProposalController::class, 'updateStatus'])->name('update-status');
+          Route::get('/bantuan-proposals/kades', [BantuanProposalController::class, 'indexKades'])->name('bantuan-proposals.kades.index');
+           Route::get('/bantuan-proposals/admin', [BantuanProposalController::class, 'adminIndex'])->name('bantuan-proposals.admin.index');
+          Route::get('/bantuan-proposals/{proposal}/process', [BantuanProposalController::class, 'process'])->name('bantuan-proposals.process');
+          Route::put('/bantuan-proposals/{proposal}/status', [BantuanProposalController::class, 'updateStatus'])->name('bantuan-proposals.update-status');
       });
       
-      // Common routes for all roles with access
-      Route::middleware(['role:rw,kades,admin'])->group(function () {
-          Route::get('/{proposal}', [BantuanProposalController::class, 'show'])->name('show');
-          Route::get('/{proposal}/download', [BantuanProposalController::class, 'downloadFile'])->name('download');
-      });
+      // Common routes for all roles
+      Route::get('/bantuan-proposals/{proposal}', [BantuanProposalController::class, 'show'])->name('bantuan-proposals.show');
+      Route::get('/bantuan-proposals/{proposal}/download', [BantuanProposalController::class, 'downloadFile'])->name('bantuan-proposals.download');
   });
 
   // Saldo Management Routes
