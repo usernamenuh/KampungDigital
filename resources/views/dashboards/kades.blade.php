@@ -197,7 +197,7 @@
             </a>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
@@ -206,7 +206,7 @@
                         </div>
                         <div class="ml-3">
                             <p class="text-sm font-medium text-gray-800 dark:text-white">Menunggu Persetujuan</p>
-                            <p class="text-xl font-bold text-yellow-600 dark:text-yellow-400">{{ $pendingProposals ?? 0 }}</p>
+                            <p class="text-xl font-bold text-yellow-600 dark:text-yellow-400" x-text="pendingProposals">0</p>
                         </div>
                     </div>
                     <a href="{{ route('bantuan-proposals.kades.index') }}?status=pending" class="text-yellow-600 hover:text-yellow-800">
@@ -223,12 +223,43 @@
                         </div>
                         <div class="ml-3">
                             <p class="text-sm font-medium text-gray-800 dark:text-white">Disetujui</p>
-                            <p class="text-xl font-bold text-green-600 dark:text-green-400">{{ $approvedProposals ?? 0 }}</p>
+                            <p class="text-xl font-bold text-green-600 dark:text-green-400" x-text="approvedProposals">0</p>
                         </div>
                     </div>
                     <a href="{{ route('bantuan-proposals.kades.index') }}?status=approved" class="text-green-600 hover:text-green-800">
                         <i data-lucide="arrow-right" class="w-5 h-5"></i>
                     </a>
+                </div>
+            </div>
+
+            <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-red-100 dark:bg-red-800 rounded-lg">
+                            <i data-lucide="x-circle" class="w-6 h-6 text-red-600 dark:text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-800 dark:text-white">Ditolak</p>
+                            <p class="text-xl font-bold text-red-600 dark:text-red-400" x-text="rejectedProposals">0</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('bantuan-proposals.kades.index') }}?status=rejected" class="text-red-600 hover:text-red-800">
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proposal Summary -->
+        <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="text-center">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Total Bantuan Diminta</p>
+                    <p class="text-lg font-bold text-gray-800 dark:text-white" x-text="formatCurrency(totalProposalAmount)">Rp 0</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Total Bantuan Disetujui</p>
+                    <p class="text-lg font-bold text-green-600 dark:text-green-400" x-text="formatCurrency(approvedProposalAmount)">Rp 0</p>
                 </div>
             </div>
         </div>
@@ -251,12 +282,18 @@ function kadesDashboardData() {
         totalRts: 0,
         totalPenduduk: 0,
         totalKasTerkumpul: 0,
-        totalSaldoDesa: 0, // New: Total saldo desa
+        totalSaldoDesa: 0, // Fixed: specific desa saldo
         monthlyKasChart: null,
         activities: [],
         isOnline: true,
         connectionStatus: 'online',
         refreshInterval: null,
+        // Add proposal data properties
+        pendingProposals: 0,
+        approvedProposals: 0,
+        rejectedProposals: 0,
+        totalProposalAmount: 0,
+        approvedProposalAmount: 0,
 
         async initDashboard() {
             console.log('🚀 Initializing Kades Dashboard...');
@@ -328,7 +365,14 @@ function kadesDashboardData() {
                         this.totalRts = data.data.totalRts || 0;
                         this.totalPenduduk = data.data.totalPenduduk || 0;
                         this.totalKasTerkumpul = data.data.totalKasTerkumpul || 0;
-                        this.totalSaldoDesa = data.data.totalSaldoDesa || 0; // New: Get saldo desa
+                        this.totalSaldoDesa = data.data.totalSaldoDesa || 0; // Fixed: specific desa saldo
+                        // Load proposal data
+                        this.pendingProposals = data.data.pendingProposals || 0;
+                        this.approvedProposals = data.data.approvedProposals || 0;
+                        this.rejectedProposals = data.data.rejectedProposals || 0;
+                        this.totalProposalAmount = data.data.totalProposalAmount || 0;
+                        this.approvedProposalAmount = data.data.approvedProposalAmount || 0;
+                        
                         this.isOnline = true;
                         this.connectionStatus = 'online';
                         console.log('✅ Kades data loaded successfully:', data.data);

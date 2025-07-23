@@ -20,6 +20,7 @@ use App\Models\Desa;
 use App\Models\PaymentInfo;
 use App\Models\Kk;
 use App\Models\SaldoTransaction;
+use App\Models\BantuanProposal;
 
 class DashboardApiController extends Controller
 {
@@ -37,7 +38,7 @@ class DashboardApiController extends Controller
                     $stats = $this->getAdminStats();
                     break;
                 case 'kades':
-                    $stats = $this->getKadesStats();
+                    $stats = $this->getKadesStats($user);
                     break;
                 case 'rw':
                     $stats = $this->getRwStats($user);
@@ -694,6 +695,13 @@ class DashboardApiController extends Controller
                 'notifikasiUnread' => Notifikasi::where('dibaca', false)->count(),
                 'notifikasiHariIni' => Notifikasi::whereDate('created_at', today())->count(),
                 'systemHealth' => $this->getSystemHealthStatus(),
+                // Add proposal statistics for admin
+                'totalProposals' => BantuanProposal::count(),
+                'pendingProposals' => BantuanProposal::where('status', 'pending')->count(),
+                'approvedProposals' => BantuanProposal::where('status', 'approved')->count(),
+                'rejectedProposals' => BantuanProposal::where('status', 'rejected')->count(),
+                'totalProposalAmount' => BantuanProposal::sum('jumlah_bantuan') ?? 0,
+                'approvedProposalAmount' => BantuanProposal::where('status', 'approved')->sum('jumlah_disetujui') ?? 0,
             ];
         } catch (\Exception $e) {
             Log::error('Error in getAdminStats', ['error' => $e->getMessage()]);
@@ -702,19 +710,22 @@ class DashboardApiController extends Controller
     }
 
     /**
-     * Get Kades Statistics
+     * Get Kades Statistics - FIXED to get specific desa saldo
      */
-    private function getKadesStats()
+    private function getKadesStats($user)
     {
         try {
-            $totalSaldoDesa = $this->safeSum('desas', 'saldo');
+            // Get the specific desa for this kades user
+            // Assuming kades is associated with a specific desa
+            $desa = $this->getUserDesa($user);
+            $totalSaldoDesa = $desa ? $desa->saldo : 0;
 
             return [
                 'totalRws' => Rw::count(),
                 'totalRts' => Rt::count(),
                 'totalPenduduk' => Penduduk::count(),
                 'totalKasTerkumpul' => Kas::where('status', 'lunas')->sum('jumlah') ?? 0,
-                'totalSaldoDesa' => $totalSaldoDesa, // New: Add saldo desa
+                'totalSaldoDesa' => $totalSaldoDesa, // Fixed: Get specific desa saldo
                 'pendudukAktif' => Penduduk::where('status', 'aktif')->count(),
                 'pendudukLakiLaki' => Penduduk::where('jenis_kelamin', 'L')->count(),
                 'pendudukPerempuan' => Penduduk::where('jenis_kelamin', 'P')->count(),
@@ -722,6 +733,12 @@ class DashboardApiController extends Controller
                 'kasLunas' => Kas::where('status', 'lunas')->count(),
                 'kasBelumBayar' => Kas::whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
                 'kasDitolak' => Kas::where('status', 'ditolak')->count(),
+                // Add real proposal data for kades
+                'pendingProposals' => BantuanProposal::where('status', 'pending')->count(),
+                'approvedProposals' => BantuanProposal::where('status', 'approved')->count(),
+                'rejectedProposals' => BantuanProposal::where('status', 'rejected')->count(),
+                'totalProposalAmount' => BantuanProposal::sum('jumlah_bantuan') ?? 0,
+                'approvedProposalAmount' => BantuanProposal::where('status', 'approved')->sum('jumlah_disetujui') ?? 0,
             ];
         } catch (\Exception $e) {
             Log::error('Error in getKadesStats', ['error' => $e->getMessage()]);
@@ -753,6 +770,10 @@ class DashboardApiController extends Controller
                 'kasBelumBayar' => Kas::whereIn('rt_id', $rtIds)->whereIn('status', ['belum_bayar', 'terlambat', 'menunggu_konfirmasi'])->count(),
                 'kasDitolak' => Kas::whereIn('rt_id', $rtIds)->where('status', 'ditolak')->count(),
                 'totalSaldoRw' => $totalSaldoRw, // New: Add saldo RW
+                // Add proposal stats for RW
+                'myProposals' => BantuanProposal::where('rw_id', $rw->id)->count(),
+                'pendingProposals' => BantuanProposal::where('rw_id', $rw->id)->where('status', 'pending')->count(),
+                'approvedProposals' => BantuanProposal::where('rw_id', $rw->id)->where('status', 'approved')->count(),
             ];
         } catch (\Exception $e) {
             Log::error('Error in getRwStats', ['error' => $e->getMessage(), 'user_id' => $user->id]);
@@ -925,22 +946,31 @@ class DashboardApiController extends Controller
             'rwNumber' => 'N/A',
             'kasTerkumpul' => 0,
             'kasAvailableForTransfer' => 0,
+            // Add proposal defaults
+            'pendingProposals' => 0,
+            'approvedProposals' => 0,
+            'rejectedProposals' => 0,
+            'totalProposals' => 0,
+            'myProposals' => 0,
+            'totalProposalAmount' => 0,
+            'approvedProposalAmount' => 0,
         ];
     }
 
     /**
-     * Get All System Activities
+     * Get All System Activities - ENHANCED with proposal activities
      */
     private function getAllSystemActivities($limit)
     {
         $activities = [];
 
         try {
+            // Get recent kas payments
             $recentPayments = Kas::with(['penduduk', 'rt'])
                 ->whereIn('status', ['lunas', 'menunggu_konfirmasi', 'ditolak'])
                 ->whereNotNull('tanggal_bayar')
                 ->orderBy('tanggal_bayar', 'desc')
-                ->limit($limit / 2)
+                ->limit($limit / 3)
                 ->get();
 
             foreach ($recentPayments as $payment) {
@@ -975,9 +1005,53 @@ class DashboardApiController extends Controller
                 ];
             }
 
+            // Get recent proposal activities
+            $recentProposals = BantuanProposal::with(['rw', 'submittedBy'])
+                ->orderBy('updated_at', 'desc')
+                ->limit($limit / 3)
+                ->get();
+
+            foreach ($recentProposals as $proposal) {
+                $icon = 'file-text';
+                $color = 'blue';
+                $title = 'Proposal Bantuan';
+                $description = "Proposal '{$proposal->judul_proposal}' dari RW {$proposal->rw->nama}";
+
+                if ($proposal->status === 'pending') {
+                    $icon = 'clock';
+                    $color = 'yellow';
+                    $title = 'Proposal Menunggu Review';
+                    $description = "Proposal '{$proposal->judul_proposal}' menunggu persetujuan";
+                } elseif ($proposal->status === 'approved') {
+                    $icon = 'check-circle';
+                    $color = 'green';
+                    $title = 'Proposal Disetujui';
+                    $description = "Proposal '{$proposal->judul_proposal}' telah disetujui";
+                } elseif ($proposal->status === 'rejected') {
+                    $icon = 'x-circle';
+                    $color = 'red';
+                    $title = 'Proposal Ditolak';
+                    $description = "Proposal '{$proposal->judul_proposal}' ditolak";
+                }
+
+                $activities[] = [
+                    'id' => 'proposal_' . $proposal->id,
+                    'type' => 'proposal',
+                    'title' => $title,
+                    'description' => $description,
+                    'amount' => $proposal->jumlah_bantuan,
+                    'user' => $proposal->submittedBy->name ?? 'RW ' . $proposal->rw->nama,
+                    'location' => "RW {$proposal->rw->nama}",
+                    'timestamp' => $proposal->updated_at,
+                    'icon' => $icon,
+                    'color' => $color
+                ];
+            }
+
+            // Get recent user registrations
             $recentUsers = User::with('penduduk')
                 ->orderBy('created_at', 'desc')
-                ->limit($limit / 2)
+                ->limit($limit / 3)
                 ->get();
 
             foreach ($recentUsers as $newUser) {
@@ -1078,6 +1152,9 @@ class DashboardApiController extends Controller
                             $color = 'red';
                         }
                     }
+                } elseif ($activity->kategori === 'proposal') {
+                    $icon = 'file-text';
+                    $color = 'purple';
                 } elseif ($activity->kategori === 'sistem') {
                     $icon = 'settings';
                     $color = 'purple';
@@ -1132,6 +1209,21 @@ class DashboardApiController extends Controller
         } catch (\Exception $e) {
             Log::error("Error in safeCount for table {$table}", ['error' => $e->getMessage()]);
             return 0;
+        }
+    }
+
+    /**
+     * Get user's Desa - NEW METHOD for kades
+     */
+    private function getUserDesa($user)
+    {
+        try {
+            // For now, get the first desa (assuming single desa system)
+            // In multi-desa system, you might need to associate kades with specific desa
+            return Desa::first();
+        } catch (\Exception $e) {
+            Log::error('Error getting user Desa', ['error' => $e->getMessage(), 'user_id' => $user->id]);
+            return null;
         }
     }
 
