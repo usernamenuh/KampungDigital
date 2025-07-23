@@ -250,6 +250,56 @@
             </a>
         </div>
     </div>
+    
+    <!-- Bantuan Proposal Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Proposal Bantuan</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Ajukan proposal bantuan ke Kepala Desa</p>
+            </div>
+            <a href="{{ route('bantuan-proposals.index') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+                <span>Lihat Semua</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
+            </a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
+                            <i data-lucide="file-plus" class="w-6 h-6 text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-800 dark:text-white">Buat Proposal Baru</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Ajukan permohonan bantuan dana</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('bantuan-proposals.create') }}" class="text-blue-600 hover:text-blue-800">
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
+                            <i data-lucide="list" class="w-6 h-6 text-purple-600 dark:text-purple-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-800 dark:text-white">Status Proposal</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Lihat status proposal yang diajukan</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('bantuan-proposals.index') }}" class="text-purple-600 hover:text-purple-800">
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')

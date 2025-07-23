@@ -21,7 +21,8 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\BantuanProposalController;
+use App\Http\Controllers\SaldoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -147,7 +148,7 @@ Route::middleware(['auth', 'user.status'])->group(function () {
       ->middleware('role:masyarakat');
 
   // Payment Info Management Routes
- // Route::resource('payment-info', PaymentInfoController::class)->middleware('role:rt,rw,kades,admin');
+  Route::resource('payment-info', PaymentInfoController::class)->middleware('role:rt,rw,kades,admin');
   Route::post('payment-info/{payment_info}/toggle-status', [PaymentInfoController::class, 'toggleStatus'])
       ->name('payment-info.toggle-status')
       ->middleware('role:rt,rw,kades,admin');
@@ -205,34 +206,67 @@ Route::middleware(['auth', 'user.status'])->group(function () {
       Route::post('kk/{kk}/set-kepala-keluarga', [KkController::class, 'setKepalaKeluarga'])->name('kk.set-kepala-keluarga');
       Route::resource('pengaturan-kas', PengaturanKasController::class);
   });
+
+  // Bantuan Proposal Routes - FIXED ROUTES
+  Route::prefix('bantuan-proposals')->name('bantuan-proposals.')->group(function () {
+      // Routes for RW
+      Route::middleware(['role:rw'])->group(function () {
+          Route::get('/', [BantuanProposalController::class, 'indexRw'])->name('index');
+          Route::get('/create', [BantuanProposalController::class, 'create'])->name('create');
+          Route::post('/', [BantuanProposalController::class, 'store'])->name('store');
+      });
+      
+      // Routes for Kades
+      Route::middleware(['role:kades,admin'])->group(function () {
+          Route::get('/kades', [BantuanProposalController::class, 'indexKades'])->name('kades.index');
+          Route::get('/{proposal}/process', [BantuanProposalController::class, 'process'])->name('process');
+          Route::put('/{proposal}/status', [BantuanProposalController::class, 'updateStatus'])->name('update-status');
+      });
+      
+      // Common routes for all roles with access
+      Route::middleware(['role:rw,kades,admin'])->group(function () {
+          Route::get('/{proposal}', [BantuanProposalController::class, 'show'])->name('show');
+          Route::get('/{proposal}/download', [BantuanProposalController::class, 'downloadFile'])->name('download');
+      });
+  });
+
+  // Saldo Management Routes
+  Route::prefix('saldo')->name('saldo.')->middleware('role:rt,rw,kades,admin')->group(function () {
+      Route::get('/', [SaldoController::class, 'index'])->name('index');
+      Route::post('/transfer-kas', [SaldoController::class, 'transferKas'])->name('transfer-kas');
+      Route::post('/add-income', [SaldoController::class, 'addIncome'])->name('add-income');
+      Route::post('/add-expense', [SaldoController::class, 'addExpense'])->name('add-expense');
+      Route::get('/transactions', [SaldoController::class, 'transactions'])->name('transactions');
+      Route::get('/history', [SaldoController::class, 'history'])->name('history');
+  });
 });
 
-  Route::get('/health', function () {
-      try {
-          $checks = [
-              'database' => DB::connection()->getPdo() ? 'ok' : 'error',
-              'cache' => cache()->put('health_check', 'ok', 60) ? 'ok' : 'error',
-              'storage' => is_writable(storage_path()) ? 'ok' : 'error'
-          ];
-          
-          $allHealthy = !in_array('error', array_values($checks));
-          
-          return response()->json([
-              'success' => true,
-              'status' => $allHealthy ? 'healthy' : 'degraded',
-              'checks' => $checks,
-              'timestamp' => now()->toISOString()
-          ], $allHealthy ? 200 : 503);
-          
-      } catch (Exception $e) {
-          return response()->json([
-              'success' => false,
-              'status' => 'unhealthy',
-              'error' => $e->getMessage(),
-              'timestamp' => now()->toISOString()
-          ], 503);
-      }
-  });
+Route::get('/health', function () {
+    try {
+        $checks = [
+            'database' => DB::connection()->getPdo() ? 'ok' : 'error',
+            'cache' => cache()->put('health_check', 'ok', 60) ? 'ok' : 'error',
+            'storage' => is_writable(storage_path()) ? 'ok' : 'error'
+        ];
+        
+        $allHealthy = !in_array('error', array_values($checks));
+        
+        return response()->json([
+            'success' => true,
+            'status' => $allHealthy ? 'healthy' : 'degraded',
+            'checks' => $checks,
+            'timestamp' => now()->toISOString()
+        ], $allHealthy ? 200 : 503);
+        
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'status' => 'unhealthy',
+            'error' => $e->getMessage(),
+            'timestamp' => now()->toISOString()
+        ], 503);
+    }
+});
 
 
 // Debug routes for development

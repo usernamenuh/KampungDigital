@@ -120,6 +120,13 @@ function navigationData(appStore) {
             { id: 'desa', label: 'Desa', icon: 'building-2', route: '{{ route('desas.index') }}' }, // Updated route
             { id: 'rt-rw', label: 'RT & RW', icon: 'home', route: '{{ route('rt-rw.index') }}' },
             { id: 'kas', label: 'Kas RT/RW', icon: 'wallet', route: '{{ route('kas.index') }}' },
+            // Bantuan route - updated to use the correct route based on role
+            { 
+                id: 'bantuan', 
+                label: 'Bantuan', 
+                icon: 'heart-handshake', 
+                route: '{{ Auth::check() && Auth::user()->role === "kades" ? route("bantuan-proposals.kades.index") : (Auth::check() && Auth::user()->role === "rw" ? route("bantuan-proposals.index") : "#") }}' 
+            },
             { id: 'users', label: 'Kelola Pengguna', icon: 'user-cog', route: '{{ route('users.index') }}' }, // Assuming users.index is correct
             { id: 'berita', label: 'Berita', icon: 'newspaper', route: '/berita' },
         ],
@@ -145,7 +152,11 @@ function navigationData(appStore) {
                     // Menu Kas hanya untuk admin, kades, rw, rt
                     return ['admin', 'kades', 'rw', 'rt'].includes(this.userRole);
                 
-                    case 'berita':
+                case 'bantuan':
+                    // Menu Bantuan hanya untuk admin, kades, rw
+                    return ['admin', 'kades', 'rw'].includes(this.userRole);
+                    
+                case 'berita':
                     return ['admin', 'kades', 'rw', 'rt', 'masyarakat'].includes(this.userRole);
                 case 'penduduk':
                 case 'kk':
@@ -212,6 +223,7 @@ function navigationData(appStore) {
             if (path.startsWith('{{ route('kk.index') }}') || path === '/kk') return 'kk';
             if (path.startsWith('{{ route('rt-rw.index') }}') || path === '/rt-rw') return 'rt-rw';
             if (path.startsWith('{{ route('kas.index') }}') || path === '/kas') return 'kas';
+            if (path.startsWith('/bantuan-proposals')) return 'bantuan';
             if (path.startsWith('{{ route('pengaturan-kas.index') }}') || path === '/pengaturan-kas') return 'pengaturan-kas';
             if (path.startsWith('{{ route('users.index') }}') || path === '/users') return 'users'; // Assuming users.index is correct
             // Add similar logic for other routes if they have sub-paths

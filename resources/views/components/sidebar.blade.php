@@ -163,17 +163,8 @@ function isActiveMenuItem(item) {
         'penduduk': 'penduduk',
         'lokasi': 'lokasi',
         'rt-rw': 'rt-rw ',
-        'umkm': 'umkm',
-        'wisata': 'wisata',
         'berita': 'berita',
-        'program': 'program',
-        'pembangunan': 'pembangunan',
-        'keuangan': 'keuangan',
-        'laporan': 'laporan',
-        'agenda': 'agenda',
-        'media': 'media',
-        'dokumen': 'dokumen',
-        'pesan': 'pesan'
+        'bantuan' : 'bantuan',
     };
     
     // Cek apakah current path mengandung route item

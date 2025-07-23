@@ -183,6 +183,56 @@
             </a>
         </div>
     </div>
+    
+    <!-- Bantuan Proposal Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Proposal Bantuan</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Kelola proposal bantuan dari RW</p>
+            </div>
+            <a href="{{ route('bantuan-proposals.kades.index') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+                <span>Lihat Semua</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
+            </a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-yellow-100 dark:bg-yellow-800 rounded-lg">
+                            <i data-lucide="hourglass" class="w-6 h-6 text-yellow-600 dark:text-yellow-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-800 dark:text-white">Menunggu Persetujuan</p>
+                            <p class="text-xl font-bold text-yellow-600 dark:text-yellow-400">{{ $pendingProposals ?? 0 }}</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('bantuan-proposals.kades.index') }}?status=pending" class="text-yellow-600 hover:text-yellow-800">
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-green-100 dark:bg-green-800 rounded-lg">
+                            <i data-lucide="check-circle" class="w-6 h-6 text-green-600 dark:text-green-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-800 dark:text-white">Disetujui</p>
+                            <p class="text-xl font-bold text-green-600 dark:text-green-400">{{ $approvedProposals ?? 0 }}</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('bantuan-proposals.kades.index') }}?status=approved" class="text-green-600 hover:text-green-800">
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')

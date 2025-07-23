@@ -15,6 +15,7 @@ use App\Models\RegDistrict;
 use App\Models\RegVillage;
 use App\Http\Controllers\SaldoController; 
 use App\Http\Controllers\Api\WilayahApiController; // / Import SaldoController
+use App\Http\Controllers\Api\BantuanProposalApiController; // Import BantuanProposalApiController
 
 /*
 |--------------------------------------------------------------------------
@@ -129,6 +130,23 @@ Route::middleware('auth:sanctum')->group(function () {
       Route::get('/history', [SaldoController::class, 'getSaldoHistory']);
   });
 });
+ Route::middleware(['role:admin,kades,rw'])->group(function () {
+        Route::get('/bantuan-proposals', [BantuanProposalApiController::class, 'index']);
+        Route::get('/bantuan-proposals/stats', [BantuanProposalApiController::class, 'getStats']);
+        Route::get('/bantuan-proposals/recent', [BantuanProposalApiController::class, 'getRecentProposals']);
+        Route::get('/bantuan-proposals/analytics', [BantuanProposalApiController::class, 'getAnalytics']);
+        Route::get('/bantuan-proposals/{proposal}', [BantuanProposalApiController::class, 'show']);
+        
+        // RW can create proposals
+        Route::middleware(['role:rw'])->group(function () {
+            Route::post('/bantuan-proposals', [BantuanProposalApiController::class, 'store']);
+        });
+        
+        // Kades can update proposal status
+        Route::middleware(['role:kades,admin'])->group(function () {
+            Route::put('/bantuan-proposals/{proposal}/status', [BantuanProposalApiController::class, 'updateStatus']);
+        });
+    });
 
 // Territory API routes (public) - menggunakan reg_wilayah
 Route::prefix('wilayah')->group(function () {
