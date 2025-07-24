@@ -109,12 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
   });
 
   // Payment Info API routes
-  // IMPORTANT: Place specific routes before apiResource to avoid conflicts
-  Route::get('/payment-info/for-user-rt', [PaymentInfoController::class, 'getPaymentInfoForUserRt']);
-  Route::get('/payment-info/rt/{rt_id}', [PaymentApiController::class, 'getPaymentInfoByRt']);
-  
-  // Use apiResource for standard CRUD operations (index, store, show, update, destroy)
-  Route::apiResource('payment-info', PaymentInfoController::class);
+
 
   // Payments API routes
   Route::prefix('payment')->group(function () {

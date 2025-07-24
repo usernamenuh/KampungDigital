@@ -76,6 +76,12 @@ class User extends Authenticatable
         return $this->hasMany(Notifikasi::class);
     }
 
+    public function berita()
+    {
+        return $this->hasMany(Berita::class);
+    }
+    
+    
     /**
      * Get unread notifications count
      */

@@ -16,11 +16,11 @@
                     <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
                     Tambah Kas
                 </a>
-                <button type="button" onclick="openGenerateModal()" 
+              {{--  <button type="button" onclick="openGenerateModal()" 
                         class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200">
                     <i data-lucide="calendar-plus" class="w-4 h-4 mr-2"></i>
                     Generate Kas Mingguan
-                </button>
+                </button>  --}}
             </div>
             @endif
         </div>
