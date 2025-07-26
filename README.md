@@ -1,1 +1,1 @@
-### Jum'at di cek 60%
+# THANKS ADIK ADIK
