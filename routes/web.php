@@ -178,10 +178,12 @@ Route::middleware(['auth', 'user.status'])->group(function () {
     });
 
     // Profile and Settings Routes
-    Route::prefix('profile')->name('profile.')->group(function () {
+      Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'index'])->name('index');
         Route::put('/', [ProfileController::class, 'update'])->name('update');
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
+        Route::delete('/avatar', [ProfileController::class, 'removeAvatar'])->name('avatar.remove');
+        Route::put('/preferences', [ProfileController::class, 'updatePreferences'])->name('preferences.update');
     });
 
     // Admin specific routes
