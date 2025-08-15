@@ -109,7 +109,14 @@ Route::middleware('auth:sanctum')->group(function () {
   });
 
   // Payment Info API routes
-
+  Route::prefix('payment-info')->group(function () {
+      Route::get('/', [PaymentInfoController::class, 'index']);
+      Route::post('/', [PaymentInfoController::class, 'store']);
+      Route::put('/{paymentInfo}', [PaymentInfoController::class, 'update']);
+      Route::delete('/{paymentInfo}', [PaymentInfoController::class, 'destroy']);
+      Route::get('/user-rt', [PaymentInfoController::class, 'getPaymentInfoForUserRt']);
+      Route::get('/rt/{rtId}', [PaymentApiController::class, 'getPaymentInfoByRt']);
+  });
 
   // Payments API routes
   Route::prefix('payment')->group(function () {
